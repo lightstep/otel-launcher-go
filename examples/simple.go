@@ -9,12 +9,8 @@ import (
 )
 
 func main() {
-	ls.ConfigureOpentelemetry(
-		ls.WithAccessToken("<access token>"),
-		ls.WithServiceName("sdk-go"),
-		ls.WithSatelliteURL("ingest.lightstep.com:443"),
-		ls.WithDebug(true),
-	)
+	lsOtel := ls.ConfigureOpentelemetry(ls.WithServiceName("my-service"))
+	defer lsOtel.Shutdown()
 	tracer := global.Tracer("ex.com/basic")
 
 	tracer.WithSpan(context.Background(), "foo",

@@ -1,8 +1,11 @@
 package ls
 
 import (
+	"errors"
+	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/kv"
@@ -12,13 +15,17 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
+// TODO: might be better to use something like envconfig here
 var (
-	lsServiceName     = os.Getenv("LS_SERVICE_NAME")
-	lsSserviceVersion = os.Getenv("LS_SERVICE_VERSION")
-	lsAccessToken     = os.Getenv("LS_ACCESS_TOKEN")
-	lsSatelliteURL    = os.Getenv("LS_SATELLITE_URL")
-	lsInsecure        = os.Getenv("LS_INSECURE")
-	Version           = "0.0.1" // overridden at build time
+	defaultSatelliteURL = "ingest.lightstep.com:443"
+	lsServiceName       = os.Getenv("LS_SERVICE_NAME")
+	lsServiceVersion    = os.Getenv("LS_SERVICE_VERSION")
+	lsAccessToken       = os.Getenv("LS_ACCESS_TOKEN")
+	lsSatelliteURL      = os.Getenv("LS_SATELLITE_URL")
+	lsMetricsURL        = os.Getenv("LS_METRICS_URL")
+	lsDebug, _          = strconv.ParseBool(os.Getenv("LS_DBEUG"))
+	lsInsecure, _       = strconv.ParseBool(os.Getenv("LS_INSECURE"))
+	Version             = "0.0.1" // overridden at build time
 )
 
 type Option func(*config)
@@ -47,6 +54,28 @@ func WithDebug(debug bool) Option {
 	}
 }
 
+type Logger interface {
+	Fatalf(format string, v ...interface{})
+	Debugf(format string, v ...interface{})
+}
+
+func WithLogger(logger Logger) Option {
+	return func(c *config) {
+		c.logger = logger
+	}
+}
+
+type DefaultLogger struct {
+}
+
+func (l *DefaultLogger) Fatalf(format string, v ...interface{}) {
+	log.Fatalf(format, v...)
+}
+
+func (l *DefaultLogger) Debugf(format string, v ...interface{}) {
+	log.Printf(format, v...)
+}
+
 type config struct {
 	serviceName    string
 	serviceVersion string
@@ -55,29 +84,60 @@ type config struct {
 	accessToken    string
 	debug          bool
 	insecure       bool
+	logger         Logger
+}
+
+func validateConfiguration(c config) error {
+	if len(c.serviceName) == 0 {
+		return errors.New("invalid configuration: service name missing")
+	}
+
+	if len(c.accessToken) == 0 && c.satelliteURL == defaultSatelliteURL {
+		return fmt.Errorf("invalid configuration: access token missing, must be set when reporting to %s", c.satelliteURL)
+	}
+	return nil
 }
 
 func newConfig(opts ...Option) config {
-	var c config
+	satelliteURL := defaultSatelliteURL
+	if len(lsSatelliteURL) > 0 {
+		satelliteURL = lsSatelliteURL
+	}
+	c := config{
+		serviceName:    lsServiceName,
+		serviceVersion: lsServiceVersion,
+		satelliteURL:   satelliteURL,
+		metricsURL:     lsMetricsURL,
+		accessToken:    lsAccessToken,
+		debug:          lsDebug,
+		insecure:       lsInsecure,
+		logger:         &DefaultLogger{},
+	}
 	var defaultOpts []Option
 
 	for _, opt := range append(defaultOpts, opts...) {
 		opt(&c)
 	}
 
+	err := validateConfiguration(c)
+	if err != nil {
+		c.logger.Fatalf(err.Error())
+	}
+
 	return c
 }
 
-func ConfigureOpentelemetry(opts ...Option) {
+type LightstepOpentelemetry struct {
+	spanExporter *otlp.Exporter
+}
+
+func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 	c := newConfig(opts...)
 	if c.debug {
-		log.Println("debug logging enabled")
-		log.Println("configuration")
-		log.Println("-------------")
-		log.Printf("%v", c) // TODO: pretty print
-	}
-	if len(c.serviceName) == 0 {
-		log.Fatalf("invalid configuration: service name missing")
+		c.logger.Debugf("debug logging enabled")
+		c.logger.Debugf("configuration")
+		c.logger.Debugf("-------------")
+		c.logger.Debugf("%v", c) // TODO: pretty print
 	}
 
 	headers := map[string]string{
@@ -96,17 +156,11 @@ func ConfigureOpentelemetry(opts ...Option) {
 	if err != nil {
 		log.Fatalf("failed to create exporter: %v", err)
 	}
-	defer func() {
-		err := exporter.Stop()
-		if err != nil {
-			log.Fatalf("failed to stop exporter: %v", err)
-		}
-	}()
 	resources := resource.New(
 		kv.String("service.name", c.serviceName),
 		kv.String("service.version", c.serviceVersion),
 		kv.String("library.language", "go"),
-		kv.String("library.version", "1.2.3"),
+		kv.String("library.version", Version),
 	)
 	tp, err := trace.NewProvider(
 		trace.WithConfig(trace.Config{DefaultSampler: trace.AlwaysSample()}),
@@ -118,4 +172,22 @@ func ConfigureOpentelemetry(opts ...Option) {
 	}
 
 	global.SetTraceProvider(tp)
+	return LightstepOpentelemetry{
+		spanExporter: exporter,
+	}
 }
+
+func (ls *LightstepOpentelemetry) Shutdown() {
+	err := ls.spanExporter.Stop()
+	if err != nil {
+		log.Fatalf("failed to stop exporter: %v", err)
+	}
+}
+
+// TODO:
+// need to implement closing the exporter somewhere
+
+// defer func() {
+// 	log.Printf("running defered code")
+
+// }()
