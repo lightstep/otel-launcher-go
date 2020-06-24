@@ -40,7 +40,7 @@ var (
 	lsAccessToken       = os.Getenv("LS_ACCESS_TOKEN")
 	lsSatelliteURL      = os.Getenv("LS_SATELLITE_URL")
 	lsMetricsURL        = os.Getenv("LS_METRICS_URL")
-	lsDebug, _          = strconv.ParseBool(os.Getenv("LS_DBEUG"))
+	lsDebug, _          = strconv.ParseBool(os.Getenv("LS_DEBUG"))
 	lsInsecure, _       = strconv.ParseBool(os.Getenv("LS_INSECURE"))
 	Version             = "0.0.1" // overridden at build time
 )
@@ -106,11 +106,11 @@ type config struct {
 
 func validateConfiguration(c config) error {
 	if len(c.serviceName) == 0 {
-		return errors.New("invalid configuration: service name missing")
+		return errors.New("invalid configuration: service name missing. Set LS_SERVICE_NAME or configure WithServiceName")
 	}
 
 	if len(c.accessToken) == 0 && c.satelliteURL == defaultSatelliteURL {
-		return fmt.Errorf("invalid configuration: access token missing, must be set when reporting to %s", c.satelliteURL)
+		return fmt.Errorf("invalid configuration: access token missing, must be set when reporting to %s. Set LS_ACCESS_TOKEN or configure WithAccessToken", c.satelliteURL)
 	}
 	return nil
 }
