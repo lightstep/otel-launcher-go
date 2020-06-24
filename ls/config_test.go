@@ -16,6 +16,7 @@ package ls
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 )
@@ -113,4 +114,20 @@ func TestDefaultConfig(t *testing.T) {
 
 func TestEnvironmentVariables(t *testing.T) {
 
+}
+
+func TestMain(m *testing.M) {
+	vars := []string{
+		"LS_SERVICE_NAME",
+		"LS_SERVICE_VERSION",
+		"LS_SATELLITE_URL",
+		"LS_METRICS_URL",
+		"LS_ACCESS_TOKEN",
+		"LS_DEBUG",
+		"LS_INSECURE",
+	}
+	for _, envvar := range vars {
+		os.Unsetenv(envvar)
+	}
+	os.Exit(m.Run())
 }
