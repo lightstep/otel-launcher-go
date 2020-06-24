@@ -15,12 +15,12 @@
 package ls
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
-	"os"
-	"strconv"
 
+	"github.com/sethvargo/go-envconfig/pkg/envconfig"
 	"go.opentelemetry.io/otel/api/correlation"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/kv"
@@ -32,42 +32,29 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-// TODO: might be better to use something like envconfig here
-var (
-	defaultSatelliteURL = "ingest.lightstep.com:443"
-	lsServiceName       = os.Getenv("LS_SERVICE_NAME")
-	lsServiceVersion    = os.Getenv("LS_SERVICE_VERSION")
-	lsAccessToken       = os.Getenv("LS_ACCESS_TOKEN")
-	lsSatelliteURL      = os.Getenv("LS_SATELLITE_URL")
-	lsMetricsURL        = os.Getenv("LS_METRICS_URL")
-	lsDebug, _          = strconv.ParseBool(os.Getenv("LS_DEBUG"))
-	lsInsecure, _       = strconv.ParseBool(os.Getenv("LS_INSECURE"))
-	Version             = "0.0.1" // overridden at build time
-)
-
-type Option func(*config)
+type Option func(*LightstepConfig)
 
 func WithAccessToken(accessToken string) Option {
-	return func(c *config) {
-		c.accessToken = accessToken
+	return func(c *LightstepConfig) {
+		c.AccessToken = accessToken
 	}
 }
 
 func WithSatelliteURL(url string) Option {
-	return func(c *config) {
-		c.satelliteURL = url
+	return func(c *LightstepConfig) {
+		c.SatelliteURL = url
 	}
 }
 
 func WithServiceName(name string) Option {
-	return func(c *config) {
-		c.serviceName = name
+	return func(c *LightstepConfig) {
+		c.ServiceName = name
 	}
 }
 
 func WithDebug(debug bool) Option {
-	return func(c *config) {
-		c.debug = debug
+	return func(c *LightstepConfig) {
+		c.Debug = debug
 	}
 }
 
@@ -77,7 +64,7 @@ type Logger interface {
 }
 
 func WithLogger(logger Logger) Option {
-	return func(c *config) {
+	return func(c *LightstepConfig) {
 		c.logger = logger
 	}
 }
@@ -93,52 +80,43 @@ func (l *DefaultLogger) Debugf(format string, v ...interface{}) {
 	log.Printf(format, v...)
 }
 
-type config struct {
-	serviceName    string
-	serviceVersion string
-	satelliteURL   string
-	metricsURL     string
-	accessToken    string
-	debug          bool
-	insecure       bool
+var (
+	defaultSatelliteURL = "ingest.lightstep.com:443"
+	Version             = "0.0.1" // overridden at build time
+)
+
+type LightstepConfig struct {
+	ServiceName    string `env:"LS_SERVICE_NAME"`
+	ServiceVersion string `env:"LS_SERVICE_VERSION,default=unknown"`
+	SatelliteURL   string `env:"LS_SATELLITE_URL,default=ingest.lightstep.com:443"`
+	MetricsURL     string `env:"LS_METRICS_URL,default=ingest.lightstep.com:443/metrics"`
+	AccessToken    string `env:"LS_ACCESS_TOKEN"`
+	Debug          bool   `env:"LS_DEBUG,default=false"`
+	Insecure       bool   `env:"LS_INSECURE,default=false"`
 	logger         Logger
 }
 
-func validateConfiguration(c config) error {
-	if len(c.serviceName) == 0 {
+func validateConfiguration(c LightstepConfig) error {
+	if len(c.ServiceName) == 0 {
 		return errors.New("invalid configuration: service name missing. Set LS_SERVICE_NAME or configure WithServiceName")
 	}
 
-	if len(c.accessToken) == 0 && c.satelliteURL == defaultSatelliteURL {
-		return fmt.Errorf("invalid configuration: access token missing, must be set when reporting to %s. Set LS_ACCESS_TOKEN or configure WithAccessToken", c.satelliteURL)
+	if len(c.AccessToken) == 0 && c.SatelliteURL == defaultSatelliteURL {
+		return fmt.Errorf("invalid configuration: access token missing, must be set when reporting to %s. Set LS_ACCESS_TOKEN or configure WithAccessToken", c.SatelliteURL)
 	}
 	return nil
 }
 
-func newConfig(opts ...Option) config {
-	satelliteURL := defaultSatelliteURL
-	if len(lsSatelliteURL) > 0 {
-		satelliteURL = lsSatelliteURL
+func newConfig(opts ...Option) LightstepConfig {
+	var c LightstepConfig
+	if err := envconfig.Process(context.Background(), &c); err != nil {
+		log.Fatal(err)
 	}
-	c := config{
-		serviceName:    lsServiceName,
-		serviceVersion: lsServiceVersion,
-		satelliteURL:   satelliteURL,
-		metricsURL:     lsMetricsURL,
-		accessToken:    lsAccessToken,
-		debug:          lsDebug,
-		insecure:       lsInsecure,
-		logger:         &DefaultLogger{},
-	}
+	c.logger = &DefaultLogger{}
 	var defaultOpts []Option
 
 	for _, opt := range append(defaultOpts, opts...) {
 		opt(&c)
-	}
-
-	err := validateConfiguration(c)
-	if err != nil {
-		c.logger.Fatalf(err.Error())
 	}
 
 	return c
@@ -160,7 +138,13 @@ func configurePropagators() {
 
 func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 	c := newConfig(opts...)
-	if c.debug {
+
+	err := validateConfiguration(c)
+	if err != nil {
+		c.logger.Fatalf(err.Error())
+	}
+
+	if c.Debug {
 		c.logger.Debugf("debug logging enabled")
 		c.logger.Debugf("configuration")
 		c.logger.Debugf("-------------")
@@ -168,16 +152,16 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 	}
 
 	headers := map[string]string{
-		"lightstep-access-token": c.accessToken,
+		"lightstep-access-token": c.AccessToken,
 	}
 
 	secureOption := otlp.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
-	if c.insecure {
+	if c.Insecure {
 		secureOption = otlp.WithInsecure()
 	}
 	exporter, err := otlp.NewExporter(
 		secureOption,
-		otlp.WithAddress(c.satelliteURL),
+		otlp.WithAddress(c.SatelliteURL),
 		otlp.WithHeaders(headers),
 	)
 	if err != nil {
@@ -185,8 +169,8 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 	}
 	resources := resource.New(
 		// TODO: use keys from the semantic convention definition
-		kv.String("service.name", c.serviceName),
-		kv.String("service.version", c.serviceVersion),
+		kv.String("service.name", c.ServiceName),
+		kv.String("service.version", c.ServiceVersion),
 		kv.String("telemetry.sdk.language", "go"),
 		kv.String("telemetry.sdk.version", Version),
 	)

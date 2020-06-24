@@ -1,7 +1,22 @@
+// Copyright Lightstep Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package ls
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -27,8 +42,8 @@ func TestInvalidServiceName(t *testing.T) {
 	defer lsOtel.Shutdown()
 
 	expected := "invalid configuration: service name missing"
-	if expected != logger.output[0] {
-		t.Errorf("\nExpected: %v\ngot: %v", expected, logger.output[0])
+	if !strings.Contains(logger.output[0], expected) {
+		t.Errorf("\nString not found: %v\nIn: %v", expected, logger.output[0])
 	}
 }
 
@@ -41,8 +56,8 @@ func TestInvalidAccessToken(t *testing.T) {
 	defer lsOtel.Shutdown()
 
 	expected := "invalid configuration: access token missing, must be set when reporting to ingest.lightstep.com:443"
-	if expected != logger.output[0] {
-		t.Errorf("\nExpected: %v\ngot: %v", expected, logger.output[0])
+	if !strings.Contains(logger.output[0], expected) {
+		t.Errorf("\nString not found: %v\nIn: %v", expected, logger.output[0])
 	}
 }
 
@@ -75,4 +90,27 @@ func TestDebugEnabled(t *testing.T) {
 	if expected != logger.output[0] {
 		t.Errorf("\nExpected: %v\ngot: %v", expected, logger.output[0])
 	}
+}
+
+func TestDefaultConfig(t *testing.T) {
+	logger := testLogger{}
+	config := newConfig(WithLogger(&logger))
+
+	expected := LightstepConfig{
+		ServiceName:    "",
+		ServiceVersion: "unknown",
+		SatelliteURL:   "ingest.lightstep.com:443",
+		MetricsURL:     "ingest.lightstep.com:443/metrics",
+		AccessToken:    "",
+		Debug:          false,
+		Insecure:       false,
+		logger:         &logger,
+	}
+	if config != expected {
+		t.Errorf("\nExpected: %v\ngot: %v", expected, config)
+	}
+}
+
+func TestEnvironmentVariables(t *testing.T) {
+
 }
