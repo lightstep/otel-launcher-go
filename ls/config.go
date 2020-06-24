@@ -1,3 +1,17 @@
+# Copyright Lightstep Authors
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 package ls
 
 import (
@@ -7,8 +21,11 @@ import (
 	"os"
 	"strconv"
 
+	"go.opentelemetry.io/otel/api/correlation"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/kv"
+	"go.opentelemetry.io/otel/api/propagation"
+	apitrace "go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
@@ -131,6 +148,16 @@ type LightstepOpentelemetry struct {
 	spanExporter *otlp.Exporter
 }
 
+func configurePropagators() {
+	tcPropagator := apitrace.TraceContext{}
+	b3Propagator := apitrace.B3{}
+	ccPropagator := correlation.CorrelationContext{}
+	global.SetPropagators(propagation.New(
+		propagation.WithExtractors(tcPropagator, b3Propagator, ccPropagator),
+		propagation.WithInjectors(tcPropagator, b3Propagator, ccPropagator),
+	))
+}
+
 func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 	c := newConfig(opts...)
 	if c.debug {
@@ -157,10 +184,11 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 		log.Fatalf("failed to create exporter: %v", err)
 	}
 	resources := resource.New(
+		// TODO: use keys from the semantic convention definition
 		kv.String("service.name", c.serviceName),
 		kv.String("service.version", c.serviceVersion),
-		kv.String("library.language", "go"),
-		kv.String("library.version", Version),
+		kv.String("telemetry.sdk.language", "go"),
+		kv.String("telemetry.sdk.version", Version),
 	)
 	tp, err := trace.NewProvider(
 		trace.WithConfig(trace.Config{DefaultSampler: trace.AlwaysSample()}),
@@ -170,6 +198,8 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	configurePropagators()
 
 	global.SetTraceProvider(tp)
 	return LightstepOpentelemetry{
@@ -183,11 +213,3 @@ func (ls *LightstepOpentelemetry) Shutdown() {
 		log.Fatalf("failed to stop exporter: %v", err)
 	}
 }
-
-// TODO:
-// need to implement closing the exporter somewhere
-
-// defer func() {
-// 	log.Printf("running defered code")
-
-// }()
