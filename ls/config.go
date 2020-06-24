@@ -16,6 +16,7 @@ package ls
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -147,8 +148,8 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 	if c.Debug {
 		c.logger.Debugf("debug logging enabled")
 		c.logger.Debugf("configuration")
-		c.logger.Debugf("-------------")
-		c.logger.Debugf("%v", c) // TODO: pretty print
+		s, _ := json.MarshalIndent(c, "", "\t")
+		c.logger.Debugf(string(s)) // TODO: pretty print
 	}
 
 	headers := map[string]string{
