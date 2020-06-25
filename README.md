@@ -9,7 +9,7 @@ This is the Lightstep package for configuring OpenTelemetry
 ### Install
 
 ```bash
-go get github.com/lightstep/locl-go
+go get github.com/lightstep/otel-go/locl
 ```
 
 ### Configure
