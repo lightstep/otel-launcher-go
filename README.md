@@ -32,12 +32,12 @@ Additional options
 
 ### Configuration Options
 
-|Config Option|Env Variable|Required|Default|
-|-------------|------------|--------|-------|
-|WithServiceName|LS_SERVICE_NAME|y|-|
-|WithServiceVersion|LS_SERVICE_VERSION|n|unknown|
-|WithSatelliteURL|LS_SATELLITE_URL|n|ingest.lightstep.com:443|
-|WithMetricsURL|LS_METRICS_URL|n|ingest.lightstep.com:443/metrics|
-|WithAccessToken|LS_ACCESS_TOKEN|n|-|
-|WithDebug|LS_DEBUG|n|false|
-|WithInsecure|LS_INSECURE|n|false|
+|Config Option     |Env Variable      |Required|Default|
+|------------------|------------------|--------|-------|
+|WithServiceName   |LS_SERVICE_NAME   |y       |-      |
+|WithServiceVersion|LS_SERVICE_VERSION|n       |unknown|
+|WithSatelliteURL  |LS_SATELLITE_URL  |n       |ingest.lightstep.com:443|
+|WithMetricsURL    |LS_METRICS_URL    |n       |ingest.lightstep.com:443/metrics|
+|WithAccessToken   |LS_ACCESS_TOKEN   |n       |-      |
+|WithDebug         |LS_DEBUG          |n       |false  |
+|WithInsecure      |LS_INSECURE       |n       |false  |
