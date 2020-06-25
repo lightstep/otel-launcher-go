@@ -4,6 +4,8 @@
 
 # Lightstep OpenTelemetry Configuration Layer for Go
 
+*NOTE: the code in this repo is currently in alpha and will likely change*
+
 This is the Lightstep package for configuring OpenTelemetry
 
 ### Install
