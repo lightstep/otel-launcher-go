@@ -1,4 +1,4 @@
-module github.com/lightstep/otel-go/locl
+module github.com/lightstep/otel-go
 
 go 1.14
 
