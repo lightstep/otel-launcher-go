@@ -18,12 +18,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/lightstep/opentelemetry-go/ls"
+	"github.com/lightstep/otel-go/locl"
 	"go.opentelemetry.io/otel/api/global"
 )
 
 func main() {
-	lsOtel := ls.ConfigureOpentelemetry()
+	lsOtel := locl.ConfigureOpentelemetry()
 	defer lsOtel.Shutdown()
 	tracer := global.Tracer("ex.com/basic")
 

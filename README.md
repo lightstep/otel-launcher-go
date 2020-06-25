@@ -1,18 +1,43 @@
-![build status](https://github.com/lightstep/opentelemetry-go/workflows/build/badge.svg) [![PyPI version](https://badge.fury.io/py/opentelemetry-lightstep.svg)](https://badge.fury.io/py/opentelemetry-lightstep)
+![build status](https://github.com/lightstep/otel-go/workflows/build/badge.svg)
+[![Docs](https://godoc.org/github.com/lightstep/otel-go/locl?status.svg)](https://pkg.go.dev/github.com/lightstep/otel-go/locl)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lightstep/otel-go/locl)](https://goreportcard.com/report/github.com/lightstep/otel-go/locl)
 
-# Lightstep OpenTelemetry Go
+# Lightstep OpenTelemetry Configuration Layer for Go
 
-This is the Lightstep package for OpenTelemetry
+This is the Lightstep package for configuring OpenTelemetry
 
 ### Install
+
+```bash
+go get github.com/lightstep/locl-go
+```
 
 ### Configure
 
 Minimal setup
 
+```go
+import "github.com/lightstep/otel-go/locl"
+
+func main() {
+    lightstepOtel := locl.ConfigureOpentelemetry(
+        locl.WithServiceName("service-name"),
+        locl.WithAccessToken("access-token"),
+    )
+    defer lightstepOtel.Shutdown()
+}
+```
+
 Additional options
 
 ### Configuration Options
 
-|Config|Env Variable|Required|Default|
-|------|------------|--------|-------|
+|Config Option|Env Variable|Required|Default|
+|-------------|------------|--------|-------|
+|WithServiceName|LS_SERVICE_NAME|y|-|
+|WithServiceVersion|LS_SERVICE_VERSION|n|unknown|
+|WithSatelliteURL|LS_SATELLITE_URL|n|ingest.lightstep.com:443|
+|WithMetricsURL|LS_METRICS_URL|n|ingest.lightstep.com:443/metrics|
+|WithAccessToken|LS_ACCESS_TOKEN|n|-|
+|WithDebug|LS_DEBUG|n|false|
+|WithInsecure|LS_INSECURE|n|false|
