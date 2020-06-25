@@ -113,10 +113,67 @@ func TestDefaultConfig(t *testing.T) {
 }
 
 func TestEnvironmentVariables(t *testing.T) {
+	setEnvironment()
+	logger := testLogger{}
+	config := newConfig(WithLogger(&logger))
+
+	expected := LightstepConfig{
+		ServiceName:    "test-service-name",
+		ServiceVersion: "test-service-version",
+		SatelliteURL:   "satellite-url",
+		MetricsURL:     "metrics-url",
+		AccessToken:    "token",
+		Debug:          true,
+		Insecure:       true,
+		logger:         &logger,
+	}
+	unsetEnvironment()
+	if config != expected {
+		t.Errorf("\nExpected: %v\ngot: %v", expected, config)
+	}
 
 }
 
-func TestMain(m *testing.M) {
+func TestConfigurationOverrides(t *testing.T) {
+	setEnvironment()
+	logger := testLogger{}
+	config := newConfig(
+		WithServiceName("override-service-name"),
+		WithServiceVersion("override-service-version"),
+		WithAccessToken("override-access-token"),
+		WithSatelliteURL("override-satellite-url"),
+		WithMetricsURL("override-metrics-url"),
+		WithDebug(false),
+		WithInsecure(false),
+		WithLogger(&logger),
+	)
+
+	expected := LightstepConfig{
+		ServiceName:    "override-service-name",
+		ServiceVersion: "override-service-version",
+		SatelliteURL:   "override-satellite-url",
+		MetricsURL:     "override-metrics-url",
+		AccessToken:    "override-access-token",
+		Debug:          false,
+		Insecure:       false,
+		logger:         &logger,
+	}
+	if config != expected {
+		t.Errorf("\nExpected: %v\ngot: %v", expected, config)
+	}
+}
+
+func setEnvironment() {
+	os.Setenv("LS_SERVICE_NAME", "test-service-name")
+	os.Setenv("LS_SERVICE_VERSION", "test-service-version")
+	os.Setenv("LS_SATELLITE_URL", "satellite-url")
+	os.Setenv("LS_METRICS_URL", "metrics-url")
+	os.Setenv("LS_ACCESS_TOKEN", "token")
+	os.Setenv("LS_DEBUG", "1")
+	os.Setenv("LS_INSECURE", "true")
+}
+
+func unsetEnvironment() {
 	vars := []string{
 		"LS_SERVICE_NAME",
 		"LS_SERVICE_VERSION",
@@ -129,5 +186,9 @@ func TestMain(m *testing.M) {
 	for _, envvar := range vars {
 		os.Unsetenv(envvar)
 	}
+}
+
+func TestMain(m *testing.M) {
+	unsetEnvironment()
 	os.Exit(m.Run())
 }

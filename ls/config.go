@@ -41,6 +41,12 @@ func WithAccessToken(accessToken string) Option {
 	}
 }
 
+func WithMetricsURL(url string) Option {
+	return func(c *LightstepConfig) {
+		c.MetricsURL = url
+	}
+}
+
 func WithSatelliteURL(url string) Option {
 	return func(c *LightstepConfig) {
 		c.SatelliteURL = url
@@ -53,9 +59,21 @@ func WithServiceName(name string) Option {
 	}
 }
 
+func WithServiceVersion(version string) Option {
+	return func(c *LightstepConfig) {
+		c.ServiceVersion = version
+	}
+}
+
 func WithDebug(debug bool) Option {
 	return func(c *LightstepConfig) {
 		c.Debug = debug
+	}
+}
+
+func WithInsecure(insecure bool) Option {
+	return func(c *LightstepConfig) {
+		c.Insecure = insecure
 	}
 }
 
