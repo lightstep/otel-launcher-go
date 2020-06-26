@@ -101,7 +101,6 @@ func (l *DefaultLogger) Debugf(format string, v ...interface{}) {
 
 var (
 	defaultSatelliteURL = "ingest.lightstep.com:443"
-	Version             = "0.0.1" // overridden at build time
 )
 
 type LightstepConfig struct {
@@ -191,7 +190,7 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 		kv.String("service.name", c.ServiceName),
 		kv.String("service.version", c.ServiceVersion),
 		kv.String("telemetry.sdk.language", "go"),
-		kv.String("telemetry.sdk.version", Version),
+		kv.String("telemetry.sdk.version", version),
 	)
 	tp, err := trace.NewProvider(
 		trace.WithConfig(trace.Config{DefaultSampler: trace.AlwaysSample()}),
