@@ -145,13 +145,13 @@ type LightstepOpentelemetry struct {
 	spanExporter *otlp.Exporter
 }
 
+// configurePropagators configures B3 propagation by default
 func configurePropagators() {
-	tcPropagator := apitrace.TraceContext{}
 	b3Propagator := apitrace.B3{}
 	ccPropagator := correlation.CorrelationContext{}
 	global.SetPropagators(propagation.New(
-		propagation.WithExtractors(tcPropagator, b3Propagator, ccPropagator),
-		propagation.WithInjectors(tcPropagator, b3Propagator, ccPropagator),
+		propagation.WithExtractors(b3Propagator, ccPropagator),
+		propagation.WithInjectors(b3Propagator, ccPropagator),
 	))
 }
 
