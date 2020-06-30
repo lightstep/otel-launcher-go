@@ -117,11 +117,11 @@ type LightstepConfig struct {
 
 func validateConfiguration(c LightstepConfig) error {
 	if len(c.ServiceName) == 0 {
-		return errors.New("invalid configuration: service name missing. Set LS_SERVICE_NAME or configure WithServiceName")
+		return errors.New("invalid configuration: service name missing. Set LS_SERVICE_NAME env var or configure WithServiceName in code")
 	}
 
 	if len(c.AccessToken) == 0 && c.SatelliteURL == defaultSatelliteURL {
-		return fmt.Errorf("invalid configuration: access token missing, must be set when reporting to %s. Set LS_ACCESS_TOKEN or configure WithAccessToken", c.SatelliteURL)
+		return fmt.Errorf("invalid configuration: access token missing, must be set when reporting to %s. Set LS_ACCESS_TOKEN env var or configure WithAccessToken in code", c.SatelliteURL)
 	}
 	return nil
 }
