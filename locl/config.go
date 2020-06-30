@@ -22,6 +22,7 @@ import (
 	"log"
 
 	"github.com/sethvargo/go-envconfig/pkg/envconfig"
+	"go.opentelemetry.io/collector/translator/conventions"
 	"go.opentelemetry.io/otel/api/correlation"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/kv"
@@ -186,11 +187,11 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 		log.Fatalf("failed to create exporter: %v", err)
 	}
 	resources := resource.New(
-		// TODO: use keys from the semantic convention definition
-		kv.String("service.name", c.ServiceName),
-		kv.String("service.version", c.ServiceVersion),
-		kv.String("telemetry.sdk.language", "go"),
-		kv.String("telemetry.sdk.version", version),
+		kv.String(conventions.AttributeServiceName, c.ServiceName),
+		kv.String(conventions.AttributeServiceVersion, c.ServiceVersion),
+		kv.String(conventions.AttributeTelemetrySDKName, "locl"),
+		kv.String(conventions.AttributeTelemetrySDKLanguage, "go"),
+		kv.String(conventions.AttributeTelemetrySDKVersion, version),
 	)
 	tp, err := trace.NewProvider(
 		trace.WithConfig(trace.Config{DefaultSampler: trace.AlwaysSample()}),
