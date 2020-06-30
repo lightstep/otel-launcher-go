@@ -19,6 +19,11 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"go.opentelemetry.io/otel/api/correlation"
+	"go.opentelemetry.io/otel/api/global"
+	apitrace "go.opentelemetry.io/otel/api/trace"
 )
 
 type testLogger struct {
@@ -68,10 +73,20 @@ func TestValidConfig(t *testing.T) {
 		WithLogger(&logger),
 		WithServiceName("test-service"),
 		WithAccessToken("access-token-123"),
-		WithSatelliteURL("localhost:443"),
 	)
 	defer lsOtel.Shutdown()
 	expected := 0
+	if len(logger.output) > expected {
+		t.Errorf("\nExpected: %v\ngot: %v", expected, len(logger.output))
+	}
+
+	lsOtel = ConfigureOpentelemetry(
+		WithLogger(&logger),
+		WithServiceName("test-service"),
+		WithSatelliteURL("localhost:443"),
+	)
+	defer lsOtel.Shutdown()
+	expected = 0
 	if len(logger.output) > expected {
 		t.Errorf("\nExpected: %v\ngot: %v", expected, len(logger.output))
 	}
@@ -161,6 +176,24 @@ func TestConfigurationOverrides(t *testing.T) {
 	if config != expected {
 		t.Errorf("\nExpected: %v\ngot: %v", expected, config)
 	}
+}
+
+func TestConfigurePropagators(t *testing.T) {
+	logger := testLogger{}
+	lsOtel := ConfigureOpentelemetry(
+		WithLogger(&logger),
+		WithServiceName("test-service"),
+		WithSatelliteURL("localhost:443"),
+	)
+	defer lsOtel.Shutdown()
+	extractors := global.Propagators().HTTPExtractors()
+	injectors := global.Propagators().HTTPInjectors()
+	assert.Len(t, extractors, 2)
+	assert.IsType(t, apitrace.B3{}, extractors[0])
+	assert.IsType(t, correlation.CorrelationContext{}, extractors[1])
+	assert.Len(t, injectors, 2)
+	assert.IsType(t, apitrace.B3{}, injectors[0])
+	assert.IsType(t, correlation.CorrelationContext{}, injectors[1])
 }
 
 func setEnvironment() {
