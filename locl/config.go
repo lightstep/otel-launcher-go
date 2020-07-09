@@ -26,6 +26,7 @@ import (
 	"go.opentelemetry.io/otel/api/correlation"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/kv"
+	"go.opentelemetry.io/otel/api/oterror"
 	"go.opentelemetry.io/otel/api/propagation"
 	apitrace "go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/exporters/otlp"
@@ -78,6 +79,14 @@ func WithInsecure(insecure bool) Option {
 	}
 }
 
+// Configures a global error handler to be used throughout an OpenTelemetry instrumented project.
+// See "go.opentelemetry.io/otel/api/global"
+func WithErrorHandler(handler oterror.Handler) Option {
+	return func(c *LightstepConfig) {
+		c.errorHandler = handler
+	}
+}
+
 type Logger interface {
 	Fatalf(format string, v ...interface{})
 	Debugf(format string, v ...interface{})
@@ -113,6 +122,7 @@ type LightstepConfig struct {
 	Debug          bool   `env:"LS_DEBUG,default=false"`
 	Insecure       bool   `env:"LS_INSECURE,default=false"`
 	logger         Logger
+	errorHandler   oterror.Handler
 }
 
 func validateConfiguration(c LightstepConfig) error {
@@ -205,6 +215,10 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 	configurePropagators()
 
 	global.SetTraceProvider(tp)
+
+	if c.errorHandler != nil {
+		global.SetHandler(c.errorHandler)
+	}
 	return LightstepOpentelemetry{
 		spanExporter: exporter,
 	}

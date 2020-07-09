@@ -42,6 +42,14 @@ func (t *testLogger) Debugf(format string, v ...interface{}) {
 	t.addOutput(fmt.Sprintf(format, v...))
 }
 
+type testErrorHandler struct {
+
+}
+
+func (t *testErrorHandler) Handle(err error) {
+	fmt.Printf("test error handler handled error: %v\n", err)
+}
+
 func TestInvalidServiceName(t *testing.T) {
 	logger := testLogger{output: []string{}}
 	lsOtel := ConfigureOpentelemetry(WithLogger(&logger))
@@ -73,6 +81,7 @@ func TestValidConfig(t *testing.T) {
 		WithLogger(&logger),
 		WithServiceName("test-service"),
 		WithAccessToken("access-token-123"),
+		WithErrorHandler(&testErrorHandler{}),
 	)
 	defer lsOtel.Shutdown()
 	expected := 0
@@ -121,6 +130,7 @@ func TestDefaultConfig(t *testing.T) {
 		Debug:          false,
 		Insecure:       false,
 		logger:         &logger,
+		errorHandler:   nil,
 	}
 	if config != expected {
 		t.Errorf("\nExpected: %v\ngot: %v", expected, config)
@@ -152,6 +162,7 @@ func TestEnvironmentVariables(t *testing.T) {
 func TestConfigurationOverrides(t *testing.T) {
 	setEnvironment()
 	logger := testLogger{}
+	handler := &testErrorHandler{}
 	config := newConfig(
 		WithServiceName("override-service-name"),
 		WithServiceVersion("override-service-version"),
@@ -161,6 +172,7 @@ func TestConfigurationOverrides(t *testing.T) {
 		WithDebug(false),
 		WithInsecure(false),
 		WithLogger(&logger),
+		WithErrorHandler(handler),
 	)
 
 	expected := LightstepConfig{
@@ -172,6 +184,7 @@ func TestConfigurationOverrides(t *testing.T) {
 		Debug:          false,
 		Insecure:       false,
 		logger:         &logger,
+		errorHandler:   handler,
 	}
 	if config != expected {
 		t.Errorf("\nExpected: %v\ngot: %v", expected, config)
