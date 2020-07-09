@@ -81,6 +81,7 @@ func TestValidConfig(t *testing.T) {
 		WithLogger(&logger),
 		WithServiceName("test-service"),
 		WithAccessToken("access-token-123"),
+		WithErrorHandler(&testErrorHandler{}),
 	)
 	defer lsOtel.Shutdown()
 	expected := 0
