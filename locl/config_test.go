@@ -219,6 +219,7 @@ func TestConfigurationOverrides(t *testing.T) {
 }
 
 func TestConfigurePropagators(t *testing.T) {
+	unsetEnvironment()
 	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
@@ -228,12 +229,40 @@ func TestConfigurePropagators(t *testing.T) {
 	defer lsOtel.Shutdown()
 	extractors := global.Propagators().HTTPExtractors()
 	injectors := global.Propagators().HTTPInjectors()
+	assert.Len(t, extractors, 1)
+	assert.IsType(t, apitrace.B3{}, extractors[0])
+	assert.Len(t, injectors, 1)
+	assert.IsType(t, apitrace.B3{}, injectors[0])
+
+	lsOtel = ConfigureOpentelemetry(
+		WithLogger(logger),
+		WithServiceName("test-service"),
+		WithSpanExporterEndpoint("localhost:443"),
+		WithPropagators([]string{"b3", "cc"}),
+	)
+	defer lsOtel.Shutdown()
+	extractors = global.Propagators().HTTPExtractors()
+	injectors = global.Propagators().HTTPInjectors()
 	assert.Len(t, extractors, 2)
 	assert.IsType(t, apitrace.B3{}, extractors[0])
 	assert.IsType(t, correlation.CorrelationContext{}, extractors[1])
 	assert.Len(t, injectors, 2)
 	assert.IsType(t, apitrace.B3{}, injectors[0])
 	assert.IsType(t, correlation.CorrelationContext{}, injectors[1])
+
+	logger = &testLogger{}
+	lsOtel = ConfigureOpentelemetry(
+		WithLogger(logger),
+		WithServiceName("test-service"),
+		WithSpanExporterEndpoint("localhost:443"),
+		WithPropagators([]string{"invalid"}),
+	)
+	defer lsOtel.Shutdown()
+
+	expected := "invalid configuration: unsupported propagators. Supported options: b3,cc"
+	if !strings.Contains(logger.output[0], expected) {
+		t.Errorf("\nString not found: %v\nIn: %v", expected, logger.output[0])
+	}
 }
 
 func TestConfigureResourcesLabels(t *testing.T) {
@@ -268,6 +297,16 @@ func TestConfigureResourcesLabels(t *testing.T) {
 		kv.String("telemetry.sdk.version", "0.0.1"),
 	}
 	assert.Equal(t, expected, resource.Attributes())
+
+	logger := &testLogger{}
+	lsOtel := ConfigureOpentelemetry(
+		WithLogger(logger),
+		WithServiceName("test-service"),
+		WithSpanExporterEndpoint("localhost:443"),
+		WithSpanExporterEndpointInsecure(true),
+		WithResourceLabels(map[string]string{"label1": "value1"}),
+	)
+	defer lsOtel.Shutdown()
 }
 
 func setEnvironment() {

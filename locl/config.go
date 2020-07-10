@@ -203,13 +203,28 @@ type LightstepOpentelemetry struct {
 }
 
 // configurePropagators configures B3 propagation by default
-func configurePropagators() {
-	b3Propagator := apitrace.B3{}
-	ccPropagator := correlation.CorrelationContext{}
+func configurePropagators(c *LightstepConfig) error {
+	propagatorsMap := map[string]propagation.HTTPPropagator{
+		"b3": apitrace.B3{},
+		"cc": correlation.CorrelationContext{},
+	}
+	var extractors []propagation.HTTPExtractor
+	var injectors []propagation.HTTPInjector
+	for _, key := range c.Propagators {
+		prop := propagatorsMap[key]
+		if prop != nil {
+			extractors = append(extractors, prop)
+			injectors = append(injectors, prop)
+		}
+	}
+	if len(extractors) == 0 || len(injectors) == 0 {
+		return fmt.Errorf("invalid configuration: unsupported propagators. Supported options: b3,cc")
+	}
 	global.SetPropagators(propagation.New(
-		propagation.WithExtractors(b3Propagator, ccPropagator),
-		propagation.WithInjectors(b3Propagator, ccPropagator),
+		propagation.WithExtractors(extractors...),
+		propagation.WithInjectors(injectors...),
 	))
+	return nil
 }
 
 func newResource(c *LightstepConfig) *resource.Resource {
@@ -255,7 +270,7 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 		otlp.WithHeaders(headers),
 	)
 	if err != nil {
-		log.Fatalf("failed to create exporter: %v", err)
+		c.logger.Fatalf("failed to create exporter: %v", err)
 	}
 
 	tp, err := trace.NewProvider(
@@ -264,10 +279,13 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 		trace.WithResource(newResource(&c)),
 	)
 	if err != nil {
-		log.Fatal(err)
+		c.logger.Fatalf(err.Error())
 	}
 
-	configurePropagators()
+	err = configurePropagators(&c)
+	if err != nil {
+		c.logger.Fatalf(err.Error())
+	}
 
 	global.SetTraceProvider(tp)
 
