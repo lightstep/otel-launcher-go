@@ -36,10 +36,13 @@ Additional options
 
 |Config Option     |Env Variable      |Required|Default|
 |------------------|------------------|--------|-------|
-|WithServiceName   |LS_SERVICE_NAME   |y       |-      |
-|WithServiceVersion|LS_SERVICE_VERSION|n       |unknown|
-|WithSatelliteURL  |LS_SATELLITE_URL  |n       |ingest.lightstep.com:443|
-|WithMetricsURL    |LS_METRICS_URL    |n       |ingest.lightstep.com:443/metrics|
-|WithAccessToken   |LS_ACCESS_TOKEN   |n       |-      |
-|WithDebug         |LS_DEBUG          |n       |false  |
-|WithInsecure      |LS_INSECURE       |n       |false  |
+|WithServiceName    |LS_SERVICE_NAME                    |y       |-                               |
+|WithServiceVersion |LS_SERVICE_VERSION                 |n       |unknown                         |
+|WithTraceEndpoint  |OTEL_EXPORTER_OTLP_SPAN_ENDPOINT   |n       |ingest.lightstep.com:443        |
+|WithSpanExporterEndpointInsecure  |OTEL_EXPORTER_OTLP_SPAN_INSECURE   |n       |false                           |
+|WithMetricExporterEndpoint |OTEL_EXPORTER_OTLP_METRIC_ENDPOINT |n       |ingest.lightstep.com:443/metrics|
+|WithMetricInsecure |OTEL_EXPORTER_OTLP_METRIC_INSECURE |n       |false                           |
+|WithAccessToken    |LS_ACCESS_TOKEN                    |n       |-                               |
+|WithLogLevel       |OTEL_LOG_LEVEL                     |n       |info                            |
+|WithPropagators    |OTEL_PROPAGATORS                   |n       |b3                              |
+|WithResourceLabels |OTEL_RESOURCE_LABELS               |n       |-                               |
