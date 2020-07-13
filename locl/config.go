@@ -37,45 +37,75 @@ import (
 
 type Option func(*LightstepConfig)
 
+// WithAccessToken configures the lightstep access token
 func WithAccessToken(accessToken string) Option {
 	return func(c *LightstepConfig) {
 		c.AccessToken = accessToken
 	}
 }
 
-func WithMetricsURL(url string) Option {
+// WithMetricExporterEndpoint configures the endpoint for sending metrics via OTLP
+func WithMetricExporterEndpoint(url string) Option {
 	return func(c *LightstepConfig) {
-		c.MetricsURL = url
+		c.MetricExporterEndpoint = url
 	}
 }
 
-func WithSatelliteURL(url string) Option {
+// WithSpanExporterEndpoint configures the endpoint for sending traces via OTLP
+func WithSpanExporterEndpoint(url string) Option {
 	return func(c *LightstepConfig) {
-		c.SatelliteURL = url
+		c.SpanExporterEndpoint = url
 	}
 }
 
+// WithServiceName configures a "service.name" resource label
 func WithServiceName(name string) Option {
 	return func(c *LightstepConfig) {
 		c.ServiceName = name
 	}
 }
 
+// WithServiceVersion configures a "service.version" resource label
 func WithServiceVersion(version string) Option {
 	return func(c *LightstepConfig) {
 		c.ServiceVersion = version
 	}
 }
 
-func WithDebug(debug bool) Option {
+// WithLogLevel configures the logging level for OpenTelemetry
+func WithLogLevel(loglevel string) Option {
 	return func(c *LightstepConfig) {
-		c.Debug = debug
+		c.LogLevel = loglevel
 	}
 }
 
-func WithInsecure(insecure bool) Option {
+// WithSpanExporterEndpointInsecure permits connecting to the
+// trace endpoint without a certificate
+func WithSpanExporterEndpointInsecure(insecure bool) Option {
 	return func(c *LightstepConfig) {
-		c.Insecure = insecure
+		c.SpanExporterEndpointInsecure = insecure
+	}
+}
+
+// WithMetricExporterEndpointInsecure permits connecting to the
+// metric endpoint without a certificate
+func WithMetricExporterEndpointInsecure(insecure bool) Option {
+	return func(c *LightstepConfig) {
+		c.MetricExporterEndpointInsecure = insecure
+	}
+}
+
+// WithResourceLabels configures attributes on the resource
+func WithResourceLabels(labels map[string]string) Option {
+	return func(c *LightstepConfig) {
+		c.ResourceLabels = labels
+	}
+}
+
+// WithPropagators configures propagators
+func WithPropagators(propagators []string) Option {
+	return func(c *LightstepConfig) {
+		c.Propagators = propagators
 	}
 }
 
@@ -109,20 +139,31 @@ func (l *DefaultLogger) Debugf(format string, v ...interface{}) {
 	log.Printf(format, v...)
 }
 
+type defaultHandler struct {
+	logger Logger
+}
+
+func (l *defaultHandler) Handle(err error) {
+	l.logger.Debugf("error: %v\n", err)
+}
+
 var (
-	defaultSatelliteURL = "ingest.lightstep.com:443"
+	defaultSpanExporterEndpoint = "ingest.lightstep.com:443"
 )
 
 type LightstepConfig struct {
-	ServiceName    string `env:"LS_SERVICE_NAME"`
-	ServiceVersion string `env:"LS_SERVICE_VERSION,default=unknown"`
-	SatelliteURL   string `env:"LS_SATELLITE_URL,default=ingest.lightstep.com:443"`
-	MetricsURL     string `env:"LS_METRICS_URL,default=ingest.lightstep.com:443/metrics"`
-	AccessToken    string `env:"LS_ACCESS_TOKEN"`
-	Debug          bool   `env:"LS_DEBUG,default=false"`
-	Insecure       bool   `env:"LS_INSECURE,default=false"`
-	logger         Logger
-	errorHandler   oterror.Handler
+	SpanExporterEndpoint           string            `env:"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT,default=ingest.lightstep.com:443"`
+	SpanExporterEndpointInsecure   bool              `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
+	ServiceName                    string            `env:"LS_SERVICE_NAME"`
+	ServiceVersion                 string            `env:"LS_SERVICE_VERSION,default=unknown"`
+	MetricExporterEndpoint         string            `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT,default=ingest.lightstep.com:443/metrics"`
+	MetricExporterEndpointInsecure bool              `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
+	AccessToken                    string            `env:"LS_ACCESS_TOKEN"`
+	LogLevel                       string            `env:"OTEL_LOG_LEVEL,default=info"`
+	Propagators                    []string          `env:"OTEL_PROPAGATORS,default=b3"`
+	ResourceLabels                 map[string]string `env:"OTEL_RESOURCE_LABELS"`
+	logger                         Logger
+	errorHandler                   oterror.Handler
 }
 
 func validateConfiguration(c LightstepConfig) error {
@@ -130,8 +171,13 @@ func validateConfiguration(c LightstepConfig) error {
 		return errors.New("invalid configuration: service name missing. Set LS_SERVICE_NAME env var or configure WithServiceName in code")
 	}
 
-	if len(c.AccessToken) == 0 && c.SatelliteURL == defaultSatelliteURL {
-		return fmt.Errorf("invalid configuration: access token missing, must be set when reporting to %s. Set LS_ACCESS_TOKEN env var or configure WithAccessToken in code", c.SatelliteURL)
+	accessTokenLen := len(c.AccessToken)
+	if accessTokenLen == 0 && c.SpanExporterEndpoint == defaultSpanExporterEndpoint {
+		return fmt.Errorf("invalid configuration: access token missing, must be set when reporting to %s. Set LS_ACCESS_TOKEN env var or configure WithAccessToken in code", c.SpanExporterEndpoint)
+	}
+
+	if accessTokenLen > 0 && (accessTokenLen != 32 && accessTokenLen != 84 && accessTokenLen != 104) {
+		return fmt.Errorf("invalid configuration: access token length incorrect. Ensure token is set correctly")
 	}
 	return nil
 }
@@ -142,6 +188,7 @@ func newConfig(opts ...Option) LightstepConfig {
 		log.Fatal(err)
 	}
 	c.logger = &DefaultLogger{}
+	c.errorHandler = &defaultHandler{logger: c.logger}
 	var defaultOpts []Option
 
 	for _, opt := range append(defaultOpts, opts...) {
@@ -156,28 +203,57 @@ type LightstepOpentelemetry struct {
 }
 
 // configurePropagators configures B3 propagation by default
-func configurePropagators() {
-	b3Propagator := apitrace.B3{}
-	ccPropagator := correlation.CorrelationContext{}
+func configurePropagators(c *LightstepConfig) error {
+	propagatorsMap := map[string]propagation.HTTPPropagator{
+		"b3": apitrace.B3{},
+		"cc": correlation.CorrelationContext{},
+	}
+	var extractors []propagation.HTTPExtractor
+	var injectors []propagation.HTTPInjector
+	for _, key := range c.Propagators {
+		prop := propagatorsMap[key]
+		if prop != nil {
+			extractors = append(extractors, prop)
+			injectors = append(injectors, prop)
+		}
+	}
+	if len(extractors) == 0 || len(injectors) == 0 {
+		return fmt.Errorf("invalid configuration: unsupported propagators. Supported options: b3,cc")
+	}
 	global.SetPropagators(propagation.New(
-		propagation.WithExtractors(b3Propagator, ccPropagator),
-		propagation.WithInjectors(b3Propagator, ccPropagator),
+		propagation.WithExtractors(extractors...),
+		propagation.WithInjectors(injectors...),
 	))
+	return nil
+}
+
+func newResource(c *LightstepConfig) *resource.Resource {
+	attributes := []kv.KeyValue{
+		kv.String(conventions.AttributeServiceName, c.ServiceName),
+		kv.String(conventions.AttributeServiceVersion, c.ServiceVersion),
+		kv.String(conventions.AttributeTelemetrySDKName, "locl"),
+		kv.String(conventions.AttributeTelemetrySDKLanguage, "go"),
+		kv.String(conventions.AttributeTelemetrySDKVersion, version),
+	}
+	for key, attribute := range c.ResourceLabels {
+		attributes = append(attributes, kv.String(key, attribute))
+	}
+	return resource.New(attributes...)
 }
 
 func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 	c := newConfig(opts...)
 
-	err := validateConfiguration(c)
-	if err != nil {
-		c.logger.Fatalf(err.Error())
-	}
-
-	if c.Debug {
+	if c.LogLevel == "debug" {
 		c.logger.Debugf("debug logging enabled")
 		c.logger.Debugf("configuration")
 		s, _ := json.MarshalIndent(c, "", "\t")
-		c.logger.Debugf(string(s)) // TODO: pretty print
+		c.logger.Debugf(string(s))
+	}
+
+	err := validateConfiguration(c)
+	if err != nil {
+		c.logger.Fatalf(err.Error())
 	}
 
 	headers := map[string]string{
@@ -185,34 +261,31 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 	}
 
 	secureOption := otlp.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
-	if c.Insecure {
+	if c.SpanExporterEndpointInsecure {
 		secureOption = otlp.WithInsecure()
 	}
 	exporter, err := otlp.NewExporter(
 		secureOption,
-		otlp.WithAddress(c.SatelliteURL),
+		otlp.WithAddress(c.SpanExporterEndpoint),
 		otlp.WithHeaders(headers),
 	)
 	if err != nil {
-		log.Fatalf("failed to create exporter: %v", err)
+		c.logger.Fatalf("failed to create exporter: %v", err)
 	}
-	resources := resource.New(
-		kv.String(conventions.AttributeServiceName, c.ServiceName),
-		kv.String(conventions.AttributeServiceVersion, c.ServiceVersion),
-		kv.String(conventions.AttributeTelemetrySDKName, "locl"),
-		kv.String(conventions.AttributeTelemetrySDKLanguage, "go"),
-		kv.String(conventions.AttributeTelemetrySDKVersion, version),
-	)
+
 	tp, err := trace.NewProvider(
 		trace.WithConfig(trace.Config{DefaultSampler: trace.AlwaysSample()}),
 		trace.WithSyncer(exporter),
-		trace.WithResource(resources),
+		trace.WithResource(newResource(&c)),
 	)
 	if err != nil {
-		log.Fatal(err)
+		c.logger.Fatalf(err.Error())
 	}
 
-	configurePropagators()
+	err = configurePropagators(&c)
+	if err != nil {
+		c.logger.Fatalf(err.Error())
+	}
 
 	global.SetTraceProvider(tp)
 
