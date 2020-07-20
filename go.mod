@@ -1,4 +1,4 @@
-module github.com/lightstep/otel-go
+module github.com/lightstep/otel-launcher-go
 
 go 1.14
 

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package locl
+package launcher
 
 import (
 	"context"
@@ -231,7 +231,7 @@ func newResource(c *LightstepConfig) *resource.Resource {
 	attributes := []kv.KeyValue{
 		kv.String(conventions.AttributeServiceName, c.ServiceName),
 		kv.String(conventions.AttributeServiceVersion, c.ServiceVersion),
-		kv.String(conventions.AttributeTelemetrySDKName, "locl"),
+		kv.String(conventions.AttributeTelemetrySDKName, "launcher"),
 		kv.String(conventions.AttributeTelemetrySDKLanguage, "go"),
 		kv.String(conventions.AttributeTelemetrySDKVersion, version),
 	}

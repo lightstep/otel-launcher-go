@@ -12,4 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package locl
+package launcher
+
+const version = "0.0.1"
