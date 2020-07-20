@@ -1,17 +1,17 @@
-![build status](https://github.com/lightstep/otel-go/workflows/build/badge.svg)
-[![Docs](https://godoc.org/github.com/lightstep/otel-go/locl?status.svg)](https://pkg.go.dev/github.com/lightstep/otel-go/locl)
-[![Go Report Card](https://goreportcard.com/badge/github.com/lightstep/otel-go/locl)](https://goreportcard.com/report/github.com/lightstep/otel-go/locl)
+![build status](https://github.com/lightstep/otel-launcher-go/workflows/build/badge.svg)
+[![Docs](https://godoc.org/github.com/lightstep/otel-launcher-go/launcher?status.svg)](https://pkg.go.dev/github.com/lightstep/otel-launcher-go/launcher)
+[![Go Report Card](https://goreportcard.com/badge/github.com/lightstep/otel-launcher-go/launcher)](https://goreportcard.com/report/github.com/lightstep/otel-launcher-go/launcher)
 
-# Lightstep OpenTelemetry Configuration Layer for Go
+# Launcher is an OpenTelemetry Configuration Layer for Go 🚀
 
 *NOTE: the code in this repo is currently in alpha and will likely change*
 
-This is the Lightstep package for configuring OpenTelemetry
+This is the launcher package for configuring OpenTelemetry
 
 ### Install
 
 ```bash
-go get github.com/lightstep/otel-go/locl
+go get github.com/lightstep/otel-launcher-go/launcher
 ```
 
 ### Configure
@@ -19,12 +19,12 @@ go get github.com/lightstep/otel-go/locl
 Minimal setup
 
 ```go
-import "github.com/lightstep/otel-go/locl"
+import "github.com/lightstep/otel-launcher-go/launcher"
 
 func main() {
-    lightstepOtel := locl.ConfigureOpentelemetry(
-        locl.WithServiceName("service-name"),
-        locl.WithAccessToken("access-token"),
+    lightstepOtel := launcher.ConfigureOpentelemetry(
+        launcher.WithServiceName("service-name"),
+        launcher.WithAccessToken("access-token"),
     )
     defer lightstepOtel.Shutdown()
 }

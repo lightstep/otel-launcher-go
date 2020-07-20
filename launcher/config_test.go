@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package locl
+package launcher
 
 import (
 	"fmt"
@@ -278,7 +278,7 @@ func TestConfigureResourcesLabels(t *testing.T) {
 		kv.String("service.name", "test-service"),
 		kv.String("service.version", "test-version"),
 		kv.String("telemetry.sdk.language", "go"),
-		kv.String("telemetry.sdk.name", "locl"),
+		kv.String("telemetry.sdk.name", "launcher"),
 		kv.String("telemetry.sdk.version", "0.0.1"),
 	}
 	assert.Equal(t, expected, resource.Attributes())
@@ -293,7 +293,7 @@ func TestConfigureResourcesLabels(t *testing.T) {
 		kv.String("service.name", "test-service"),
 		kv.String("service.version", "test-version"),
 		kv.String("telemetry.sdk.language", "test-language"),
-		kv.String("telemetry.sdk.name", "locl"),
+		kv.String("telemetry.sdk.name", "launcher"),
 		kv.String("telemetry.sdk.version", "0.0.1"),
 	}
 	assert.Equal(t, expected, resource.Attributes())

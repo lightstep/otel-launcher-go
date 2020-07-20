@@ -22,8 +22,8 @@ fi
 
 echo $VERSION > ./VERSION
 
-cat > locl/version.go <<EOF
-package locl
+cat > launcher/version.go <<EOF
+package launcher
 
 const version = "$VERSION"
 EOF
