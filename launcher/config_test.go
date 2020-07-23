@@ -193,9 +193,9 @@ func TestConfigurationOverrides(t *testing.T) {
 		WithServiceVersion("override-service-version"),
 		WithAccessToken("override-access-token"),
 		WithSpanExporterEndpoint("override-satellite-url"),
-		WithSpanExporterEndpointInsecure(false),
+		WithSpanExporterInsecure(false),
 		WithMetricExporterEndpoint("override-metrics-url"),
-		WithMetricExporterEndpointInsecure(false),
+		WithMetricExporterInsecure(false),
 		WithLogLevel("info"),
 		WithLogger(logger),
 		WithErrorHandler(handler),
@@ -303,7 +303,7 @@ func TestConfigureResourcesLabels(t *testing.T) {
 		WithLogger(logger),
 		WithServiceName("test-service"),
 		WithSpanExporterEndpoint("localhost:443"),
-		WithSpanExporterEndpointInsecure(true),
+		WithSpanExporterInsecure(true),
 		WithResourceLabels(map[string]string{"label1": "value1"}),
 	)
 	defer lsOtel.Shutdown()

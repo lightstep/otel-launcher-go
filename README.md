@@ -38,10 +38,10 @@ Additional options
 |------------------|------------------|--------|-------|
 |WithServiceName    |LS_SERVICE_NAME                    |y       |-                               |
 |WithServiceVersion |LS_SERVICE_VERSION                 |n       |unknown                         |
-|WithTraceEndpoint  |OTEL_EXPORTER_OTLP_SPAN_ENDPOINT   |n       |ingest.lightstep.com:443        |
-|WithSpanExporterEndpointInsecure  |OTEL_EXPORTER_OTLP_SPAN_INSECURE   |n       |false                           |
+|WithSpanExporterEndpoint  |OTEL_EXPORTER_OTLP_SPAN_ENDPOINT   |n       |ingest.lightstep.com:443        |
+|WithSpanExporterInsecure  |OTEL_EXPORTER_OTLP_SPAN_INSECURE   |n       |false                           |
 |WithMetricExporterEndpoint |OTEL_EXPORTER_OTLP_METRIC_ENDPOINT |n       |ingest.lightstep.com:443/metrics|
-|WithMetricInsecure |OTEL_EXPORTER_OTLP_METRIC_INSECURE |n       |false                           |
+|WithMetricExporterInsecure |OTEL_EXPORTER_OTLP_METRIC_INSECURE |n       |false                           |
 |WithAccessToken    |LS_ACCESS_TOKEN                    |n       |-                               |
 |WithLogLevel       |OTEL_LOG_LEVEL                     |n       |info                            |
 |WithPropagators    |OTEL_PROPAGATORS                   |n       |b3                              |

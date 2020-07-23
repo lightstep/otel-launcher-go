@@ -79,17 +79,17 @@ func WithLogLevel(loglevel string) Option {
 	}
 }
 
-// WithSpanExporterEndpointInsecure permits connecting to the
+// WithSpanExporterInsecure permits connecting to the
 // trace endpoint without a certificate
-func WithSpanExporterEndpointInsecure(insecure bool) Option {
+func WithSpanExporterInsecure(insecure bool) Option {
 	return func(c *LightstepConfig) {
 		c.SpanExporterEndpointInsecure = insecure
 	}
 }
 
-// WithMetricExporterEndpointInsecure permits connecting to the
+// WithMetricExporterInsecure permits connecting to the
 // metric endpoint without a certificate
-func WithMetricExporterEndpointInsecure(insecure bool) Option {
+func WithMetricExporterInsecure(insecure bool) Option {
 	return func(c *LightstepConfig) {
 		c.MetricExporterEndpointInsecure = insecure
 	}

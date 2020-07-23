@@ -23,8 +23,8 @@ import (
 )
 
 func main() {
-	lsOtel := launcher.ConfigureOpentelemetry()
-	defer lsOtel.Shutdown()
+	otel := launcher.ConfigureOpentelemetry()
+	defer otel.Shutdown()
 	tracer := global.Tracer("ex.com/basic")
 
 	tracer.WithSpan(context.Background(), "foo",
