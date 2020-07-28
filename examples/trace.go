@@ -16,10 +16,14 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/lightstep/otel-launcher-go/launcher"
 	"go.opentelemetry.io/otel/api/global"
+	"go.opentelemetry.io/otel/api/kv"
+	"go.opentelemetry.io/otel/api/trace"
+	"google.golang.org/grpc/codes"
 )
 
 func main() {
@@ -33,6 +37,11 @@ func main() {
 				func(ctx context.Context) error {
 					tracer.WithSpan(ctx, "baz",
 						func(ctx context.Context) error {
+							getSpan(ctx)
+							addAttribute(ctx)
+							addEvent(ctx)
+							recordException(ctx)
+							createChild(ctx, tracer)
 							return nil
 						},
 					)
@@ -43,4 +52,40 @@ func main() {
 		},
 	)
 	fmt.Println("OpenTelemetry example")
+}
+
+// example of getting the current span
+func getSpan(ctx context.Context) {
+	span := trace.SpanFromContext(ctx)
+	fmt.Printf("current span: %v\n", span)
+}
+
+// example of adding an attribute to a span
+func addAttribute(ctx context.Context) {
+	span := trace.SpanFromContext(ctx)
+	span.SetAttribute("attr1", "value1")
+}
+
+// example of adding an event to a span
+func addEvent(ctx context.Context) {
+	span := trace.SpanFromContext(ctx)
+	span.AddEvent(ctx, "event1", []kv.KeyValue{
+		kv.String("event-attr1", "event-string1"),
+		kv.Int64("event-attr2", 10),
+	}...)
+}
+
+// example of recording an exception
+func recordException(ctx context.Context) {
+	span := trace.SpanFromContext(ctx)
+	span.RecordError(ctx, errors.New("exception has occurred"))
+	span.SetStatus(codes.Internal, "internal error")
+}
+
+// example of creating a child span
+func createChild(ctx context.Context, tracer trace.Tracer) {
+	// span := trace.SpanFromContext(ctx)
+	_, childSpan := tracer.Start(ctx, "child")
+	defer childSpan.End()
+	fmt.Printf("child span: %v\n", childSpan)
 }
