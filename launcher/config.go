@@ -96,9 +96,9 @@ func WithMetricExporterInsecure(insecure bool) Option {
 }
 
 // WithResourceLabels configures attributes on the resource
-func WithResourceLabels(labels map[string]string) Option {
+func WithResourceLabels(attributes map[string]string) Option {
 	return func(c *LightstepConfig) {
-		c.ResourceLabels = labels
+		c.resourceAttributes = attributes
 	}
 }
 
@@ -152,23 +152,35 @@ var (
 )
 
 type LightstepConfig struct {
-	SpanExporterEndpoint           string            `env:"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT,default=ingest.lightstep.com:443"`
-	SpanExporterEndpointInsecure   bool              `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
-	ServiceName                    string            `env:"LS_SERVICE_NAME"`
-	ServiceVersion                 string            `env:"LS_SERVICE_VERSION,default=unknown"`
-	MetricExporterEndpoint         string            `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT,default=ingest.lightstep.com:443/metrics"`
-	MetricExporterEndpointInsecure bool              `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
-	AccessToken                    string            `env:"LS_ACCESS_TOKEN"`
-	LogLevel                       string            `env:"OTEL_LOG_LEVEL,default=info"`
-	Propagators                    []string          `env:"OTEL_PROPAGATORS,default=b3"`
-	ResourceLabels                 map[string]string `env:"OTEL_RESOURCE_LABELS"`
+	SpanExporterEndpoint           string   `env:"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT,default=ingest.lightstep.com:443"`
+	SpanExporterEndpointInsecure   bool     `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
+	ServiceName                    string   `env:"LS_SERVICE_NAME"`
+	ServiceVersion                 string   `env:"LS_SERVICE_VERSION,default=unknown"`
+	MetricExporterEndpoint         string   `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT,default=ingest.lightstep.com:443/metrics"`
+	MetricExporterEndpointInsecure bool     `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
+	AccessToken                    string   `env:"LS_ACCESS_TOKEN"`
+	LogLevel                       string   `env:"OTEL_LOG_LEVEL,default=info"`
+	Propagators                    []string `env:"OTEL_PROPAGATORS,default=b3"`
+	resourceAttributes             map[string]string
+	Resource                       *resource.Resource
 	logger                         Logger
 	errorHandler                   oterror.Handler
 }
 
 func validateConfiguration(c LightstepConfig) error {
 	if len(c.ServiceName) == 0 {
-		return errors.New("invalid configuration: service name missing. Set LS_SERVICE_NAME env var or configure WithServiceName in code")
+		serviceNameSet := false
+		for _, kv := range c.Resource.Attributes() {
+			if kv.Key == conventions.AttributeServiceName {
+				if len(kv.Value.AsString()) > 0 {
+					serviceNameSet = true
+				}
+				break
+			}
+		}
+		if !serviceNameSet {
+			return errors.New("invalid configuration: service name missing. Set LS_SERVICE_NAME env var or configure WithServiceName in code")
+		}
 	}
 
 	accessTokenLen := len(c.AccessToken)
@@ -194,6 +206,7 @@ func newConfig(opts ...Option) LightstepConfig {
 	for _, opt := range append(defaultOpts, opts...) {
 		opt(&c)
 	}
+	c.Resource = newResource(&c)
 
 	return c
 }
@@ -228,16 +241,29 @@ func configurePropagators(c *LightstepConfig) error {
 }
 
 func newResource(c *LightstepConfig) *resource.Resource {
+	detector := resource.FromEnv{}
+	r, _ := detector.Detect(context.Background())
 	attributes := []kv.KeyValue{
-		kv.String(conventions.AttributeServiceName, c.ServiceName),
-		kv.String(conventions.AttributeServiceVersion, c.ServiceVersion),
 		kv.String(conventions.AttributeTelemetrySDKName, "launcher"),
 		kv.String(conventions.AttributeTelemetrySDKLanguage, "go"),
 		kv.String(conventions.AttributeTelemetrySDKVersion, version),
 	}
-	for key, attribute := range c.ResourceLabels {
-		attributes = append(attributes, kv.String(key, attribute))
+
+	if len(c.ServiceName) > 0 {
+		attributes = append(attributes, kv.String(conventions.AttributeServiceName, c.ServiceName))
 	}
+
+	if len(c.ServiceVersion) > 0 {
+		attributes = append(attributes, kv.String(conventions.AttributeServiceVersion, c.ServiceVersion))
+	}
+
+	for key, value := range c.resourceAttributes {
+		if len(value) > 0 {
+			attributes = append(attributes, kv.String(key, value))
+		}
+	}
+
+	attributes = append(r.Attributes(), attributes...)
 	return resource.New(attributes...)
 }
 
@@ -276,7 +302,7 @@ func ConfigureOpentelemetry(opts ...Option) LightstepOpentelemetry {
 	tp, err := trace.NewProvider(
 		trace.WithConfig(trace.Config{DefaultSampler: trace.AlwaysSample()}),
 		trace.WithSyncer(exporter),
-		trace.WithResource(newResource(&c)),
+		trace.WithResource(c.Resource),
 	)
 	if err != nil {
 		c.logger.Fatalf(err.Error())

@@ -18,11 +18,15 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/lightstep/otel-launcher-go/launcher"
+	"go.opentelemetry.io/collector/translator/conventions"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/kv"
 	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/sdk/resource"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/codes"
 )
 
@@ -42,6 +46,7 @@ func main() {
 							addEvent(ctx)
 							recordException(ctx)
 							createChild(ctx, tracer)
+							setResourceAttributes()
 							return nil
 						},
 					)
@@ -88,4 +93,18 @@ func createChild(ctx context.Context, tracer trace.Tracer) {
 	_, childSpan := tracer.Start(ctx, "child")
 	defer childSpan.End()
 	fmt.Printf("child span: %v\n", childSpan)
+}
+
+// example of setting resource attributes
+func setResourceAttributes() {
+	host, _ := os.Hostname()
+	attributes := []kv.KeyValue{
+		kv.String(conventions.AttributeServiceName, "service123"),
+		kv.String(conventions.AttributeServiceVersion, "1.2.3"),
+		kv.String(conventions.AttributeHostName, host),
+	}
+	tp, _ := sdktrace.NewProvider(
+		sdktrace.WithResource(resource.New(attributes...)),
+	)
+	global.SetTraceProvider(tp)
 }
