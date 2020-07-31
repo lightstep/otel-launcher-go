@@ -38,16 +38,16 @@ Additional options
 
 |Config Option     |Env Variable      |Required|Default|
 |------------------|------------------|--------|-------|
-|WithServiceName    |LS_SERVICE_NAME                    |y       |-                               |
-|WithServiceVersion |LS_SERVICE_VERSION                 |n       |unknown                         |
-|WithSpanExporterEndpoint  |OTEL_EXPORTER_OTLP_SPAN_ENDPOINT   |n       |ingest.lightstep.com:443        |
-|WithSpanExporterInsecure  |OTEL_EXPORTER_OTLP_SPAN_INSECURE   |n       |false                           |
+|WithServiceName            |LS_SERVICE_NAME                    |y       |-                               |
+|WithServiceVersion         |LS_SERVICE_VERSION                 |n       |unknown                         |
+|WithSpanExporterEndpoint   |OTEL_EXPORTER_OTLP_SPAN_ENDPOINT   |n       |ingest.lightstep.com:443        |
+|WithSpanExporterInsecure   |OTEL_EXPORTER_OTLP_SPAN_INSECURE   |n       |false                           |
 |WithMetricExporterEndpoint |OTEL_EXPORTER_OTLP_METRIC_ENDPOINT |n       |ingest.lightstep.com:443/metrics|
 |WithMetricExporterInsecure |OTEL_EXPORTER_OTLP_METRIC_INSECURE |n       |false                           |
-|WithAccessToken    |LS_ACCESS_TOKEN                    |n       |-                               |
-|WithLogLevel       |OTEL_LOG_LEVEL                     |n       |info                            |
-|WithPropagators    |OTEL_PROPAGATORS                   |n       |b3                              |
-|WithResourceLabels |OTEL_RESOURCE_LABELS               |n       |-                               |
+|WithAccessToken            |LS_ACCESS_TOKEN                    |n       |-                               |
+|WithLogLevel               |OTEL_LOG_LEVEL                     |n       |info                            |
+|WithPropagators            |OTEL_PROPAGATORS                   |n       |b3                              |
+|WithResourceLabels         |OTEL_RESOURCE_LABELS               |n       |-                               |
 
 ### Principles behind Launcher
 

@@ -25,6 +25,7 @@ import (
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/kv"
 	apitrace "go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/sdk/resource"
 )
 
 type testLogger struct {
@@ -141,6 +142,13 @@ func TestDefaultConfig(t *testing.T) {
 		WithErrorHandler(handler),
 	)
 
+	attributes := []kv.KeyValue{
+		kv.String("service.version", "unknown"),
+		kv.String("telemetry.sdk.name", "launcher"),
+		kv.String("telemetry.sdk.language", "go"),
+		kv.String("telemetry.sdk.version", version),
+	}
+
 	expected := LightstepConfig{
 		ServiceName:                    "",
 		ServiceVersion:                 "unknown",
@@ -151,6 +159,7 @@ func TestDefaultConfig(t *testing.T) {
 		AccessToken:                    "",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
+		Resource:                       resource.New(attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
@@ -166,6 +175,14 @@ func TestEnvironmentVariables(t *testing.T) {
 		WithErrorHandler(handler),
 	)
 
+	attributes := []kv.KeyValue{
+		kv.String("service.name", "test-service-name"),
+		kv.String("service.version", "test-service-version"),
+		kv.String("telemetry.sdk.name", "launcher"),
+		kv.String("telemetry.sdk.language", "go"),
+		kv.String("telemetry.sdk.version", version),
+	}
+
 	expected := LightstepConfig{
 		ServiceName:                    "test-service-name",
 		ServiceVersion:                 "test-service-version",
@@ -176,6 +193,7 @@ func TestEnvironmentVariables(t *testing.T) {
 		AccessToken:                    "token",
 		LogLevel:                       "debug",
 		Propagators:                    []string{"b3", "w3c"},
+		Resource:                       resource.New(attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
@@ -202,6 +220,14 @@ func TestConfigurationOverrides(t *testing.T) {
 		WithPropagators([]string{"b3"}),
 	)
 
+	attributes := []kv.KeyValue{
+		kv.String("service.name", "override-service-name"),
+		kv.String("service.version", "override-service-version"),
+		kv.String("telemetry.sdk.name", "launcher"),
+		kv.String("telemetry.sdk.language", "go"),
+		kv.String("telemetry.sdk.version", version),
+	}
+
 	expected := LightstepConfig{
 		ServiceName:                    "override-service-name",
 		ServiceVersion:                 "override-service-version",
@@ -212,6 +238,7 @@ func TestConfigurationOverrides(t *testing.T) {
 		AccessToken:                    "override-access-token",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
+		Resource:                       resource.New(attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
@@ -265,11 +292,11 @@ func TestConfigurePropagators(t *testing.T) {
 	}
 }
 
-func TestConfigureResourcesLabels(t *testing.T) {
+func TestConfigureResourcesAttributes(t *testing.T) {
+	os.Setenv("OTEL_RESOURCE_LABELS", "label1=value1,label2=value2")
 	config := LightstepConfig{
 		ServiceName:    "test-service",
 		ServiceVersion: "test-version",
-		ResourceLabels: map[string]string{"label1": "value1", "label2": "value2"},
 	}
 	resource := newResource(&config)
 	expected := []kv.KeyValue{
@@ -283,30 +310,47 @@ func TestConfigureResourcesLabels(t *testing.T) {
 	}
 	assert.Equal(t, expected, resource.Attributes())
 
+	os.Setenv("OTEL_RESOURCE_LABELS", "telemetry.sdk.language=test-language")
 	config = LightstepConfig{
 		ServiceName:    "test-service",
 		ServiceVersion: "test-version",
-		ResourceLabels: map[string]string{"telemetry.sdk.language": "test-language"},
 	}
 	resource = newResource(&config)
 	expected = []kv.KeyValue{
 		kv.String("service.name", "test-service"),
 		kv.String("service.version", "test-version"),
-		kv.String("telemetry.sdk.language", "test-language"),
+		kv.String("telemetry.sdk.language", "go"),
 		kv.String("telemetry.sdk.name", "launcher"),
 		kv.String("telemetry.sdk.version", "0.0.1"),
 	}
 	assert.Equal(t, expected, resource.Attributes())
 
-	logger := &testLogger{}
-	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
-		WithServiceName("test-service"),
-		WithSpanExporterEndpoint("localhost:443"),
-		WithSpanExporterInsecure(true),
-		WithResourceLabels(map[string]string{"label1": "value1"}),
-	)
+	os.Setenv("OTEL_RESOURCE_LABELS", "service.name=test-service-b")
+	config = LightstepConfig{
+		ServiceName:    "test-service-b",
+		ServiceVersion: "test-version",
+	}
+	resource = newResource(&config)
+	expected = []kv.KeyValue{
+		kv.String("service.name", "test-service-b"),
+		kv.String("service.version", "test-version"),
+		kv.String("telemetry.sdk.language", "go"),
+		kv.String("telemetry.sdk.name", "launcher"),
+		kv.String("telemetry.sdk.version", "0.0.1"),
+	}
+	assert.Equal(t, expected, resource.Attributes())
+}
+
+func TestServiceNameViaResourceAttributes(t *testing.T) {
+	os.Setenv("OTEL_RESOURCE_LABELS", "service.name=test-service-b")
+	logger := &testLogger{output: []string{}}
+	lsOtel := ConfigureOpentelemetry(WithLogger(logger))
 	defer lsOtel.Shutdown()
+
+	expected := "invalid configuration: service name missing"
+	if strings.Contains(logger.output[0], expected) {
+		t.Errorf("\nString found: %v\nIn: %v", expected, logger.output[0])
+	}
 }
 
 func setEnvironment() {
@@ -319,6 +363,7 @@ func setEnvironment() {
 	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_INSECURE", "true")
 	os.Setenv("OTEL_LOG_LEVEL", "debug")
 	os.Setenv("OTEL_PROPAGATORS", "b3,w3c")
+	os.Setenv("OTEL_RESOURCE_LABELS", "service.name=test-service-name-b")
 }
 
 func unsetEnvironment() {
@@ -332,6 +377,7 @@ func unsetEnvironment() {
 		"OTEL_EXPORTER_OTLP_METRIC_INSECURE",
 		"OTEL_LOG_LEVEL",
 		"OTEL_PROPAGATORS",
+		"OTEL_RESOURCE_LABELS",
 	}
 	for _, envvar := range vars {
 		os.Unsetenv(envvar)
