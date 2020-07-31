@@ -149,7 +149,7 @@ func TestDefaultConfig(t *testing.T) {
 		kv.String("telemetry.sdk.version", version),
 	}
 
-	expected := LightstepConfig{
+	expected := LauncherConfig{
 		ServiceName:                    "",
 		ServiceVersion:                 "unknown",
 		SpanExporterEndpoint:           "ingest.lightstep.com:443",
@@ -183,7 +183,7 @@ func TestEnvironmentVariables(t *testing.T) {
 		kv.String("telemetry.sdk.version", version),
 	}
 
-	expected := LightstepConfig{
+	expected := LauncherConfig{
 		ServiceName:                    "test-service-name",
 		ServiceVersion:                 "test-service-version",
 		SpanExporterEndpoint:           "satellite-url",
@@ -228,7 +228,7 @@ func TestConfigurationOverrides(t *testing.T) {
 		kv.String("telemetry.sdk.version", version),
 	}
 
-	expected := LightstepConfig{
+	expected := LauncherConfig{
 		ServiceName:                    "override-service-name",
 		ServiceVersion:                 "override-service-version",
 		SpanExporterEndpoint:           "override-satellite-url",
@@ -294,7 +294,7 @@ func TestConfigurePropagators(t *testing.T) {
 
 func TestConfigureResourcesAttributes(t *testing.T) {
 	os.Setenv("OTEL_RESOURCE_LABELS", "label1=value1,label2=value2")
-	config := LightstepConfig{
+	config := LauncherConfig{
 		ServiceName:    "test-service",
 		ServiceVersion: "test-version",
 	}
@@ -311,7 +311,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 	assert.Equal(t, expected, resource.Attributes())
 
 	os.Setenv("OTEL_RESOURCE_LABELS", "telemetry.sdk.language=test-language")
-	config = LightstepConfig{
+	config = LauncherConfig{
 		ServiceName:    "test-service",
 		ServiceVersion: "test-version",
 	}
@@ -326,7 +326,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 	assert.Equal(t, expected, resource.Attributes())
 
 	os.Setenv("OTEL_RESOURCE_LABELS", "service.name=test-service-b")
-	config = LightstepConfig{
+	config = LauncherConfig{
 		ServiceName:    "test-service-b",
 		ServiceVersion: "test-version",
 	}
