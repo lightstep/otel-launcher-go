@@ -24,11 +24,11 @@ Minimal setup
 import "github.com/lightstep/otel-launcher-go/launcher"
 
 func main() {
-    lightstepOtel := launcher.ConfigureOpentelemetry(
+    otel := launcher.ConfigureOpentelemetry(
         launcher.WithServiceName("service-name"),
         launcher.WithAccessToken("access-token"),
     )
-    defer lightstepOtel.Shutdown()
+    defer otel.Shutdown()
 }
 ```
 
