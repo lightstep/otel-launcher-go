@@ -47,7 +47,7 @@ Additional options
 |WithAccessToken            |LS_ACCESS_TOKEN                    |n       |-                               |
 |WithLogLevel               |OTEL_LOG_LEVEL                     |n       |info                            |
 |WithPropagators            |OTEL_PROPAGATORS                   |n       |b3                              |
-|WithResourceLabels         |OTEL_RESOURCE_LABELS               |n       |-                               |
+|WithResourceAttributes     |OTEL_RESOURCE_ATTRIBUTES           |n       |-                               |
 
 ### Principles behind Launcher
 
