@@ -126,12 +126,18 @@ func TestDebugEnabled(t *testing.T) {
 		WithAccessToken("access-token-123"),
 		WithSpanExporterEndpoint("localhost:443"),
 		WithLogLevel("debug"),
+		WithResourceAttributes(map[string]string{
+			"attr1": "val1",
+		}),
 	)
 	defer lsOtel.Shutdown()
-	expected := "debug logging enabled"
-	if expected != logger.output[0] {
-		t.Errorf("\nExpected: %v\ngot: %v", expected, logger.output[0])
-	}
+	output := strings.Join(logger.output[:], ",")
+	assert.Contains(t, output, "debug logging enabled")
+	assert.Contains(t, output, "test-service")
+	assert.Contains(t, output, "access-token-123")
+	assert.Contains(t, output, "ocalhost:443")
+	assert.Contains(t, output, "attr1")
+	assert.Contains(t, output, "val1")
 }
 
 func TestDefaultConfig(t *testing.T) {
