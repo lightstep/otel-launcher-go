@@ -152,10 +152,11 @@ license-check:
 
 # When releasing significant changes, make sure to update the semantic
 # version number in `./VERSION`, merge changes, then run `make release_tag`.
+.PHONY: version
 version:
 ifdef ver
 		@echo 'Setting version to $(ver)'
-		@./tag_version.sh $(ver)
+		@./tools/tag_version.sh $(ver)
 else
 		@echo 'ver not defined. call make ver=<version eg 1.2.3> version'
 endif
