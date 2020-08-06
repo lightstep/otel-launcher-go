@@ -22,9 +22,5 @@ fi
 
 echo $VERSION > ./VERSION
 
-cat > launcher/version.go <<EOF
-package launcher
-
-const version = "$VERSION"
-EOF
+sed -i '' "s/const version.*/const version = \"$VERSION\"/" ./launcher/version.go
 

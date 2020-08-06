@@ -306,7 +306,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		kv.String("service.version", "test-version"),
 		kv.String("telemetry.sdk.language", "go"),
 		kv.String("telemetry.sdk.name", "launcher"),
-		kv.String("telemetry.sdk.version", "0.0.1"),
+		kv.String("telemetry.sdk.version", version),
 	}
 	assert.Equal(t, expected, resource.Attributes())
 
@@ -321,7 +321,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		kv.String("service.version", "test-version"),
 		kv.String("telemetry.sdk.language", "go"),
 		kv.String("telemetry.sdk.name", "launcher"),
-		kv.String("telemetry.sdk.version", "0.0.1"),
+		kv.String("telemetry.sdk.version", version),
 	}
 	assert.Equal(t, expected, resource.Attributes())
 
@@ -336,7 +336,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		kv.String("service.version", "test-version"),
 		kv.String("telemetry.sdk.language", "go"),
 		kv.String("telemetry.sdk.name", "launcher"),
-		kv.String("telemetry.sdk.version", "0.0.1"),
+		kv.String("telemetry.sdk.version", version),
 	}
 	assert.Equal(t, expected, resource.Attributes())
 }
