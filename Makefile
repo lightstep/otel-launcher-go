@@ -162,5 +162,5 @@ else
 endif
 
 release_tag:
-	git tag -a v`cat ./VERSION`
+	git tag v`cat ./VERSION`
 	git push origin v`cat ./VERSION`

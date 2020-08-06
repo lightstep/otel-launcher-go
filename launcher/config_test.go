@@ -126,12 +126,18 @@ func TestDebugEnabled(t *testing.T) {
 		WithAccessToken("access-token-123"),
 		WithSpanExporterEndpoint("localhost:443"),
 		WithLogLevel("debug"),
+		WithResourceAttributes(map[string]string{
+			"attr1": "val1",
+		}),
 	)
 	defer lsOtel.Shutdown()
-	expected := "debug logging enabled"
-	if expected != logger.output[0] {
-		t.Errorf("\nExpected: %v\ngot: %v", expected, logger.output[0])
-	}
+	output := strings.Join(logger.output[:], ",")
+	assert.Contains(t, output, "debug logging enabled")
+	assert.Contains(t, output, "test-service")
+	assert.Contains(t, output, "access-token-123")
+	assert.Contains(t, output, "ocalhost:443")
+	assert.Contains(t, output, "attr1")
+	assert.Contains(t, output, "val1")
 }
 
 func TestDefaultConfig(t *testing.T) {
@@ -293,7 +299,7 @@ func TestConfigurePropagators(t *testing.T) {
 }
 
 func TestConfigureResourcesAttributes(t *testing.T) {
-	os.Setenv("OTEL_RESOURCE_LABELS", "label1=value1,label2=value2")
+	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "label1=value1,label2=value2")
 	config := LauncherConfig{
 		ServiceName:    "test-service",
 		ServiceVersion: "test-version",
@@ -310,7 +316,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 	}
 	assert.Equal(t, expected, resource.Attributes())
 
-	os.Setenv("OTEL_RESOURCE_LABELS", "telemetry.sdk.language=test-language")
+	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "telemetry.sdk.language=test-language")
 	config = LauncherConfig{
 		ServiceName:    "test-service",
 		ServiceVersion: "test-version",
@@ -325,7 +331,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 	}
 	assert.Equal(t, expected, resource.Attributes())
 
-	os.Setenv("OTEL_RESOURCE_LABELS", "service.name=test-service-b")
+	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-b")
 	config = LauncherConfig{
 		ServiceName:    "test-service-b",
 		ServiceVersion: "test-version",
@@ -342,7 +348,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 }
 
 func TestServiceNameViaResourceAttributes(t *testing.T) {
-	os.Setenv("OTEL_RESOURCE_LABELS", "service.name=test-service-b")
+	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-b")
 	logger := &testLogger{output: []string{}}
 	lsOtel := ConfigureOpentelemetry(WithLogger(logger))
 	defer lsOtel.Shutdown()
@@ -363,7 +369,7 @@ func setEnvironment() {
 	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_INSECURE", "true")
 	os.Setenv("OTEL_LOG_LEVEL", "debug")
 	os.Setenv("OTEL_PROPAGATORS", "b3,w3c")
-	os.Setenv("OTEL_RESOURCE_LABELS", "service.name=test-service-name-b")
+	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-name-b")
 }
 
 func unsetEnvironment() {
@@ -377,7 +383,7 @@ func unsetEnvironment() {
 		"OTEL_EXPORTER_OTLP_METRIC_INSECURE",
 		"OTEL_LOG_LEVEL",
 		"OTEL_PROPAGATORS",
-		"OTEL_RESOURCE_LABELS",
+		"OTEL_RESOURCE_ATTRIBUTES",
 	}
 	for _, envvar := range vars {
 		os.Unsetenv(envvar)

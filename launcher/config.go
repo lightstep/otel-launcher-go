@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/sethvargo/go-envconfig/pkg/envconfig"
 	"go.opentelemetry.io/collector/translator/conventions"
@@ -95,8 +96,8 @@ func WithMetricExporterInsecure(insecure bool) Option {
 	}
 }
 
-// WithResourceLabels configures attributes on the resource
-func WithResourceLabels(attributes map[string]string) Option {
+// WithResourceAttributes configures attributes on the resource
+func WithResourceAttributes(attributes map[string]string) Option {
 	return func(c *LauncherConfig) {
 		c.resourceAttributes = attributes
 	}
@@ -241,8 +242,18 @@ func configurePropagators(c *LauncherConfig) error {
 }
 
 func newResource(c *LauncherConfig) *resource.Resource {
+	// workaround until the following change is released
+	// https://github.com/open-telemetry/opentelemetry-go/pull/1042
+	reset := false
+	if len(os.Getenv("OTEL_RESOURCE_LABELS")) == 0 {
+		reset = true
+		os.Setenv("OTEL_RESOURCE_LABELS", os.Getenv("OTEL_RESOURCE_ATTRIBUTES"))
+	}
 	detector := resource.FromEnv{}
 	r, _ := detector.Detect(context.Background())
+	if reset {
+		os.Unsetenv("OTEL_RESOURCE_LABELS")
+	}
 	attributes := []kv.KeyValue{
 		kv.String(conventions.AttributeTelemetrySDKName, "launcher"),
 		kv.String(conventions.AttributeTelemetrySDKLanguage, "go"),
