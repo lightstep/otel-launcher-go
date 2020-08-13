@@ -25,9 +25,9 @@ import (
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/kv"
 	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"google.golang.org/grpc/codes"
 )
 
 func main() {
@@ -35,27 +35,25 @@ func main() {
 	defer otel.Shutdown()
 	tracer := global.Tracer("ex.com/basic")
 
-	tracer.WithSpan(context.Background(), "foo",
-		func(ctx context.Context) error {
-			tracer.WithSpan(ctx, "bar",
-				func(ctx context.Context) error {
-					tracer.WithSpan(ctx, "baz",
-						func(ctx context.Context) error {
-							getSpan(ctx)
-							addAttribute(ctx)
-							addEvent(ctx)
-							recordException(ctx)
-							createChild(ctx, tracer)
-							setResourceAttributes()
-							return nil
-						},
-					)
-					return nil
-				},
-			)
-			return nil
-		},
-	)
+	ctx0 := context.Background()
+
+	ctx1, finish1 := tracer.Start(ctx0, "foo")
+	defer finish1.End()
+
+	ctx2, finish2 := tracer.Start(ctx1, "bar")
+	defer finish2.End()
+
+	ctx3, finish3 := tracer.Start(ctx2, "baz")
+	defer finish3.End()
+
+	ctx := ctx3
+	getSpan(ctx)
+	addAttribute(ctx)
+	addEvent(ctx)
+	recordException(ctx)
+	createChild(ctx, tracer)
+	setResourceAttributes()
+
 	fmt.Println("OpenTelemetry example")
 }
 

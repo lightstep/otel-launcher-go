@@ -71,7 +71,9 @@ func TestInvalidMissingAccessToken(t *testing.T) {
 	defer lsOtel.Shutdown()
 
 	expected := "invalid configuration: access token missing, must be set when reporting to ingest.lightstep.com:443"
-	if !strings.Contains(logger.output[0], expected) {
+	if len(logger.output) == 0 {
+		t.Errorf("\nNothing was logged expecting: %v", expected)
+	} else if !strings.Contains(logger.output[0], expected) {
 		t.Errorf("\nString not found: %v\nIn: %v", expected, logger.output[0])
 	}
 }
