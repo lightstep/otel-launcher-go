@@ -23,9 +23,10 @@ import (
 	"os"
 	"time"
 
-	runtimeMetrics "github.com/open-telemetry/opentelemetry-go-contrib/plugins/runtime"
 	"github.com/sethvargo/go-envconfig/pkg/envconfig"
 	"go.opentelemetry.io/collector/translator/conventions"
+	hostMetrics "go.opentelemetry.io/contrib/instrumentation/host"
+	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/api/correlation"
 	"go.opentelemetry.io/otel/api/global"
@@ -374,14 +375,12 @@ func setupMetrics(c LauncherConfig) (func() error, error) {
 
 	provider := pusher.Provider()
 
-	// TODO: Note `period` should be ignored below, there's a TODO
-	// in the plugin itself about this.  The controller sets the
-	// collection interval above.
-	//
-	// TODO: passing `provider.Meter(...)` to Start() below feels
-	// wrong, it should take Provider right?
-	if err = runtimeMetrics.Start(provider.Meter("runtime-metrics"), period); err != nil {
+	if err = runtimeMetrics.Start(provider); err != nil {
 		return nil, fmt.Errorf("failed to start runtime metrics: %w", err)
+	}
+
+	if err = hostMetrics.Start(provider); err != nil {
+		return nil, fmt.Errorf("failed to start host metrics: %w", err)
 	}
 
 	global.SetMeterProvider(provider)
