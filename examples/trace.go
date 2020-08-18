@@ -23,9 +23,9 @@ import (
 	"github.com/lightstep/otel-launcher-go/launcher"
 	"go.opentelemetry.io/collector/translator/conventions"
 	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/kv"
 	"go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 )
@@ -72,9 +72,9 @@ func addAttribute(ctx context.Context) {
 // example of adding an event to a span
 func addEvent(ctx context.Context) {
 	span := trace.SpanFromContext(ctx)
-	span.AddEvent(ctx, "event1", []kv.KeyValue{
-		kv.String("event-attr1", "event-string1"),
-		kv.Int64("event-attr2", 10),
+	span.AddEvent(ctx, "event1", []label.KeyValue{
+		label.String("event-attr1", "event-string1"),
+		label.Int64("event-attr2", 10),
 	}...)
 }
 
@@ -96,10 +96,10 @@ func createChild(ctx context.Context, tracer trace.Tracer) {
 // example of setting resource attributes
 func setResourceAttributes() {
 	host, _ := os.Hostname()
-	attributes := []kv.KeyValue{
-		kv.String(conventions.AttributeServiceName, "service123"),
-		kv.String(conventions.AttributeServiceVersion, "1.2.3"),
-		kv.String(conventions.AttributeHostName, host),
+	attributes := []label.KeyValue{
+		label.String(conventions.AttributeServiceName, "service123"),
+		label.String(conventions.AttributeServiceVersion, "1.2.3"),
+		label.String(conventions.AttributeHostName, host),
 	}
 	tp, _ := sdktrace.NewProvider(
 		sdktrace.WithResource(resource.New(attributes...)),

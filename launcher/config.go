@@ -30,10 +30,11 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/api/correlation"
 	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/kv"
 	"go.opentelemetry.io/otel/api/propagation"
 	apitrace "go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/exporters/otlp"
+	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/sdk/metric/controller/push"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/push"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
@@ -274,23 +275,23 @@ func newResource(c *LauncherConfig) *resource.Resource {
 	if reset {
 		os.Unsetenv("OTEL_RESOURCE_LABELS")
 	}
-	attributes := []kv.KeyValue{
-		kv.String(conventions.AttributeTelemetrySDKName, "launcher"),
-		kv.String(conventions.AttributeTelemetrySDKLanguage, "go"),
-		kv.String(conventions.AttributeTelemetrySDKVersion, version),
+	attributes := []label.KeyValue{
+		label.String(conventions.AttributeTelemetrySDKName, "launcher"),
+		label.String(conventions.AttributeTelemetrySDKLanguage, "go"),
+		label.String(conventions.AttributeTelemetrySDKVersion, version),
 	}
 
 	if len(c.ServiceName) > 0 {
-		attributes = append(attributes, kv.String(conventions.AttributeServiceName, c.ServiceName))
+		attributes = append(attributes, label.String(conventions.AttributeServiceName, c.ServiceName))
 	}
 
 	if len(c.ServiceVersion) > 0 {
-		attributes = append(attributes, kv.String(conventions.AttributeServiceVersion, c.ServiceVersion))
+		attributes = append(attributes, label.String(conventions.AttributeServiceVersion, c.ServiceVersion))
 	}
 
 	for key, value := range c.resourceAttributes {
 		if len(value) > 0 {
-			attributes = append(attributes, kv.String(key, value))
+			attributes = append(attributes, label.String(key, value))
 		}
 	}
 
@@ -348,9 +349,12 @@ func setupMetrics(c LauncherConfig) (func() error, error) {
 		return nil, fmt.Errorf("failed to create metric exporter: %w", err)
 	}
 
-	period, err := time.ParseDuration(c.MetricReportingPeriod)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse metric reporting period: %w", err)
+	period := push.DefaultPushPeriod
+	if c.MetricReportingPeriod != "" {
+		period, err = time.ParseDuration(c.MetricReportingPeriod)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse metric reporting period: %w", err)
+		}
 	}
 
 	pusher := controller.New(
@@ -375,11 +379,11 @@ func setupMetrics(c LauncherConfig) (func() error, error) {
 
 	provider := pusher.Provider()
 
-	if err = runtimeMetrics.Start(provider); err != nil {
+	if err = runtimeMetrics.Start(runtimeMetrics.Configure(runtimeMetrics.WithMeterProvider(provider))); err != nil {
 		return nil, fmt.Errorf("failed to start runtime metrics: %w", err)
 	}
 
-	if err = hostMetrics.Start(provider); err != nil {
+	if err = hostMetrics.Start(hostMetrics.Configure(hostMetrics.WithMeterProvider(provider))); err != nil {
 		return nil, fmt.Errorf("failed to start host metrics: %w", err)
 	}
 
