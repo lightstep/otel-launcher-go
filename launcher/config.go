@@ -22,7 +22,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/sethvargo/go-envconfig/pkg/envconfig"
+	"github.com/sethvargo/go-envconfig"
 	"go.opentelemetry.io/collector/translator/conventions"
 	"go.opentelemetry.io/otel/api/correlation"
 	"go.opentelemetry.io/otel/api/global"
