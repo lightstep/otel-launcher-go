@@ -61,6 +61,8 @@ One of the key principles behind putting together Launcher is to make lives of O
 
 Although we understand that not all languages use the same format for configuration, we find this annoying. We decided that Launcher would allow users to use the same configuration file across all languages. In this case, we settled for `YAML` as the format, which was inspired by the OpenTelemetry Collector.
 
+When OpenTelemetry Metrics are enabled, Host and Runtime metrics instrumentation are started automatically.
+
 ##### Validation
 
 Another decision we made with launcher is to provide end users with a layer of validation of their configuration. This provides us the ability to give feedback to our users faster, so they can start collecting telemetry sooner.
