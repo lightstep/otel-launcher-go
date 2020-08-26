@@ -34,7 +34,6 @@ import (
 	apitrace "go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/label"
-	"go.opentelemetry.io/otel/sdk/metric/controller/push"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/push"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
@@ -365,7 +364,7 @@ func setupMetrics(c Config) (func() error, error) {
 		return nil, fmt.Errorf("failed to create metric exporter: %w", err)
 	}
 
-	period := push.DefaultPushPeriod
+	period := controller.DefaultPushPeriod
 	if c.MetricReportingPeriod != "" {
 		period, err = time.ParseDuration(c.MetricReportingPeriod)
 		if err != nil {
