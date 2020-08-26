@@ -382,14 +382,6 @@ func setupMetrics(c Config) (func() error, error) {
 		controller.WithPeriod(period),
 	)
 
-	// Note: TODOs below are maintainer's notes, not about this library.
-
-	// TODO: there is a controller.WithTimeout() option that sets
-	// how long the pusher context RPC deadline.  Does the
-	// trace.WithSyncer() have a similar setting?  Shouldn't these
-	// libraries be the same?  Would the trace syncer be blocked
-	// by an blocking exporter?
-
 	pusher.Start()
 
 	provider := pusher.Provider()
