@@ -23,8 +23,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/api/correlation"
 	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/kv"
 	apitrace "go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -148,11 +148,11 @@ func TestDefaultConfig(t *testing.T) {
 		WithErrorHandler(handler),
 	)
 
-	attributes := []kv.KeyValue{
-		kv.String("service.version", "unknown"),
-		kv.String("telemetry.sdk.name", "launcher"),
-		kv.String("telemetry.sdk.language", "go"),
-		kv.String("telemetry.sdk.version", version),
+	attributes := []label.KeyValue{
+		label.String("service.version", "unknown"),
+		label.String("telemetry.sdk.name", "launcher"),
+		label.String("telemetry.sdk.language", "go"),
+		label.String("telemetry.sdk.version", version),
 	}
 
 	expected := LauncherConfig{
@@ -181,12 +181,12 @@ func TestEnvironmentVariables(t *testing.T) {
 		WithErrorHandler(handler),
 	)
 
-	attributes := []kv.KeyValue{
-		kv.String("service.name", "test-service-name"),
-		kv.String("service.version", "test-service-version"),
-		kv.String("telemetry.sdk.name", "launcher"),
-		kv.String("telemetry.sdk.language", "go"),
-		kv.String("telemetry.sdk.version", version),
+	attributes := []label.KeyValue{
+		label.String("service.name", "test-service-name"),
+		label.String("service.version", "test-service-version"),
+		label.String("telemetry.sdk.name", "launcher"),
+		label.String("telemetry.sdk.language", "go"),
+		label.String("telemetry.sdk.version", version),
 	}
 
 	expected := LauncherConfig{
@@ -226,12 +226,12 @@ func TestConfigurationOverrides(t *testing.T) {
 		WithPropagators([]string{"b3"}),
 	)
 
-	attributes := []kv.KeyValue{
-		kv.String("service.name", "override-service-name"),
-		kv.String("service.version", "override-service-version"),
-		kv.String("telemetry.sdk.name", "launcher"),
-		kv.String("telemetry.sdk.language", "go"),
-		kv.String("telemetry.sdk.version", version),
+	attributes := []label.KeyValue{
+		label.String("service.name", "override-service-name"),
+		label.String("service.version", "override-service-version"),
+		label.String("telemetry.sdk.name", "launcher"),
+		label.String("telemetry.sdk.language", "go"),
+		label.String("telemetry.sdk.version", version),
 	}
 
 	expected := LauncherConfig{
@@ -305,14 +305,14 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		ServiceVersion: "test-version",
 	}
 	resource := newResource(&config)
-	expected := []kv.KeyValue{
-		kv.String("label1", "value1"),
-		kv.String("label2", "value2"),
-		kv.String("service.name", "test-service"),
-		kv.String("service.version", "test-version"),
-		kv.String("telemetry.sdk.language", "go"),
-		kv.String("telemetry.sdk.name", "launcher"),
-		kv.String("telemetry.sdk.version", version),
+	expected := []label.KeyValue{
+		label.String("label1", "value1"),
+		label.String("label2", "value2"),
+		label.String("service.name", "test-service"),
+		label.String("service.version", "test-version"),
+		label.String("telemetry.sdk.language", "go"),
+		label.String("telemetry.sdk.name", "launcher"),
+		label.String("telemetry.sdk.version", version),
 	}
 	assert.Equal(t, expected, resource.Attributes())
 
@@ -322,12 +322,12 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		ServiceVersion: "test-version",
 	}
 	resource = newResource(&config)
-	expected = []kv.KeyValue{
-		kv.String("service.name", "test-service"),
-		kv.String("service.version", "test-version"),
-		kv.String("telemetry.sdk.language", "go"),
-		kv.String("telemetry.sdk.name", "launcher"),
-		kv.String("telemetry.sdk.version", version),
+	expected = []label.KeyValue{
+		label.String("service.name", "test-service"),
+		label.String("service.version", "test-version"),
+		label.String("telemetry.sdk.language", "go"),
+		label.String("telemetry.sdk.name", "launcher"),
+		label.String("telemetry.sdk.version", version),
 	}
 	assert.Equal(t, expected, resource.Attributes())
 
@@ -337,12 +337,12 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		ServiceVersion: "test-version",
 	}
 	resource = newResource(&config)
-	expected = []kv.KeyValue{
-		kv.String("service.name", "test-service-b"),
-		kv.String("service.version", "test-version"),
-		kv.String("telemetry.sdk.language", "go"),
-		kv.String("telemetry.sdk.name", "launcher"),
-		kv.String("telemetry.sdk.version", version),
+	expected = []label.KeyValue{
+		label.String("service.name", "test-service-b"),
+		label.String("service.version", "test-version"),
+		label.String("telemetry.sdk.language", "go"),
+		label.String("telemetry.sdk.name", "launcher"),
+		label.String("telemetry.sdk.version", version),
 	}
 	assert.Equal(t, expected, resource.Attributes())
 }
