@@ -24,11 +24,11 @@ import (
 	"go.opentelemetry.io/collector/translator/conventions"
 	"go.opentelemetry.io/otel/api/correlation"
 	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/kv"
 	"go.opentelemetry.io/otel/api/trace"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"google.golang.org/grpc/codes"
 )
 
 func main() {
@@ -36,28 +36,26 @@ func main() {
 	defer otel.Shutdown()
 	tracer := global.Tracer("ex.com/basic")
 
-	tracer.WithSpan(context.Background(), "foo",
-		func(ctx context.Context) error {
-			tracer.WithSpan(ctx, "bar",
-				func(ctx context.Context) error {
-					tracer.WithSpan(ctx, "baz",
-						func(ctx context.Context) error {
-							getSpan(ctx)
-							addAttribute(ctx)
-							addEvent(ctx)
-							recordException(ctx)
-							createChild(ctx, tracer)
-							setResourceAttributes()
-							setCorrelation()
-							return nil
-						},
-					)
-					return nil
-				},
-			)
-			return nil
-		},
-	)
+	ctx0 := context.Background()
+
+	ctx1, finish1 := tracer.Start(ctx0, "foo")
+	defer finish1.End()
+
+	ctx2, finish2 := tracer.Start(ctx1, "bar")
+	defer finish2.End()
+
+	ctx3, finish3 := tracer.Start(ctx2, "baz")
+	defer finish3.End()
+
+	ctx := ctx3
+	getSpan(ctx)
+	addAttribute(ctx)
+	addEvent(ctx)
+	recordException(ctx)
+	createChild(ctx, tracer)
+	setResourceAttributes()
+	setCorrelation()
+
 	fmt.Println("OpenTelemetry example")
 }
 
@@ -76,9 +74,9 @@ func addAttribute(ctx context.Context) {
 // example of adding an event to a span
 func addEvent(ctx context.Context) {
 	span := trace.SpanFromContext(ctx)
-	span.AddEvent(ctx, "event1", []kv.KeyValue{
-		kv.String("event-attr1", "event-string1"),
-		kv.Int64("event-attr2", 10),
+	span.AddEvent(ctx, "event1", []label.KeyValue{
+		label.String("event-attr1", "event-string1"),
+		label.Int64("event-attr2", 10),
 	}...)
 }
 
@@ -100,10 +98,10 @@ func createChild(ctx context.Context, tracer trace.Tracer) {
 // example of setting resource attributes
 func setResourceAttributes() {
 	host, _ := os.Hostname()
-	attributes := []kv.KeyValue{
-		kv.String(conventions.AttributeServiceName, "service123"),
-		kv.String(conventions.AttributeServiceVersion, "1.2.3"),
-		kv.String(conventions.AttributeHostName, host),
+	attributes := []label.KeyValue{
+		label.String(conventions.AttributeServiceName, "service123"),
+		label.String(conventions.AttributeServiceVersion, "1.2.3"),
+		label.String(conventions.AttributeHostName, host),
 	}
 	tp, _ := sdktrace.NewProvider(
 		sdktrace.WithResource(resource.New(attributes...)),
@@ -114,11 +112,11 @@ func setResourceAttributes() {
 // example of setting a correlation
 func setCorrelation() {
 	ctx := correlation.NewContext(context.Background(),
-		kv.String("keyone", "foo1"),
-		kv.String("keytwo", "bar1"),
+		label.String("keyone", "foo1"),
+		label.String("keytwo", "bar1"),
 	)
 	correlations := correlation.MapFromContext(ctx)
-	correlations.Foreach(func(kv kv.KeyValue) bool {
+	correlations.Foreach(func(kv label.KeyValue) bool {
 		fmt.Printf("key %s: %s\n", kv.Key, kv.Value.AsString())
 		return true
 	})

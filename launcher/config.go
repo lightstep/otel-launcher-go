@@ -24,13 +24,13 @@ import (
 
 	"github.com/sethvargo/go-envconfig"
 	"go.opentelemetry.io/collector/translator/conventions"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/api/correlation"
 	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/kv"
-	"go.opentelemetry.io/otel/api/oterror"
 	"go.opentelemetry.io/otel/api/propagation"
 	apitrace "go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/exporters/otlp"
+	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/credentials"
@@ -112,7 +112,7 @@ func WithPropagators(propagators []string) Option {
 
 // Configures a global error handler to be used throughout an OpenTelemetry instrumented project.
 // See "go.opentelemetry.io/otel/api/global"
-func WithErrorHandler(handler oterror.Handler) Option {
+func WithErrorHandler(handler otel.ErrorHandler) Option {
 	return func(c *LauncherConfig) {
 		c.errorHandler = handler
 	}
@@ -165,7 +165,7 @@ type LauncherConfig struct {
 	resourceAttributes             map[string]string
 	Resource                       *resource.Resource
 	logger                         Logger
-	errorHandler                   oterror.Handler
+	errorHandler                   otel.ErrorHandler
 }
 
 func validateConfiguration(c LauncherConfig) error {
@@ -254,23 +254,23 @@ func newResource(c *LauncherConfig) *resource.Resource {
 	if reset {
 		os.Unsetenv("OTEL_RESOURCE_LABELS")
 	}
-	attributes := []kv.KeyValue{
-		kv.String(conventions.AttributeTelemetrySDKName, "launcher"),
-		kv.String(conventions.AttributeTelemetrySDKLanguage, "go"),
-		kv.String(conventions.AttributeTelemetrySDKVersion, version),
+	attributes := []label.KeyValue{
+		label.String(conventions.AttributeTelemetrySDKName, "launcher"),
+		label.String(conventions.AttributeTelemetrySDKLanguage, "go"),
+		label.String(conventions.AttributeTelemetrySDKVersion, version),
 	}
 
 	if len(c.ServiceName) > 0 {
-		attributes = append(attributes, kv.String(conventions.AttributeServiceName, c.ServiceName))
+		attributes = append(attributes, label.String(conventions.AttributeServiceName, c.ServiceName))
 	}
 
 	if len(c.ServiceVersion) > 0 {
-		attributes = append(attributes, kv.String(conventions.AttributeServiceVersion, c.ServiceVersion))
+		attributes = append(attributes, label.String(conventions.AttributeServiceVersion, c.ServiceVersion))
 	}
 
 	for key, value := range c.resourceAttributes {
 		if len(value) > 0 {
-			attributes = append(attributes, kv.String(key, value))
+			attributes = append(attributes, label.String(key, value))
 		}
 	}
 
@@ -327,7 +327,7 @@ func ConfigureOpentelemetry(opts ...Option) Launcher {
 	global.SetTraceProvider(tp)
 
 	if c.errorHandler != nil {
-		global.SetHandler(c.errorHandler)
+		global.SetErrorHandler(c.errorHandler)
 	}
 	return Launcher{
 		spanExporter: exporter,
