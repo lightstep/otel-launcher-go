@@ -42,12 +42,14 @@ Additional options
 |WithServiceVersion         |LS_SERVICE_VERSION                 |n       |unknown                         |
 |WithSpanExporterEndpoint   |OTEL_EXPORTER_OTLP_SPAN_ENDPOINT   |n       |ingest.lightstep.com:443        |
 |WithSpanExporterInsecure   |OTEL_EXPORTER_OTLP_SPAN_INSECURE   |n       |false                           |
-|WithMetricExporterEndpoint |OTEL_EXPORTER_OTLP_METRIC_ENDPOINT |n       |ingest.lightstep.com:443/metrics|
+|WithMetricExporterEndpoint |OTEL_EXPORTER_OTLP_METRIC_ENDPOINT |n       |-|
 |WithMetricExporterInsecure |OTEL_EXPORTER_OTLP_METRIC_INSECURE |n       |false                           |
 |WithAccessToken            |LS_ACCESS_TOKEN                    |n       |-                               |
 |WithLogLevel               |OTEL_LOG_LEVEL                     |n       |info                            |
 |WithPropagators            |OTEL_PROPAGATORS                   |n       |b3                              |
 |WithResourceAttributes     |OTEL_RESOURCE_ATTRIBUTES           |n       |-                               |
+
+Note that metrics functionality is disabled by default.  Metrics funcionality can be enabled by setting OTEL_EXPORTER_OTLP_METRIC_ENDPOINT to a valid endpoint (e.g. ingest.lightstep.com:443/metrics).
 
 ### Principles behind Launcher
 
