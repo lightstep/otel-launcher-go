@@ -224,6 +224,22 @@ func TestInvalidEnvironment(t *testing.T) {
 	unsetEnvironment()
 }
 
+func TestInvalidMetricsPushInterval(t *testing.T) {
+	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_PERIOD", "300million")
+
+	logger := &testLogger{}
+	lsOtel := ConfigureOpentelemetry(
+		WithLogger(logger),
+		WithServiceName("test-service"),
+		WithSpanExporterEndpoint("test123:4000"),
+		WithMetricExporterEndpoint("test123:4000"),
+	)
+	defer lsOtel.Shutdown()
+
+	logger.requireContains(t, "setup error: failed to parse metric reporting period")
+	unsetEnvironment()
+}
+
 func TestDebugEnabled(t *testing.T) {
 	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
@@ -490,6 +506,7 @@ func unsetEnvironment() {
 		"OTEL_LOG_LEVEL",
 		"OTEL_PROPAGATORS",
 		"OTEL_RESOURCE_ATTRIBUTES",
+		"OTEL_EXPORTER_OTLP_METRIC_PERIOD",
 	}
 	for _, envvar := range vars {
 		os.Unsetenv(envvar)

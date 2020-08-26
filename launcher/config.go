@@ -173,7 +173,7 @@ type Config struct {
 	AccessToken                    string   `env:"LS_ACCESS_TOKEN"`
 	LogLevel                       string   `env:"OTEL_LOG_LEVEL,default=info"`
 	Propagators                    []string `env:"OTEL_PROPAGATORS,default=b3"`
-	MetricReportingPeriod          string   `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD=30s"`
+	MetricReportingPeriod          string   `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
 	resourceAttributes             map[string]string
 	Resource                       *resource.Resource
 	logger                         Logger
@@ -237,7 +237,7 @@ func newConfig(opts ...Option) Config {
 	c.Resource = newResource(&c)
 
 	if envError != nil {
-		c.logger.Fatalf("environment error: %w", envError)
+		c.logger.Fatalf("environment error: %v", envError)
 	}
 
 	return c
@@ -333,7 +333,7 @@ func setupTracing(c Config) (func() error, error) {
 	}
 	spanExporter, err := newExporter(c.AccessToken, c.SpanExporterEndpoint, c.SpanExporterEndpointInsecure)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create span exporter: %w", err)
+		return nil, fmt.Errorf("failed to create span exporter: %v", err)
 	}
 
 	tp, err := trace.NewProvider(
@@ -365,14 +365,14 @@ func setupMetrics(c Config) (func() error, error) {
 	}
 	metricExporter, err := newExporter(c.AccessToken, c.MetricExporterEndpoint, c.MetricExporterEndpointInsecure)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create metric exporter: %w", err)
+		return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 	}
 
 	period := controller.DefaultPushPeriod
 	if c.MetricReportingPeriod != "" {
 		period, err = time.ParseDuration(c.MetricReportingPeriod)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse metric reporting period: %w", err)
+			return nil, fmt.Errorf("failed to parse metric reporting period: %v", err)
 		}
 	}
 
@@ -391,11 +391,11 @@ func setupMetrics(c Config) (func() error, error) {
 	provider := pusher.Provider()
 
 	if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(provider)); err != nil {
-		return nil, fmt.Errorf("failed to start runtime metrics: %w", err)
+		return nil, fmt.Errorf("failed to start runtime metrics: %v", err)
 	}
 
 	if err = hostMetrics.Start(hostMetrics.WithMeterProvider(provider)); err != nil {
-		return nil, fmt.Errorf("failed to start host metrics: %w", err)
+		return nil, fmt.Errorf("failed to start host metrics: %v", err)
 	}
 
 	global.SetMeterProvider(provider)
@@ -417,7 +417,7 @@ func ConfigureOpentelemetry(opts ...Option) Launcher {
 
 	err := validateConfiguration(c)
 	if err != nil {
-		c.logger.Fatalf("configuration error: %w", err)
+		c.logger.Fatalf("configuration error: %v", err)
 	}
 
 	if c.errorHandler != nil {
@@ -430,7 +430,7 @@ func ConfigureOpentelemetry(opts ...Option) Launcher {
 	for _, setup := range []setupFunc{setupTracing, setupMetrics} {
 		shutdown, err := setup(c)
 		if err != nil {
-			c.logger.Fatalf("setup error: %w", err)
+			c.logger.Fatalf("setup error: %v", err)
 			continue
 		}
 		if shutdown != nil {
