@@ -154,13 +154,13 @@ func (l *defaultHandler) Handle(err error) {
 	l.logger.Debugf("error: %v\n", err)
 }
 
-var (
+const (
 	// Note: these values should match the defaults used in `env` tags for Config fields.
 	// Note: the MetricExporterEndpoint currently defaults to "".  When LS is ready for OTLP metrics
-	// we'll set this to `defaultMetricExporterEndpoint`.
+	// we'll set this to `DefaultMetricExporterEndpoint`.
 
-	defaultSpanExporterEndpoint   = "ingest.lightstep.com:443"
-	defaultMetricExporterEndpoint = "ingest.lightstep.com:443"
+	DefaultSpanExporterEndpoint   = "ingest.lightstep.com:443"
+	DefaultMetricExporterEndpoint = "ingest.lightstep.com:443"
 )
 
 type Config struct {
@@ -209,10 +209,11 @@ func validateConfiguration(c Config) error {
 
 	accessTokenLen := len(c.AccessToken)
 	if accessTokenLen == 0 {
-		if err := checkEndpointDefault(c.SpanExporterEndpoint, defaultSpanExporterEndpoint); err != nil {
+		if err := checkEndpointDefault(c.SpanExporterEndpoint, DefaultSpanExporterEndpoint); err != nil {
 			return err
 		}
-		if err := checkEndpointDefault(c.MetricExporterEndpoint, defaultMetricExporterEndpoint); err != nil {
+
+		if err := checkEndpointDefault(c.MetricExporterEndpoint, DefaultMetricExporterEndpoint); err != nil {
 			return err
 		}
 	}
@@ -225,9 +226,7 @@ func validateConfiguration(c Config) error {
 
 func newConfig(opts ...Option) Config {
 	var c Config
-	if err := envconfig.Process(context.Background(), &c); err != nil {
-		log.Fatal(err)
-	}
+	envError := envconfig.Process(context.Background(), &c)
 	c.logger = &DefaultLogger{}
 	c.errorHandler = &defaultHandler{logger: c.logger}
 	var defaultOpts []Option
@@ -237,10 +236,15 @@ func newConfig(opts ...Option) Config {
 	}
 	c.Resource = newResource(&c)
 
+	if envError != nil {
+		c.logger.Fatalf("environment error: %w", envError)
+	}
+
 	return c
 }
 
 type Launcher struct {
+	config        Config
 	shutdownFuncs []func() error
 }
 
@@ -413,32 +417,33 @@ func ConfigureOpentelemetry(opts ...Option) Launcher {
 
 	err := validateConfiguration(c)
 	if err != nil {
-		c.logger.Fatalf(err.Error())
+		c.logger.Fatalf("configuration error: %w", err)
 	}
 
 	if c.errorHandler != nil {
 		global.SetErrorHandler(c.errorHandler)
 	}
 
-	var ls Launcher
+	ls := Launcher{
+		config: c,
+	}
 	for _, setup := range []setupFunc{setupTracing, setupMetrics} {
 		shutdown, err := setup(c)
 		if err != nil {
-			c.logger.Fatalf(err.Error())
+			c.logger.Fatalf("setup error: %w", err)
 			continue
 		}
 		if shutdown != nil {
 			ls.shutdownFuncs = append(ls.shutdownFuncs, shutdown)
 		}
 	}
-
 	return ls
 }
 
 func (ls Launcher) Shutdown() {
 	for _, shutdown := range ls.shutdownFuncs {
 		if err := shutdown(); err != nil {
-			log.Fatalf("failed to stop exporter: %v", err)
+			ls.config.logger.Fatalf("failed to stop exporter: %v", err)
 		}
 	}
 }

@@ -29,9 +29,10 @@ import (
 )
 
 const (
-	expectedAccessTokenError       = "invalid configuration: access token length incorrect. Ensure token is set correctly"
-	expectedTracingDisabledMessage = "tracing is disabled by configuration: no endpoint set"
-	expectedMetricsDisabledMessage = "metrics are disabled by configuration: no endpoint set"
+	expectedAccessTokenLengthError  = "invalid configuration: access token length incorrect. Ensure token is set correctly"
+	expectedAccessTokenMissingError = "invalid configuration: access token missing, must be set when reporting to ingest.lightstep.com"
+	expectedTracingDisabledMessage  = "tracing is disabled by configuration: no endpoint set"
+	expectedMetricsDisabledMessage  = "metrics are disabled by configuration: no endpoint set"
 )
 
 type testLogger struct {
@@ -51,6 +52,7 @@ func (logger *testLogger) Debugf(format string, v ...interface{}) {
 }
 
 func (logger *testLogger) requireContains(t *testing.T, expected string) {
+	t.Helper()
 	for _, output := range logger.output {
 		if strings.Contains(output, expected) {
 			return
@@ -61,6 +63,7 @@ func (logger *testLogger) requireContains(t *testing.T, expected string) {
 }
 
 func (logger *testLogger) requireNotContains(t *testing.T, expected string) {
+	t.Helper()
 	for _, output := range logger.output {
 		if strings.Contains(output, expected) {
 			t.Errorf("\nString unexpectedly found: %v\nIn: %v", expected, logger.output)
@@ -80,79 +83,113 @@ func (t *testErrorHandler) Handle(err error) {
 	fmt.Printf("test error handler handled error: %v\n", err)
 }
 
+func fakeAccessToken() string {
+	return strings.Repeat("1", 32)
+}
+
 func TestInvalidServiceName(t *testing.T) {
-	logger := &testLogger{output: []string{}}
+	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(WithLogger(logger))
 	defer lsOtel.Shutdown()
 
 	expected := "invalid configuration: service name missing"
-	if !strings.Contains(logger.output[0], expected) {
-		t.Errorf("\nString not found: %v\nIn: %v", expected, logger.output[0])
-	}
+	logger.requireContains(t, expected)
 }
 
-func TestInvalidMissingAccessToken(t *testing.T) {
-	logger := &testLogger{output: []string{}}
+func testInvalidMissingAccessToken(t *testing.T, opts ...Option) {
+	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
-		WithServiceName("test-service"),
+		append(opts,
+			WithLogger(logger),
+			WithServiceName("test-service"),
+		)...,
 	)
 	defer lsOtel.Shutdown()
 
-	expected := "invalid configuration: access token missing, must be set when reporting to ingest.lightstep.com:443"
-	if len(logger.output) == 0 {
-		t.Errorf("\nNothing was logged expecting: %v", expected)
-	} else if !strings.Contains(logger.output[0], expected) {
-		t.Errorf("\nString not found: %v\nIn: %v", expected, logger.output[0])
-	}
+	logger.requireContains(t, expectedAccessTokenMissingError)
 }
 
-func TestInvalidTraceAccessToken(t *testing.T) {
-	logger := &testLogger{output: []string{}}
+func TestInvalidMissingDefaultAccessToken(t *testing.T) {
+	testInvalidMissingAccessToken(t)
+}
+
+func TestInvalidTraceDefaultAccessToken(t *testing.T) {
+	testInvalidMissingAccessToken(t,
+		WithSpanExporterEndpoint(DefaultSpanExporterEndpoint),
+	)
+}
+
+func TestInvalidMetricDefaultAccessToken(t *testing.T) {
+	testInvalidMissingAccessToken(t,
+		WithMetricExporterEndpoint(DefaultMetricExporterEndpoint))
+}
+
+func testInvalidAccessToken(t *testing.T, opts ...Option) {
+	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
-		WithServiceName("test-service"),
-		WithSpanExporterEndpoint("test123"),
+		append(opts,
+			WithLogger(logger),
+			WithServiceName("test-service"),
+		)...,
+	)
+	defer lsOtel.Shutdown()
+
+	logger.requireContains(t, expectedAccessTokenLengthError)
+}
+
+func TestInvalidTraceAccessTokenLength(t *testing.T) {
+	testInvalidAccessToken(t,
+		WithSpanExporterEndpoint("test123:4000"),
 		WithAccessToken("1234"),
 	)
-	defer lsOtel.Shutdown()
-
-	logger.requireContains(t, expectedAccessTokenError)
 }
 
-func TestInvalidMetricAccessToken(t *testing.T) {
-	logger := &testLogger{output: []string{}}
-	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
-		WithServiceName("test-service"),
+func TestInvalidMetricAccessTokenLength(t *testing.T) {
+	testInvalidAccessToken(t,
 		WithSpanExporterEndpoint(""),
-		WithMetricExporterEndpoint("test123"),
+		WithMetricExporterEndpoint("test123:4000"),
 		WithAccessToken("1234"),
 	)
-	defer lsOtel.Shutdown()
-
-	logger.requireContains(t, expectedAccessTokenError)
 }
 
-func TestSpanEndpointSetEmpty(t *testing.T) {
-	logger := &testLogger{output: []string{}}
+func testEndpointDisabled(t *testing.T, expected string, opts ...Option) {
+	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
-		WithServiceName("test-service"),
-		WithSpanExporterEndpoint(""),
+		append(opts,
+			WithLogger(logger),
+			WithServiceName("test-service"),
+		)...,
 	)
 	defer lsOtel.Shutdown()
 
-	logger.requireContains(t, expectedTracingDisabledMessage)
-	logger.requireNotContains(t, expectedAccessTokenError)
+	logger.requireNotContains(t, expectedAccessTokenMissingError)
+	logger.requireContains(t, expected)
+}
+
+func TestTraceEndpointDisabled(t *testing.T) {
+	testEndpointDisabled(
+		t,
+		expectedTracingDisabledMessage,
+		WithAccessToken(fakeAccessToken()),
+		WithSpanExporterEndpoint(""),
+	)
+}
+
+func TestMetricEndpointDisabled(t *testing.T) {
+	testEndpointDisabled(
+		t,
+		expectedMetricsDisabledMessage,
+		WithAccessToken(fakeAccessToken()),
+		WithMetricExporterEndpoint(""),
+	)
 }
 
 func TestValidConfig(t *testing.T) {
-	logger := &testLogger{output: []string{}}
+	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
-		WithAccessToken(strings.Repeat("1", 32)),
+		WithAccessToken(fakeAccessToken()),
 		WithErrorHandler(&testErrorHandler{}),
 	)
 	defer lsOtel.Shutdown()
@@ -173,8 +210,22 @@ func TestValidConfig(t *testing.T) {
 	}
 }
 
+func TestInvalidEnvironment(t *testing.T) {
+	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_INSECURE", "bleargh")
+
+	logger := &testLogger{}
+	lsOtel := ConfigureOpentelemetry(
+		WithLogger(logger),
+		WithServiceName("test-service"),
+	)
+	defer lsOtel.Shutdown()
+
+	logger.requireContains(t, "environment error")
+	unsetEnvironment()
+}
+
 func TestDebugEnabled(t *testing.T) {
-	logger := &testLogger{output: []string{}}
+	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
@@ -404,7 +455,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 
 func TestServiceNameViaResourceAttributes(t *testing.T) {
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-b")
-	logger := &testLogger{output: []string{}}
+	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(WithLogger(logger))
 	defer lsOtel.Shutdown()
 
