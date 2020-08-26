@@ -22,6 +22,7 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/launcher"
 	"go.opentelemetry.io/collector/translator/conventions"
+	"go.opentelemetry.io/otel/api/correlation"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/codes"
@@ -53,6 +54,7 @@ func main() {
 	recordException(ctx)
 	createChild(ctx, tracer)
 	setResourceAttributes()
+	setCorrelation()
 
 	fmt.Println("OpenTelemetry example")
 }
@@ -105,4 +107,17 @@ func setResourceAttributes() {
 		sdktrace.WithResource(resource.New(attributes...)),
 	)
 	global.SetTraceProvider(tp)
+}
+
+// example of setting a correlation
+func setCorrelation() {
+	ctx := correlation.NewContext(context.Background(),
+		label.String("keyone", "foo1"),
+		label.String("keytwo", "bar1"),
+	)
+	correlations := correlation.MapFromContext(ctx)
+	correlations.Foreach(func(kv label.KeyValue) bool {
+		fmt.Printf("key %s: %s\n", kv.Key, kv.Value.AsString())
+		return true
+	})
 }

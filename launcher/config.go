@@ -23,7 +23,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/sethvargo/go-envconfig/pkg/envconfig"
+	"github.com/sethvargo/go-envconfig"
 	"go.opentelemetry.io/collector/translator/conventions"
 	hostMetrics "go.opentelemetry.io/contrib/instrumentation/host"
 	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
@@ -379,11 +379,11 @@ func setupMetrics(c LauncherConfig) (func() error, error) {
 
 	provider := pusher.Provider()
 
-	if err = runtimeMetrics.Start(runtimeMetrics.Configure(runtimeMetrics.WithMeterProvider(provider))); err != nil {
+	if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(provider)); err != nil {
 		return nil, fmt.Errorf("failed to start runtime metrics: %w", err)
 	}
 
-	if err = hostMetrics.Start(hostMetrics.Configure(hostMetrics.WithMeterProvider(provider))); err != nil {
+	if err = hostMetrics.Start(hostMetrics.WithMeterProvider(provider)); err != nil {
 		return nil, fmt.Errorf("failed to start host metrics: %w", err)
 	}
 
