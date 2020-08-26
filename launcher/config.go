@@ -36,46 +36,46 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-type Option func(*LauncherConfig)
+type Option func(*Config)
 
 // WithAccessToken configures the lightstep access token
 func WithAccessToken(accessToken string) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.AccessToken = accessToken
 	}
 }
 
 // WithMetricExporterEndpoint configures the endpoint for sending metrics via OTLP
 func WithMetricExporterEndpoint(url string) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.MetricExporterEndpoint = url
 	}
 }
 
 // WithSpanExporterEndpoint configures the endpoint for sending traces via OTLP
 func WithSpanExporterEndpoint(url string) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.SpanExporterEndpoint = url
 	}
 }
 
 // WithServiceName configures a "service.name" resource label
 func WithServiceName(name string) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.ServiceName = name
 	}
 }
 
 // WithServiceVersion configures a "service.version" resource label
 func WithServiceVersion(version string) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.ServiceVersion = version
 	}
 }
 
 // WithLogLevel configures the logging level for OpenTelemetry
 func WithLogLevel(loglevel string) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.LogLevel = loglevel
 	}
 }
@@ -83,7 +83,7 @@ func WithLogLevel(loglevel string) Option {
 // WithSpanExporterInsecure permits connecting to the
 // trace endpoint without a certificate
 func WithSpanExporterInsecure(insecure bool) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.SpanExporterEndpointInsecure = insecure
 	}
 }
@@ -91,21 +91,21 @@ func WithSpanExporterInsecure(insecure bool) Option {
 // WithMetricExporterInsecure permits connecting to the
 // metric endpoint without a certificate
 func WithMetricExporterInsecure(insecure bool) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.MetricExporterEndpointInsecure = insecure
 	}
 }
 
 // WithResourceAttributes configures attributes on the resource
 func WithResourceAttributes(attributes map[string]string) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.resourceAttributes = attributes
 	}
 }
 
 // WithPropagators configures propagators
 func WithPropagators(propagators []string) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.Propagators = propagators
 	}
 }
@@ -113,7 +113,7 @@ func WithPropagators(propagators []string) Option {
 // Configures a global error handler to be used throughout an OpenTelemetry instrumented project.
 // See "go.opentelemetry.io/otel/api/global"
 func WithErrorHandler(handler otel.ErrorHandler) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.errorHandler = handler
 	}
 }
@@ -124,7 +124,7 @@ type Logger interface {
 }
 
 func WithLogger(logger Logger) Option {
-	return func(c *LauncherConfig) {
+	return func(c *Config) {
 		c.logger = logger
 	}
 }
@@ -152,7 +152,7 @@ var (
 	defaultSpanExporterEndpoint = "ingest.lightstep.com:443"
 )
 
-type LauncherConfig struct {
+type Config struct {
 	SpanExporterEndpoint           string   `env:"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT,default=ingest.lightstep.com:443"`
 	SpanExporterEndpointInsecure   bool     `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
 	ServiceName                    string   `env:"LS_SERVICE_NAME"`
@@ -168,7 +168,7 @@ type LauncherConfig struct {
 	errorHandler                   otel.ErrorHandler
 }
 
-func validateConfiguration(c LauncherConfig) error {
+func validateConfiguration(c Config) error {
 	if len(c.ServiceName) == 0 {
 		serviceNameSet := false
 		for _, kv := range c.Resource.Attributes() {
@@ -195,8 +195,8 @@ func validateConfiguration(c LauncherConfig) error {
 	return nil
 }
 
-func newConfig(opts ...Option) LauncherConfig {
-	var c LauncherConfig
+func newConfig(opts ...Option) Config {
+	var c Config
 	if err := envconfig.Process(context.Background(), &c); err != nil {
 		log.Fatal(err)
 	}
@@ -217,7 +217,7 @@ type Launcher struct {
 }
 
 // configurePropagators configures B3 propagation by default
-func configurePropagators(c *LauncherConfig) error {
+func configurePropagators(c *Config) error {
 	propagatorsMap := map[string]propagation.HTTPPropagator{
 		"b3": apitrace.B3{},
 		"cc": correlation.CorrelationContext{},
@@ -241,7 +241,7 @@ func configurePropagators(c *LauncherConfig) error {
 	return nil
 }
 
-func newResource(c *LauncherConfig) *resource.Resource {
+func newResource(c *Config) *resource.Resource {
 	// workaround until the following change is released
 	// https://github.com/open-telemetry/opentelemetry-go/pull/1042
 	reset := false
