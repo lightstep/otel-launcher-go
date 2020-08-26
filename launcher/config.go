@@ -156,6 +156,10 @@ func (l *defaultHandler) Handle(err error) {
 }
 
 var (
+	// Note: these values should match the defaults used in `env` tags for LauncherConfig fields.
+	// Note: the MetricExporterEndpoint currently defaults to "".  When LS is ready for OTLP metrics
+	// we'll set this to `defaultMetricExporterEndpoint`.
+
 	defaultSpanExporterEndpoint   = "ingest.lightstep.com:443"
 	defaultMetricExporterEndpoint = "ingest.lightstep.com:443"
 )
@@ -165,7 +169,7 @@ type LauncherConfig struct {
 	SpanExporterEndpointInsecure   bool     `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
 	ServiceName                    string   `env:"LS_SERVICE_NAME"`
 	ServiceVersion                 string   `env:"LS_SERVICE_VERSION,default=unknown"`
-	MetricExporterEndpoint         string   `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT,default=ingest.lightstep.com:443/metrics"`
+	MetricExporterEndpoint         string   `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT"`
 	MetricExporterEndpointInsecure bool     `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
 	AccessToken                    string   `env:"LS_ACCESS_TOKEN"`
 	LogLevel                       string   `env:"OTEL_LOG_LEVEL,default=info"`
@@ -178,6 +182,10 @@ type LauncherConfig struct {
 }
 
 func checkEndpointDefault(value, defValue string) error {
+	if value == "" {
+		// The endpoint is disabled.
+		return nil
+	}
 	if value == defValue {
 		return fmt.Errorf("invalid configuration: access token missing, must be set when reporting to %s. Set LS_ACCESS_TOKEN env var or configure WithAccessToken in code", value)
 	}
@@ -316,6 +324,10 @@ func newExporter(accessToken, endpoint string, insecure bool) (*otlp.Exporter, e
 }
 
 func setupTracing(c LauncherConfig) (func() error, error) {
+	if c.SpanExporterEndpoint == "" {
+		c.logger.Debugf("tracing is disabled by configuration: no endpoint set")
+		return nil, nil
+	}
 	spanExporter, err := newExporter(c.AccessToken, c.SpanExporterEndpoint, c.SpanExporterEndpointInsecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create span exporter: %w", err)
@@ -344,6 +356,10 @@ func setupTracing(c LauncherConfig) (func() error, error) {
 type setupFunc func(LauncherConfig) (func() error, error)
 
 func setupMetrics(c LauncherConfig) (func() error, error) {
+	if c.MetricExporterEndpoint == "" {
+		c.logger.Debugf("metrics are disabled by configuration: no endpoint set")
+		return nil, nil
+	}
 	metricExporter, err := newExporter(c.AccessToken, c.MetricExporterEndpoint, c.MetricExporterEndpointInsecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metric exporter: %w", err)
@@ -420,13 +436,15 @@ func ConfigureOpentelemetry(opts ...Option) Launcher {
 			c.logger.Fatalf(err.Error())
 			continue
 		}
-		ls.shutdownFuncs = append(ls.shutdownFuncs, shutdown)
+		if shutdown != nil {
+			ls.shutdownFuncs = append(ls.shutdownFuncs, shutdown)
+		}
 	}
 
 	return ls
 }
 
-func (ls *Launcher) Shutdown() {
+func (ls Launcher) Shutdown() {
 	for _, shutdown := range ls.shutdownFuncs {
 		if err := shutdown(); err != nil {
 			log.Fatalf("failed to stop exporter: %v", err)
