@@ -107,12 +107,26 @@ func TestInvalidMissingAccessToken(t *testing.T) {
 	}
 }
 
-func TestInvalidAccessToken(t *testing.T) {
+func TestInvalidTraceAccessToken(t *testing.T) {
 	logger := &testLogger{output: []string{}}
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
 		WithSpanExporterEndpoint("test123"),
+		WithAccessToken("1234"),
+	)
+	defer lsOtel.Shutdown()
+
+	logger.requireContains(t, expectedAccessTokenError)
+}
+
+func TestInvalidMetricAccessToken(t *testing.T) {
+	logger := &testLogger{output: []string{}}
+	lsOtel := ConfigureOpentelemetry(
+		WithLogger(logger),
+		WithServiceName("test-service"),
+		WithSpanExporterEndpoint(""),
+		WithMetricExporterEndpoint("test123"),
 		WithAccessToken("1234"),
 	)
 	defer lsOtel.Shutdown()
