@@ -110,17 +110,24 @@ func testInvalidMissingAccessToken(t *testing.T, opts ...Option) {
 }
 
 func TestInvalidMissingDefaultAccessToken(t *testing.T) {
-	testInvalidMissingAccessToken(t)
+	testInvalidMissingAccessToken(
+		t,
+		WithAccessToken(""),
+	)
 }
 
 func TestInvalidTraceDefaultAccessToken(t *testing.T) {
 	testInvalidMissingAccessToken(t,
+		WithAccessToken(""),
 		WithSpanExporterEndpoint(DefaultSpanExporterEndpoint),
+		WithMetricExporterEndpoint("127.0.0.1:4000"),
 	)
 }
 
 func TestInvalidMetricDefaultAccessToken(t *testing.T) {
 	testInvalidMissingAccessToken(t,
+		WithAccessToken(""),
+		WithSpanExporterEndpoint("127.0.0.1:4000"),
 		WithMetricExporterEndpoint(DefaultMetricExporterEndpoint))
 }
 
@@ -139,7 +146,7 @@ func testInvalidAccessToken(t *testing.T, opts ...Option) {
 
 func TestInvalidTraceAccessTokenLength(t *testing.T) {
 	testInvalidAccessToken(t,
-		WithSpanExporterEndpoint("test123:4000"),
+		WithSpanExporterEndpoint("127.0.0.1:4000"),
 		WithAccessToken("1234"),
 	)
 }
@@ -147,7 +154,7 @@ func TestInvalidTraceAccessTokenLength(t *testing.T) {
 func TestInvalidMetricAccessTokenLength(t *testing.T) {
 	testInvalidAccessToken(t,
 		WithSpanExporterEndpoint(""),
-		WithMetricExporterEndpoint("test123:4000"),
+		WithMetricExporterEndpoint("127.0.0.1:4000"),
 		WithAccessToken("1234"),
 	)
 }
@@ -231,8 +238,8 @@ func TestInvalidMetricsPushInterval(t *testing.T) {
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
-		WithSpanExporterEndpoint("test123:4000"),
-		WithMetricExporterEndpoint("test123:4000"),
+		WithSpanExporterEndpoint("127.0.0.1:4000"),
+		WithMetricExporterEndpoint("127.0.0.1:4000"),
 	)
 	defer lsOtel.Shutdown()
 
