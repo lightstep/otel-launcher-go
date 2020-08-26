@@ -54,6 +54,7 @@ func main() {
 	recordException(ctx)
 	createChild(ctx, tracer)
 	setResourceAttributes()
+	setCorrelation()
 
 	fmt.Println("OpenTelemetry example")
 }
