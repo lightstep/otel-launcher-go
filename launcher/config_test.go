@@ -28,20 +28,49 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
+const (
+	expectedAccessTokenError       = "invalid configuration: access token length incorrect. Ensure token is set correctly"
+	expectedTracingDisabledMessage = "tracing is disabled by configuration: no endpoint set"
+	expectedMetricsDisabledMessage = "metrics are disabled by configuration: no endpoint set"
+)
+
 type testLogger struct {
 	output []string
 }
 
-func (t *testLogger) addOutput(output string) {
-	t.output = append(t.output, output)
+func (logger *testLogger) addOutput(output string) {
+	logger.output = append(logger.output, output)
 }
 
-func (t *testLogger) Fatalf(format string, v ...interface{}) {
-	t.addOutput(fmt.Sprintf(format, v...))
+func (logger *testLogger) Fatalf(format string, v ...interface{}) {
+	logger.addOutput(fmt.Sprintf(format, v...))
 }
 
-func (t *testLogger) Debugf(format string, v ...interface{}) {
-	t.addOutput(fmt.Sprintf(format, v...))
+func (logger *testLogger) Debugf(format string, v ...interface{}) {
+	logger.addOutput(fmt.Sprintf(format, v...))
+}
+
+func (logger *testLogger) requireContains(t *testing.T, expected string) {
+	for _, output := range logger.output {
+		if strings.Contains(output, expected) {
+			return
+		}
+	}
+
+	t.Errorf("\nString unexpectedly not found: %v\nIn: %v", expected, logger.output)
+}
+
+func (logger *testLogger) requireNotContains(t *testing.T, expected string) {
+	for _, output := range logger.output {
+		if strings.Contains(output, expected) {
+			t.Errorf("\nString unexpectedly found: %v\nIn: %v", expected, logger.output)
+			return
+		}
+	}
+}
+
+func (logger *testLogger) reset() {
+	logger.output = nil
 }
 
 type testErrorHandler struct {
@@ -88,10 +117,20 @@ func TestInvalidAccessToken(t *testing.T) {
 	)
 	defer lsOtel.Shutdown()
 
-	expected := "invalid configuration: access token length incorrect. Ensure token is set correctly"
-	if !strings.Contains(logger.output[0], expected) {
-		t.Errorf("\nString not found: %v\nIn: %v", expected, logger.output[0])
-	}
+	logger.requireContains(t, expectedAccessTokenError)
+}
+
+func TestSpanEndpointSetEmpty(t *testing.T) {
+	logger := &testLogger{output: []string{}}
+	lsOtel := ConfigureOpentelemetry(
+		WithLogger(logger),
+		WithServiceName("test-service"),
+		WithSpanExporterEndpoint(""),
+	)
+	defer lsOtel.Shutdown()
+
+	logger.requireContains(t, expectedTracingDisabledMessage)
+	logger.requireNotContains(t, expectedAccessTokenError)
 }
 
 func TestValidConfig(t *testing.T) {
@@ -103,20 +142,20 @@ func TestValidConfig(t *testing.T) {
 		WithErrorHandler(&testErrorHandler{}),
 	)
 	defer lsOtel.Shutdown()
-	expected := 0
-	if len(logger.output) > expected {
-		t.Errorf("\nExpected: %v\ngot: %v\n%v", expected, len(logger.output), logger.output)
-	}
+
+	logger.requireContains(t, expectedMetricsDisabledMessage)
+	logger.reset()
 
 	lsOtel = ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
+		WithMetricExporterEndpoint("localhost:443"),
 		WithSpanExporterEndpoint("localhost:443"),
 	)
 	defer lsOtel.Shutdown()
-	expected = 0
-	if len(logger.output) > expected {
-		t.Errorf("\nExpected: %v\ngot: %v", expected, len(logger.output))
+
+	if len(logger.output) > 0 {
+		t.Errorf("\nExpected: no logs\ngot: %v", logger.output)
 	}
 }
 
@@ -162,7 +201,7 @@ func TestDefaultConfig(t *testing.T) {
 		ServiceVersion:                 "unknown",
 		SpanExporterEndpoint:           "ingest.lightstep.com:443",
 		SpanExporterEndpointInsecure:   false,
-		MetricExporterEndpoint:         "ingest.lightstep.com:443/metrics",
+		MetricExporterEndpoint:         "",
 		MetricExporterEndpointInsecure: false,
 		AccessToken:                    "",
 		LogLevel:                       "info",
