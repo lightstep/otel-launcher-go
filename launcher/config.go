@@ -124,6 +124,14 @@ func WithErrorHandler(handler otel.ErrorHandler) Option {
 	}
 }
 
+// WithMetricReportingPeriod configures the metric reporting period,
+// how often the controller collects and exports metric data.
+func WithMetricReportingPeriod(p time.Duration) Option {
+	return func(c *Config) {
+		c.MetricReportingPeriod = fmt.Sprint(p)
+	}
+}
+
 type Logger interface {
 	Fatalf(format string, v ...interface{})
 	Debugf(format string, v ...interface{})
@@ -372,10 +380,13 @@ func setupMetrics(c Config) (func() error, error) {
 	if c.MetricReportingPeriod != "" {
 		period, err = time.ParseDuration(c.MetricReportingPeriod)
 		if err != nil {
-			return nil, fmt.Errorf("failed to parse metric reporting period: %v", err)
+			return nil, fmt.Errorf("invalid metric reporting period: %v", err)
+		}
+		if period <= 0 {
+
+			return nil, fmt.Errorf("invalid metric reporting period: %v", c.MetricReportingPeriod)
 		}
 	}
-
 	pusher := controller.New(
 		processor.New(
 			selector.NewWithInexpensiveDistribution(),

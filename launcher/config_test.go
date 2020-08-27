@@ -19,6 +19,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/api/correlation"
@@ -231,7 +232,7 @@ func TestInvalidEnvironment(t *testing.T) {
 	unsetEnvironment()
 }
 
-func TestInvalidMetricsPushInterval(t *testing.T) {
+func TestInvalidMetricsPushIntervalEnv(t *testing.T) {
 	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_PERIOD", "300million")
 
 	logger := &testLogger{}
@@ -243,7 +244,22 @@ func TestInvalidMetricsPushInterval(t *testing.T) {
 	)
 	defer lsOtel.Shutdown()
 
-	logger.requireContains(t, "setup error: failed to parse metric reporting period")
+	logger.requireContains(t, "setup error: invalid metric reporting period")
+	unsetEnvironment()
+}
+
+func TestInvalidMetricsPushIntervalConfig(t *testing.T) {
+	logger := &testLogger{}
+	lsOtel := ConfigureOpentelemetry(
+		WithLogger(logger),
+		WithServiceName("test-service"),
+		WithSpanExporterEndpoint("127.0.0.1:4000"),
+		WithMetricExporterEndpoint("127.0.0.1:4000"),
+		WithMetricReportingPeriod(-time.Second),
+	)
+	defer lsOtel.Shutdown()
+
+	logger.requireContains(t, "setup error: invalid metric reporting period")
 	unsetEnvironment()
 }
 
