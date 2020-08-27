@@ -42,12 +42,15 @@ Additional options
 |WithServiceVersion         |LS_SERVICE_VERSION                 |n       |unknown                         |
 |WithSpanExporterEndpoint   |OTEL_EXPORTER_OTLP_SPAN_ENDPOINT   |n       |ingest.lightstep.com:443        |
 |WithSpanExporterInsecure   |OTEL_EXPORTER_OTLP_SPAN_INSECURE   |n       |false                           |
-|WithMetricExporterEndpoint |OTEL_EXPORTER_OTLP_METRIC_ENDPOINT |n       |ingest.lightstep.com:443/metrics|
+|WithMetricExporterEndpoint |OTEL_EXPORTER_OTLP_METRIC_ENDPOINT |n       |-                               |
 |WithMetricExporterInsecure |OTEL_EXPORTER_OTLP_METRIC_INSECURE |n       |false                           |
 |WithAccessToken            |LS_ACCESS_TOKEN                    |n       |-                               |
 |WithLogLevel               |OTEL_LOG_LEVEL                     |n       |info                            |
 |WithPropagators            |OTEL_PROPAGATORS                   |n       |b3                              |
 |WithResourceAttributes     |OTEL_RESOURCE_ATTRIBUTES           |n       |-                               |
+|WithMetricReportingPeriod  |OTEL_EXPORTER_OTLP_METRIC_PERIOD   |n       |30s                             |
+
+Note that metrics functionality is disabled by default.  Metrics funcionality can be enabled by setting OTEL_EXPORTER_OTLP_METRIC_ENDPOINT to a valid endpoint (e.g. ingest.lightstep.com:443/metrics).
 
 ### Principles behind Launcher
 
@@ -58,6 +61,8 @@ One of the key principles behind putting together Launcher is to make lives of O
 ##### Opinionated configuration
 
 Although we understand that not all languages use the same format for configuration, we find this annoying. We decided that Launcher would allow users to use the same configuration file across all languages. In this case, we settled for `YAML` as the format, which was inspired by the OpenTelemetry Collector.
+
+When OpenTelemetry Metrics are enabled, Host and Runtime metrics instrumentation are started automatically.
 
 ##### Validation
 
