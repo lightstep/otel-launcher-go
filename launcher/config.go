@@ -294,6 +294,7 @@ func newResource(c *Config) *resource.Resource {
 	if reset {
 		os.Unsetenv("OTEL_RESOURCE_LABELS")
 	}
+
 	attributes := []label.KeyValue{
 		label.String(conventions.AttributeTelemetrySDKName, "launcher"),
 		label.String(conventions.AttributeTelemetrySDKLanguage, "go"),
@@ -306,6 +307,10 @@ func newResource(c *Config) *resource.Resource {
 
 	if len(c.ServiceVersion) > 0 {
 		attributes = append(attributes, label.String(conventions.AttributeServiceVersion, c.ServiceVersion))
+	}
+
+	if hostname, err := os.Hostname(); err == nil {
+		attributes = append(attributes, label.String(conventions.AttributeHostName, hostname))
 	}
 
 	for key, value := range c.resourceAttributes {

@@ -294,6 +294,7 @@ func TestDefaultConfig(t *testing.T) {
 	)
 
 	attributes := []label.KeyValue{
+		label.String("host.name", host()),
 		label.String("service.version", "unknown"),
 		label.String("telemetry.sdk.name", "launcher"),
 		label.String("telemetry.sdk.language", "go"),
@@ -328,6 +329,7 @@ func TestEnvironmentVariables(t *testing.T) {
 	)
 
 	attributes := []label.KeyValue{
+		label.String("host.name", host()),
 		label.String("service.name", "test-service-name"),
 		label.String("service.version", "test-service-version"),
 		label.String("telemetry.sdk.name", "launcher"),
@@ -374,6 +376,7 @@ func TestConfigurationOverrides(t *testing.T) {
 	)
 
 	attributes := []label.KeyValue{
+		label.String("host.name", host()),
 		label.String("service.name", "override-service-name"),
 		label.String("service.version", "override-service-version"),
 		label.String("telemetry.sdk.name", "launcher"),
@@ -446,6 +449,11 @@ func TestConfigurePropagators(t *testing.T) {
 	}
 }
 
+func host() string {
+	host, _ := os.Hostname()
+	return host
+}
+
 func TestConfigureResourcesAttributes(t *testing.T) {
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "label1=value1,label2=value2")
 	config := Config{
@@ -454,6 +462,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 	}
 	resource := newResource(&config)
 	expected := []label.KeyValue{
+		label.String("host.name", host()),
 		label.String("label1", "value1"),
 		label.String("label2", "value2"),
 		label.String("service.name", "test-service"),
@@ -471,6 +480,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 	}
 	resource = newResource(&config)
 	expected = []label.KeyValue{
+		label.String("host.name", host()),
 		label.String("service.name", "test-service"),
 		label.String("service.version", "test-version"),
 		label.String("telemetry.sdk.language", "go"),
@@ -486,6 +496,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 	}
 	resource = newResource(&config)
 	expected = []label.KeyValue{
+		label.String("host.name", host()),
 		label.String("service.name", "test-service-b"),
 		label.String("service.version", "test-version"),
 		label.String("telemetry.sdk.language", "go"),
