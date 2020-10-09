@@ -344,14 +344,12 @@ func setupTracing(c Config) (func() error, error) {
 		return nil, fmt.Errorf("failed to create span exporter: %v", err)
 	}
 
+	bsp := trace.NewBatchSpanProcessor(spanExporter)
 	tp := trace.NewTracerProvider(
 		trace.WithConfig(trace.Config{DefaultSampler: trace.AlwaysSample()}),
-		trace.WithSyncer(spanExporter),
+		trace.WithSpanProcessor(bsp),
 		trace.WithResource(c.Resource),
 	)
-	if err != nil {
-		return nil, err
-	}
 
 	if err = configurePropagators(&c); err != nil {
 		return nil, err
@@ -360,6 +358,7 @@ func setupTracing(c Config) (func() error, error) {
 	global.SetTracerProvider(tp)
 
 	return func() error {
+		bsp.Shutdown()
 		return spanExporter.Shutdown(context.Background())
 	}, nil
 }
