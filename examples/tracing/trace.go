@@ -22,7 +22,7 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/launcher"
 	"go.opentelemetry.io/collector/translator/conventions"
-	"go.opentelemetry.io/otel/api/correlation"
+	"go.opentelemetry.io/otel/api/baggage"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/codes"
@@ -54,7 +54,7 @@ func main() {
 	recordException(ctx)
 	createChild(ctx, tracer)
 	setResourceAttributes()
-	setCorrelation()
+	setBaggage()
 
 	fmt.Println("OpenTelemetry example")
 }
@@ -103,20 +103,20 @@ func setResourceAttributes() {
 		label.String(conventions.AttributeServiceVersion, "1.2.3"),
 		label.String(conventions.AttributeHostName, host),
 	}
-	tp, _ := sdktrace.NewProvider(
+	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithResource(resource.New(attributes...)),
 	)
-	global.SetTraceProvider(tp)
+	global.SetTracerProvider(tp)
 }
 
-// example of setting a correlation
-func setCorrelation() {
-	ctx := correlation.NewContext(context.Background(),
+// example of setting baggage
+func setBaggage() {
+	ctx := baggage.NewContext(context.Background(),
 		label.String("keyone", "foo1"),
 		label.String("keytwo", "bar1"),
 	)
-	correlations := correlation.MapFromContext(ctx)
-	correlations.Foreach(func(kv label.KeyValue) bool {
+	bags := baggage.MapFromContext(ctx)
+	bags.Foreach(func(kv label.KeyValue) bool {
 		fmt.Printf("key %s: %s\n", kv.Key, kv.Value.AsString())
 		return true
 	})
