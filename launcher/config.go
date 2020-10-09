@@ -291,6 +291,14 @@ func newResource(c *Config) *resource.Resource {
 	}
 	detector := resource.FromEnv{}
 	r, _ := detector.Detect(context.Background())
+
+	hostnameSet := false
+	for iter := r.Iter(); iter.Next(); {
+		if iter.Attribute().Key == conventions.AttributeHostName {
+			hostnameSet = true
+		}
+	}
+
 	if reset {
 		os.Unsetenv("OTEL_RESOURCE_LABELS")
 	}
@@ -309,13 +317,21 @@ func newResource(c *Config) *resource.Resource {
 		attributes = append(attributes, label.String(conventions.AttributeServiceVersion, c.ServiceVersion))
 	}
 
-	if hostname, err := os.Hostname(); err == nil {
-		attributes = append(attributes, label.String(conventions.AttributeHostName, hostname))
-	}
-
 	for key, value := range c.resourceAttributes {
 		if len(value) > 0 {
+			if key == conventions.AttributeHostName {
+				hostnameSet = true
+			}
 			attributes = append(attributes, label.String(key, value))
+		}
+	}
+
+	if !hostnameSet {
+		hostname, err := os.Hostname()
+		if err != nil {
+			c.logger.Debugf("host.name not set: %v", err)
+		} else {
+			attributes = append(attributes, label.String(conventions.AttributeHostName, hostname))
 		}
 	}
 
