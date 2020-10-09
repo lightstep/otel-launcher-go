@@ -349,9 +349,6 @@ func setupTracing(c Config) (func() error, error) {
 		trace.WithSyncer(spanExporter),
 		trace.WithResource(c.Resource),
 	)
-	if err != nil {
-		return nil, err
-	}
 
 	if err = configurePropagators(&c); err != nil {
 		return nil, err
