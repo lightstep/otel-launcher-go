@@ -294,7 +294,7 @@ func newResource(c *Config) *resource.Resource {
 
 	hostnameSet := false
 	for iter := r.Iter(); iter.Next(); {
-		if iter.Attribute().Key == conventions.AttributeHostName {
+		if iter.Attribute().Key == conventions.AttributeHostName && len(iter.Attribute().Value.Emit()) > 0 {
 			hostnameSet = true
 		}
 	}
@@ -329,7 +329,7 @@ func newResource(c *Config) *resource.Resource {
 	if !hostnameSet {
 		hostname, err := os.Hostname()
 		if err != nil {
-			c.logger.Debugf("host.name not set: %v", err)
+			c.logger.Debugf("unable to set host.name. Set OTEL_RESOURCE_ATTRIBUTES=\"host.name=<your_host_name>\" env var or configure WithResourceAttributes in code: %v", err)
 		} else {
 			attributes = append(attributes, label.String(conventions.AttributeHostName, hostname))
 		}
