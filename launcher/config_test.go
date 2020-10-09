@@ -272,7 +272,8 @@ func TestDebugEnabled(t *testing.T) {
 		WithSpanExporterEndpoint("localhost:443"),
 		WithLogLevel("debug"),
 		WithResourceAttributes(map[string]string{
-			"attr1": "val1",
+			"attr1":     "val1",
+			"host.name": "host456",
 		}),
 	)
 	defer lsOtel.Shutdown()
@@ -280,9 +281,11 @@ func TestDebugEnabled(t *testing.T) {
 	assert.Contains(t, output, "debug logging enabled")
 	assert.Contains(t, output, "test-service")
 	assert.Contains(t, output, "access-token-123")
-	assert.Contains(t, output, "ocalhost:443")
+	assert.Contains(t, output, "localhost:443")
 	assert.Contains(t, output, "attr1")
 	assert.Contains(t, output, "val1")
+	assert.Contains(t, output, "host.name")
+	assert.Contains(t, output, "host456")
 }
 
 func TestDefaultConfig(t *testing.T) {
@@ -294,6 +297,7 @@ func TestDefaultConfig(t *testing.T) {
 	)
 
 	attributes := []label.KeyValue{
+		label.String("host.name", host()),
 		label.String("service.version", "unknown"),
 		label.String("telemetry.sdk.name", "launcher"),
 		label.String("telemetry.sdk.language", "go"),
@@ -328,6 +332,7 @@ func TestEnvironmentVariables(t *testing.T) {
 	)
 
 	attributes := []label.KeyValue{
+		label.String("host.name", host()),
 		label.String("service.name", "test-service-name"),
 		label.String("service.version", "test-service-version"),
 		label.String("telemetry.sdk.name", "launcher"),
@@ -374,6 +379,7 @@ func TestConfigurationOverrides(t *testing.T) {
 	)
 
 	attributes := []label.KeyValue{
+		label.String("host.name", host()),
 		label.String("service.name", "override-service-name"),
 		label.String("service.version", "override-service-version"),
 		label.String("telemetry.sdk.name", "launcher"),
@@ -446,6 +452,11 @@ func TestConfigurePropagators(t *testing.T) {
 	}
 }
 
+func host() string {
+	host, _ := os.Hostname()
+	return host
+}
+
 func TestConfigureResourcesAttributes(t *testing.T) {
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "label1=value1,label2=value2")
 	config := Config{
@@ -454,6 +465,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 	}
 	resource := newResource(&config)
 	expected := []label.KeyValue{
+		label.String("host.name", host()),
 		label.String("label1", "value1"),
 		label.String("label2", "value2"),
 		label.String("service.name", "test-service"),
@@ -471,6 +483,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 	}
 	resource = newResource(&config)
 	expected = []label.KeyValue{
+		label.String("host.name", host()),
 		label.String("service.name", "test-service"),
 		label.String("service.version", "test-version"),
 		label.String("telemetry.sdk.language", "go"),
@@ -479,13 +492,14 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 	}
 	assert.Equal(t, expected, resource.Attributes())
 
-	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-b")
+	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-b,host.name=host123")
 	config = Config{
 		ServiceName:    "test-service-b",
 		ServiceVersion: "test-version",
 	}
 	resource = newResource(&config)
 	expected = []label.KeyValue{
+		label.String("host.name", "host123"),
 		label.String("service.name", "test-service-b"),
 		label.String("service.version", "test-version"),
 		label.String("telemetry.sdk.language", "go"),
@@ -505,6 +519,25 @@ func TestServiceNameViaResourceAttributes(t *testing.T) {
 	if strings.Contains(logger.output[0], expected) {
 		t.Errorf("\nString found: %v\nIn: %v", expected, logger.output[0])
 	}
+}
+
+func TestEmptyHostnameDefaultsToOsHostname(t *testing.T) {
+	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "host.name=")
+	logger := &testLogger{}
+	lsOtel := ConfigureOpentelemetry(
+		WithLogger(logger),
+		WithServiceName("test-service"),
+		WithSpanExporterEndpoint("localhost:443"),
+		WithLogLevel("debug"),
+		WithResourceAttributes(map[string]string{
+			"attr1":     "val1",
+			"host.name": "",
+		}),
+	)
+	defer lsOtel.Shutdown()
+	output := strings.Join(logger.output[:], ",")
+	assert.Contains(t, output, "host.name")
+	assert.Contains(t, output, host())
 }
 
 func setEnvironment() {
