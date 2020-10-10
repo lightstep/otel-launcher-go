@@ -291,9 +291,18 @@ func newResource(c *Config) *resource.Resource {
 	}
 	detector := resource.FromEnv{}
 	r, _ := detector.Detect(context.Background())
+
+	hostnameSet := false
+	for iter := r.Iter(); iter.Next(); {
+		if iter.Attribute().Key == conventions.AttributeHostName && len(iter.Attribute().Value.Emit()) > 0 {
+			hostnameSet = true
+		}
+	}
+
 	if reset {
 		os.Unsetenv("OTEL_RESOURCE_LABELS")
 	}
+
 	attributes := []label.KeyValue{
 		label.String(conventions.AttributeTelemetrySDKName, "launcher"),
 		label.String(conventions.AttributeTelemetrySDKLanguage, "go"),
@@ -310,7 +319,19 @@ func newResource(c *Config) *resource.Resource {
 
 	for key, value := range c.resourceAttributes {
 		if len(value) > 0 {
+			if key == conventions.AttributeHostName {
+				hostnameSet = true
+			}
 			attributes = append(attributes, label.String(key, value))
+		}
+	}
+
+	if !hostnameSet {
+		hostname, err := os.Hostname()
+		if err != nil {
+			c.logger.Debugf("unable to set host.name. Set OTEL_RESOURCE_ATTRIBUTES=\"host.name=<your_host_name>\" env var or configure WithResourceAttributes in code: %v", err)
+		} else {
+			attributes = append(attributes, label.String(conventions.AttributeHostName, hostname))
 		}
 	}
 
