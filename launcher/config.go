@@ -27,11 +27,11 @@ import (
 	"go.opentelemetry.io/collector/translator/conventions"
 	hostMetrics "go.opentelemetry.io/contrib/instrumentation/host"
 	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
+	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/correlation"
+	"go.opentelemetry.io/otel/api/baggage"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/propagation"
-	apitrace "go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/label"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/push"
@@ -259,8 +259,8 @@ type Launcher struct {
 // configurePropagators configures B3 propagation by default
 func configurePropagators(c *Config) error {
 	propagatorsMap := map[string]propagation.HTTPPropagator{
-		"b3": apitrace.B3{},
-		"cc": correlation.CorrelationContext{},
+		"b3": b3.B3{},
+		"cc": baggage.Baggage{},
 	}
 	var extractors []propagation.HTTPExtractor
 	var injectors []propagation.HTTPInjector
@@ -365,23 +365,20 @@ func setupTracing(c Config) (func() error, error) {
 		return nil, fmt.Errorf("failed to create span exporter: %v", err)
 	}
 
-	tp, err := trace.NewProvider(
+	tp := trace.NewTracerProvider(
 		trace.WithConfig(trace.Config{DefaultSampler: trace.AlwaysSample()}),
 		trace.WithSyncer(spanExporter),
 		trace.WithResource(c.Resource),
 	)
-	if err != nil {
-		return nil, err
-	}
 
 	if err = configurePropagators(&c); err != nil {
 		return nil, err
 	}
 
-	global.SetTraceProvider(tp)
+	global.SetTracerProvider(tp)
 
 	return func() error {
-		return spanExporter.Stop()
+		return spanExporter.Shutdown(context.Background())
 	}, nil
 }
 
@@ -420,7 +417,7 @@ func setupMetrics(c Config) (func() error, error) {
 
 	pusher.Start()
 
-	provider := pusher.Provider()
+	provider := pusher.MeterProvider()
 
 	if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(provider)); err != nil {
 		return nil, fmt.Errorf("failed to start runtime metrics: %v", err)
@@ -433,7 +430,7 @@ func setupMetrics(c Config) (func() error, error) {
 	global.SetMeterProvider(provider)
 	return func() error {
 		pusher.Stop()
-		return metricExporter.Stop()
+		return metricExporter.Shutdown(context.Background())
 	}, nil
 }
 

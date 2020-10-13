@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/otel/api/correlation"
+	"go.opentelemetry.io/contrib/propagators/b3"
+	"go.opentelemetry.io/otel/api/baggage"
 	"go.opentelemetry.io/otel/api/global"
-	apitrace "go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
@@ -417,9 +417,9 @@ func TestConfigurePropagators(t *testing.T) {
 	extractors := global.Propagators().HTTPExtractors()
 	injectors := global.Propagators().HTTPInjectors()
 	assert.Len(t, extractors, 1)
-	assert.IsType(t, apitrace.B3{}, extractors[0])
+	assert.IsType(t, b3.B3{}, extractors[0])
 	assert.Len(t, injectors, 1)
-	assert.IsType(t, apitrace.B3{}, injectors[0])
+	assert.IsType(t, b3.B3{}, injectors[0])
 
 	lsOtel = ConfigureOpentelemetry(
 		WithLogger(logger),
@@ -431,11 +431,11 @@ func TestConfigurePropagators(t *testing.T) {
 	extractors = global.Propagators().HTTPExtractors()
 	injectors = global.Propagators().HTTPInjectors()
 	assert.Len(t, extractors, 2)
-	assert.IsType(t, apitrace.B3{}, extractors[0])
-	assert.IsType(t, correlation.CorrelationContext{}, extractors[1])
+	assert.IsType(t, b3.B3{}, extractors[0])
+	assert.IsType(t, baggage.Baggage{}, extractors[1])
 	assert.Len(t, injectors, 2)
-	assert.IsType(t, apitrace.B3{}, injectors[0])
-	assert.IsType(t, correlation.CorrelationContext{}, injectors[1])
+	assert.IsType(t, b3.B3{}, injectors[0])
+	assert.IsType(t, baggage.Baggage{}, injectors[1])
 
 	logger = &testLogger{}
 	lsOtel = ConfigureOpentelemetry(
