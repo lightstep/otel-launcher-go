@@ -15,6 +15,7 @@
 package launcher
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -22,8 +23,7 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"go.opentelemetry.io/contrib/propagators/b3"
-	"go.opentelemetry.io/otel/api/baggage"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -405,7 +405,23 @@ func TestConfigurationOverrides(t *testing.T) {
 	assert.Equal(t, expected, config)
 }
 
+type TestCarrier struct {
+	values map[string]string
+}
+
+func (t TestCarrier) Get(key string) string {
+	return t.values[key]
+}
+
+func (t TestCarrier) Set(key string, value string) {
+	t.values[key] = value
+}
+
 func TestConfigurePropagators(t *testing.T) {
+	ctx := otel.ContextWithBaggageValues(context.Background(),
+		label.String("keyone", "foo1"),
+		label.String("keytwo", "bar1"),
+	)
 	unsetEnvironment()
 	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
@@ -414,12 +430,13 @@ func TestConfigurePropagators(t *testing.T) {
 		WithSpanExporterEndpoint("localhost:443"),
 	)
 	defer lsOtel.Shutdown()
-	extractors := global.Propagators().HTTPExtractors()
-	injectors := global.Propagators().HTTPInjectors()
-	assert.Len(t, extractors, 1)
-	assert.IsType(t, b3.B3{}, extractors[0])
-	assert.Len(t, injectors, 1)
-	assert.IsType(t, b3.B3{}, injectors[0])
+	ctx, finish := global.Tracer("ex.com/basic").Start(ctx, "foo")
+	defer finish.End()
+	carrier := TestCarrier{values: map[string]string{}}
+	prop := global.TextMapPropagator()
+	prop.Inject(ctx, carrier)
+	assert.Greater(t, len(carrier.Get("x-b3-traceid")), 0)
+	assert.Equal(t, "", carrier.Get("otcorrelations"))
 
 	lsOtel = ConfigureOpentelemetry(
 		WithLogger(logger),
@@ -428,14 +445,11 @@ func TestConfigurePropagators(t *testing.T) {
 		WithPropagators([]string{"b3", "cc"}),
 	)
 	defer lsOtel.Shutdown()
-	extractors = global.Propagators().HTTPExtractors()
-	injectors = global.Propagators().HTTPInjectors()
-	assert.Len(t, extractors, 2)
-	assert.IsType(t, b3.B3{}, extractors[0])
-	assert.IsType(t, baggage.Baggage{}, extractors[1])
-	assert.Len(t, injectors, 2)
-	assert.IsType(t, b3.B3{}, injectors[0])
-	assert.IsType(t, baggage.Baggage{}, injectors[1])
+	carrier = TestCarrier{values: map[string]string{}}
+	prop = global.TextMapPropagator()
+	prop.Inject(ctx, carrier)
+	assert.Greater(t, len(carrier.Get("x-b3-traceid")), 0)
+	assert.Equal(t, "keyone=foo1,keytwo=bar1", carrier.Get("otcorrelations"))
 
 	logger = &testLogger{}
 	lsOtel = ConfigureOpentelemetry(
