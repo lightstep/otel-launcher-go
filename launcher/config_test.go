@@ -449,7 +449,8 @@ func TestConfigurePropagators(t *testing.T) {
 	prop = global.TextMapPropagator()
 	prop.Inject(ctx, carrier)
 	assert.Greater(t, len(carrier.Get("x-b3-traceid")), 0)
-	assert.Equal(t, "keyone=foo1,keytwo=bar1", carrier.Get("otcorrelations"))
+	assert.Contains(t, carrier.Get("otcorrelations"), "keytwo=bar1")
+	assert.Contains(t, carrier.Get("otcorrelations"), "keyone=foo1")
 
 	logger = &testLogger{}
 	lsOtel = ConfigureOpentelemetry(
