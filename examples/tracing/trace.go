@@ -22,7 +22,7 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/launcher"
 	"go.opentelemetry.io/collector/translator/conventions"
-	"go.opentelemetry.io/otel/api/baggage"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/api/trace"
 	"go.opentelemetry.io/otel/codes"
@@ -68,7 +68,7 @@ func getSpan(ctx context.Context) {
 // example of adding an attribute to a span
 func addAttribute(ctx context.Context) {
 	span := trace.SpanFromContext(ctx)
-	span.SetAttribute("attr1", "value1")
+	span.SetAttributes(label.String("attr1", "value1"))
 }
 
 // example of adding an event to a span
@@ -84,7 +84,7 @@ func addEvent(ctx context.Context) {
 func recordException(ctx context.Context) {
 	span := trace.SpanFromContext(ctx)
 	span.RecordError(ctx, errors.New("exception has occurred"))
-	span.SetStatus(codes.Internal, "internal error")
+	span.SetStatus(codes.Error, "internal error")
 }
 
 // example of creating a child span
@@ -111,13 +111,13 @@ func setResourceAttributes() {
 
 // example of setting baggage
 func setBaggage() {
-	ctx := baggage.NewContext(context.Background(),
+	ctx := otel.ContextWithBaggageValues(context.Background(),
 		label.String("keyone", "foo1"),
 		label.String("keytwo", "bar1"),
 	)
-	bags := baggage.MapFromContext(ctx)
-	bags.Foreach(func(kv label.KeyValue) bool {
-		fmt.Printf("key %s: %s\n", kv.Key, kv.Value.AsString())
-		return true
-	})
+	bags := otel.Baggage(ctx)
+
+	for iter := bags.Iter(); iter.Next(); {
+		fmt.Printf("key %s: %s\n", iter.Label().Key, iter.Label().Value.AsString())
+	}
 }

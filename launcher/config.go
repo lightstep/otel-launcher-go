@@ -29,11 +29,10 @@ import (
 	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/baggage"
 	"go.opentelemetry.io/otel/api/global"
-	"go.opentelemetry.io/otel/api/propagation"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/propagators"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/push"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
@@ -258,25 +257,22 @@ type Launcher struct {
 
 // configurePropagators configures B3 propagation by default
 func configurePropagators(c *Config) error {
-	propagatorsMap := map[string]propagation.HTTPPropagator{
+	propagatorsMap := map[string]otel.TextMapPropagator{
 		"b3": b3.B3{},
-		"cc": baggage.Baggage{},
+		"cc": propagators.Baggage{},
 	}
-	var extractors []propagation.HTTPExtractor
-	var injectors []propagation.HTTPInjector
+	var props []otel.TextMapPropagator
 	for _, key := range c.Propagators {
 		prop := propagatorsMap[key]
 		if prop != nil {
-			extractors = append(extractors, prop)
-			injectors = append(injectors, prop)
+			props = append(props, prop)
 		}
 	}
-	if len(extractors) == 0 || len(injectors) == 0 {
+	if len(props) == 0 {
 		return fmt.Errorf("invalid configuration: unsupported propagators. Supported options: b3,cc")
 	}
-	global.SetPropagators(propagation.New(
-		propagation.WithExtractors(extractors...),
-		propagation.WithInjectors(injectors...),
+	global.SetTextMapPropagator(otel.NewCompositeTextMapPropagator(
+		props...,
 	))
 	return nil
 }
