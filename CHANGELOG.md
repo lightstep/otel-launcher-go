@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Update configuration for baggage propagator from `"cc"` to `"baggage"`
+
 ## 0.13.0
 
 - Update OpenTelemetry dependencies to 0.13.0 (#26)
