@@ -1,5 +1,7 @@
 ## Unreleased
 
+- Add support for `tracecontext` propagator (#32)
+
 ## 0.13.0
 
 - Update OpenTelemetry dependencies to 0.13.0 (#26)
