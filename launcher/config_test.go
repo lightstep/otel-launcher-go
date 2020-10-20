@@ -437,12 +437,13 @@ func TestConfigurePropagators(t *testing.T) {
 	prop.Inject(ctx, carrier)
 	assert.Greater(t, len(carrier.Get("x-b3-traceid")), 0)
 	assert.Equal(t, "", carrier.Get("otcorrelations"))
+	assert.Equal(t, len(carrier.Get("traceparent")), 0)
 
 	lsOtel = ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
 		WithSpanExporterEndpoint("localhost:443"),
-		WithPropagators([]string{"b3", "baggage"}),
+		WithPropagators([]string{"b3", "baggage", "tracecontext"}),
 	)
 	defer lsOtel.Shutdown()
 	carrier = TestCarrier{values: map[string]string{}}
@@ -451,6 +452,7 @@ func TestConfigurePropagators(t *testing.T) {
 	assert.Greater(t, len(carrier.Get("x-b3-traceid")), 0)
 	assert.Contains(t, carrier.Get("otcorrelations"), "keytwo=bar1")
 	assert.Contains(t, carrier.Get("otcorrelations"), "keyone=foo1")
+	assert.Greater(t, len(carrier.Get("traceparent")), 0)
 
 	logger = &testLogger{}
 	lsOtel = ConfigureOpentelemetry(
