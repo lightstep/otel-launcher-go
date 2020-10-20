@@ -1,6 +1,7 @@
 ## Unreleased
 
 - Add support for `tracecontext` propagator (#32)
+- Update configuration for baggage propagator from `"cc"` to `"baggage"`
 
 ## 0.13.0
 

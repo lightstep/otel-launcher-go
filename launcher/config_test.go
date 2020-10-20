@@ -443,7 +443,7 @@ func TestConfigurePropagators(t *testing.T) {
 		WithLogger(logger),
 		WithServiceName("test-service"),
 		WithSpanExporterEndpoint("localhost:443"),
-		WithPropagators([]string{"b3", "cc", "tracecontext"}),
+		WithPropagators([]string{"b3", "baggage", "tracecontext"}),
 	)
 	defer lsOtel.Shutdown()
 	carrier = TestCarrier{values: map[string]string{}}

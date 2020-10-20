@@ -259,7 +259,7 @@ type Launcher struct {
 func configurePropagators(c *Config) error {
 	propagatorsMap := map[string]otel.TextMapPropagator{
 		"b3":           b3.B3{},
-		"cc":           propagators.Baggage{},
+		"baggage":      propagators.Baggage{},
 		"tracecontext": propagators.TraceContext{},
 	}
 	var props []otel.TextMapPropagator
