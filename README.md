@@ -2,7 +2,7 @@
 [![Docs](https://godoc.org/github.com/lightstep/otel-launcher-go/launcher?status.svg)](https://pkg.go.dev/github.com/lightstep/otel-launcher-go/launcher)
 [![Go Report Card](https://goreportcard.com/badge/github.com/lightstep/otel-launcher-go/launcher)](https://goreportcard.com/report/github.com/lightstep/otel-launcher-go/launcher)
 
-# Launcher, an OpenTelemetry Configuration Layer 🚀
+# Launcher, a Lightstep Distro for OpenTelemetry 🚀
 
 _NOTE: This is in beta and is expected to GA in Fall 2020._
 
