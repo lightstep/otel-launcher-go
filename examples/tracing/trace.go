@@ -89,7 +89,6 @@ func recordException(ctx context.Context) {
 
 // example of creating a child span
 func createChild(ctx context.Context, tracer trace.Tracer) {
-	// span := trace.SpanFromContext(ctx)
 	_, childSpan := tracer.Start(ctx, "child")
 	defer childSpan.End()
 	fmt.Printf("child span: %v\n", childSpan)
