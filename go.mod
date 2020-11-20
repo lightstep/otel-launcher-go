@@ -9,9 +9,10 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/host v0.13.1-0.20201013231334-308925fe4f1f
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.13.1-0.20201013231334-308925fe4f1f
 	go.opentelemetry.io/contrib/propagators v0.13.1-0.20201013231334-308925fe4f1f
-	go.opentelemetry.io/otel v0.13.1-0.20201119204109-4619c068e281
-	go.opentelemetry.io/otel/exporters/otlp v0.13.1-0.20201119204109-4619c068e281
-	go.opentelemetry.io/otel/sdk v0.13.1-0.20201119204109-4619c068e281
+	go.opentelemetry.io/otel v0.14.0
+	go.opentelemetry.io/otel/exporters/otlp v0.14.0
+	go.opentelemetry.io/otel/exporters/stdout v0.14.0 // indirect
+	go.opentelemetry.io/otel/sdk v0.14.0
 	google.golang.org/grpc v1.32.0
 )
 
