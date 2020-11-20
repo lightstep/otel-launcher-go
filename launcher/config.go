@@ -29,10 +29,9 @@ import (
 	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/global"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/label"
-	"go.opentelemetry.io/otel/propagators"
+	"go.opentelemetry.io/otel/propagation"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/push"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
@@ -116,7 +115,7 @@ func WithPropagators(propagators []string) Option {
 }
 
 // Configures a global error handler to be used throughout an OpenTelemetry instrumented project.
-// See "go.opentelemetry.io/otel/api/global"
+// See "go.opentelemetry.io/otel"
 func WithErrorHandler(handler otel.ErrorHandler) Option {
 	return func(c *Config) {
 		c.errorHandler = handler
@@ -257,11 +256,11 @@ type Launcher struct {
 
 // configurePropagators configures B3 propagation by default
 func configurePropagators(c *Config) error {
-	propagatorsMap := map[string]otel.TextMapPropagator{
+	propagatorsMap := map[string]propagation.TextMapPropagator{
 		"b3": b3.B3{},
-		"cc": propagators.Baggage{},
+		"cc": propagation.Baggage{},
 	}
-	var props []otel.TextMapPropagator
+	var props []propagation.TextMapPropagator
 	for _, key := range c.Propagators {
 		prop := propagatorsMap[key]
 		if prop != nil {
@@ -271,7 +270,7 @@ func configurePropagators(c *Config) error {
 	if len(props) == 0 {
 		return fmt.Errorf("invalid configuration: unsupported propagators. Supported options: b3,cc")
 	}
-	global.SetTextMapPropagator(otel.NewCompositeTextMapPropagator(
+	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		props...,
 	))
 	return nil
@@ -332,7 +331,7 @@ func newResource(c *Config) *resource.Resource {
 	}
 
 	attributes = append(r.Attributes(), attributes...)
-	return resource.New(attributes...)
+	return resource.NewWithAttributes(attributes...)
 }
 
 func newExporter(accessToken, endpoint string, insecure bool) (*otlp.Exporter, error) {
@@ -371,7 +370,7 @@ func setupTracing(c Config) (func() error, error) {
 		return nil, err
 	}
 
-	global.SetTracerProvider(tp)
+	otel.SetTracerProvider(tp)
 
 	return func() error {
 		return spanExporter.Shutdown(context.Background())
@@ -423,7 +422,7 @@ func setupMetrics(c Config) (func() error, error) {
 		return nil, fmt.Errorf("failed to start host metrics: %v", err)
 	}
 
-	global.SetMeterProvider(provider)
+	otel.SetMeterProvider(provider)
 	return func() error {
 		pusher.Stop()
 		return metricExporter.Shutdown(context.Background())
@@ -446,7 +445,7 @@ func ConfigureOpentelemetry(opts ...Option) Launcher {
 	}
 
 	if c.errorHandler != nil {
-		global.SetErrorHandler(c.errorHandler)
+		otel.SetErrorHandler(c.errorHandler)
 	}
 
 	ls := Launcher{
