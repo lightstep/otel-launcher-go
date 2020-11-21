@@ -375,7 +375,7 @@ func setupTracing(c Config) (func() error, error) {
 	otel.SetTracerProvider(tp)
 
 	return func() error {
-		bsp.Shutdown(context.Background())
+		_ = bsp.Shutdown(context.Background())
 		return spanExporter.Shutdown(context.Background())
 	}, nil
 }
