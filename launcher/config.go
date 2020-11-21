@@ -257,8 +257,9 @@ type Launcher struct {
 // configurePropagators configures B3 propagation by default
 func configurePropagators(c *Config) error {
 	propagatorsMap := map[string]propagation.TextMapPropagator{
-		"b3": b3.B3{},
-		"cc": propagation.Baggage{},
+		"b3":           b3.B3{},
+		"baggage":      propagation.Baggage{},
+		"tracecontext": propagation.TraceContext{},
 	}
 	var props []propagation.TextMapPropagator
 	for _, key := range c.Propagators {
@@ -360,9 +361,10 @@ func setupTracing(c Config) (func() error, error) {
 		return nil, fmt.Errorf("failed to create span exporter: %v", err)
 	}
 
+	bsp := trace.NewBatchSpanProcessor(spanExporter)
 	tp := trace.NewTracerProvider(
 		trace.WithConfig(trace.Config{DefaultSampler: trace.AlwaysSample()}),
-		trace.WithSyncer(spanExporter),
+		trace.WithSpanProcessor(bsp),
 		trace.WithResource(c.Resource),
 	)
 
@@ -373,6 +375,7 @@ func setupTracing(c Config) (func() error, error) {
 	otel.SetTracerProvider(tp)
 
 	return func() error {
+		bsp.Shutdown(context.Background())
 		return spanExporter.Shutdown(context.Background())
 	}, nil
 }

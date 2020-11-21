@@ -1,5 +1,14 @@
 ## Unreleased
 
+- Add support for `tracecontext` propagator (#32)
+- Update configuration for baggage propagator from `"cc"` to `"baggage"`
+
+## 0.13.0
+
+- Update OpenTelemetry dependencies to 0.13.0 (#26)
+- Use BatchSpanProcessor instead of SimpleSpanProcessor (#24)
+- Add host.name tag based on os.Hostname (#19)
+
 ## 0.11.0
 
 - Update OpenTelemetry dependencies to 0.11.0

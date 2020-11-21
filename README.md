@@ -2,7 +2,7 @@
 [![Docs](https://godoc.org/github.com/lightstep/otel-launcher-go/launcher?status.svg)](https://pkg.go.dev/github.com/lightstep/otel-launcher-go/launcher)
 [![Go Report Card](https://goreportcard.com/badge/github.com/lightstep/otel-launcher-go/launcher)](https://goreportcard.com/report/github.com/lightstep/otel-launcher-go/launcher)
 
-# Launcher, an OpenTelemetry Configuration Layer 🚀
+# Launcher, a Lightstep Distro for OpenTelemetry 🚀
 
 _NOTE: This is in beta and is expected to GA in Fall 2020._
 
@@ -57,12 +57,6 @@ Note that metrics functionality is disabled by default.  Metrics funcionality ca
 ##### 100% interoperability with OpenTelemetry
 
 One of the key principles behind putting together Launcher is to make lives of OpenTelemetry users easier, this means that there is no special configuration that **requires** users to install Launcher in order to use OpenTelemetry. It also means that any users of Launcher can leverage the flexibility of configuring OpenTelemetry as they need.
-
-##### Opinionated configuration
-
-Although we understand that not all languages use the same format for configuration, we find this annoying. We decided that Launcher would allow users to use the same configuration file across all languages. In this case, we settled for `YAML` as the format, which was inspired by the OpenTelemetry Collector.
-
-When OpenTelemetry Metrics are enabled, Host and Runtime metrics instrumentation are started automatically.
 
 ##### Validation
 
