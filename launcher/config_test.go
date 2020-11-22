@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/api/global"
+	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
@@ -315,7 +315,7 @@ func TestDefaultConfig(t *testing.T) {
 		AccessToken:                    "",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
-		Resource:                       resource.New(attributes...),
+		Resource:                       resource.NewWithAttributes(attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
@@ -351,7 +351,7 @@ func TestEnvironmentVariables(t *testing.T) {
 		AccessToken:                    "token",
 		LogLevel:                       "debug",
 		Propagators:                    []string{"b3", "w3c"},
-		Resource:                       resource.New(attributes...),
+		Resource:                       resource.NewWithAttributes(attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
@@ -398,7 +398,7 @@ func TestConfigurationOverrides(t *testing.T) {
 		AccessToken:                    "override-access-token",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
-		Resource:                       resource.New(attributes...),
+		Resource:                       resource.NewWithAttributes(attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
@@ -418,7 +418,7 @@ func (t TestCarrier) Set(key string, value string) {
 }
 
 func TestConfigurePropagators(t *testing.T) {
-	ctx := otel.ContextWithBaggageValues(context.Background(),
+	ctx := baggage.ContextWithValues(context.Background(),
 		label.String("keyone", "foo1"),
 		label.String("keytwo", "bar1"),
 	)
@@ -430,13 +430,13 @@ func TestConfigurePropagators(t *testing.T) {
 		WithSpanExporterEndpoint("localhost:443"),
 	)
 	defer lsOtel.Shutdown()
-	ctx, finish := global.Tracer("ex.com/basic").Start(ctx, "foo")
+	ctx, finish := otel.Tracer("ex.com/basic").Start(ctx, "foo")
 	defer finish.End()
 	carrier := TestCarrier{values: map[string]string{}}
-	prop := global.TextMapPropagator()
+	prop := otel.GetTextMapPropagator()
 	prop.Inject(ctx, carrier)
 	assert.Greater(t, len(carrier.Get("x-b3-traceid")), 0)
-	assert.Equal(t, "", carrier.Get("otcorrelations"))
+	assert.Equal(t, "", carrier.Get("baggage"))
 	assert.Equal(t, len(carrier.Get("traceparent")), 0)
 
 	lsOtel = ConfigureOpentelemetry(
@@ -447,11 +447,11 @@ func TestConfigurePropagators(t *testing.T) {
 	)
 	defer lsOtel.Shutdown()
 	carrier = TestCarrier{values: map[string]string{}}
-	prop = global.TextMapPropagator()
+	prop = otel.GetTextMapPropagator()
 	prop.Inject(ctx, carrier)
 	assert.Greater(t, len(carrier.Get("x-b3-traceid")), 0)
-	assert.Contains(t, carrier.Get("otcorrelations"), "keytwo=bar1")
-	assert.Contains(t, carrier.Get("otcorrelations"), "keyone=foo1")
+	assert.Contains(t, carrier.Get("baggage"), "keytwo=bar1")
+	assert.Contains(t, carrier.Get("baggage"), "keyone=foo1")
 	assert.Greater(t, len(carrier.Get("traceparent")), 0)
 
 	logger = &testLogger{}
