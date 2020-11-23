@@ -130,6 +130,13 @@ func WithMetricReportingPeriod(p time.Duration) Option {
 	}
 }
 
+// WithMetricEnabled configures whether metrics should be enabled
+func WithMetricsEnabled(enabled bool) Option {
+	return func(c *Config) {
+		c.MetricsEnabled = enabled
+	}
+}
+
 type Logger interface {
 	Fatalf(format string, v ...interface{})
 	Debugf(format string, v ...interface{})
@@ -176,6 +183,7 @@ type Config struct {
 	ServiceVersion                 string   `env:"LS_SERVICE_VERSION,default=unknown"`
 	MetricExporterEndpoint         string   `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT"`
 	MetricExporterEndpointInsecure bool     `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
+	MetricsEnabled                 bool     `env:"LS_METRICS_ENABLED,default=true"`
 	AccessToken                    string   `env:"LS_ACCESS_TOKEN"`
 	LogLevel                       string   `env:"OTEL_LOG_LEVEL,default=info"`
 	Propagators                    []string `env:"OTEL_PROPAGATORS,default=b3"`
@@ -383,7 +391,7 @@ func setupTracing(c Config) (func() error, error) {
 type setupFunc func(Config) (func() error, error)
 
 func setupMetrics(c Config) (func() error, error) {
-	if c.MetricExporterEndpoint == "" {
+	if !c.MetricsEnabled {
 		c.logger.Debugf("metrics are disabled by configuration: no endpoint set")
 		return nil, nil
 	}

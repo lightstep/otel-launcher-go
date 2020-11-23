@@ -166,6 +166,7 @@ func testEndpointDisabled(t *testing.T, expected string, opts ...Option) {
 		append(opts,
 			WithLogger(logger),
 			WithServiceName("test-service"),
+			WithMetricsEnabled(false),
 		)...,
 	)
 	defer lsOtel.Shutdown()
@@ -202,7 +203,6 @@ func TestValidConfig(t *testing.T) {
 	)
 	defer lsOtel.Shutdown()
 
-	logger.requireContains(t, expectedMetricsDisabledMessage)
 	logger.reset()
 
 	lsOtel = ConfigureOpentelemetry(
@@ -312,6 +312,7 @@ func TestDefaultConfig(t *testing.T) {
 		MetricExporterEndpoint:         "",
 		MetricExporterEndpointInsecure: false,
 		MetricReportingPeriod:          "30s",
+		MetricsEnabled:                 true,
 		AccessToken:                    "",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
@@ -568,6 +569,7 @@ func setEnvironment() {
 	os.Setenv("OTEL_LOG_LEVEL", "debug")
 	os.Setenv("OTEL_PROPAGATORS", "b3,w3c")
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-name-b")
+	os.Setenv("LS_METRICS_ENABLED", "false")
 }
 
 func unsetEnvironment() {
@@ -583,6 +585,7 @@ func unsetEnvironment() {
 		"OTEL_PROPAGATORS",
 		"OTEL_RESOURCE_ATTRIBUTES",
 		"OTEL_EXPORTER_OTLP_METRIC_PERIOD",
+		"LS_METRICS_ENABLED",
 	}
 	for _, envvar := range vars {
 		os.Unsetenv(envvar)
