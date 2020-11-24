@@ -309,7 +309,7 @@ func TestDefaultConfig(t *testing.T) {
 		ServiceVersion:                 "unknown",
 		SpanExporterEndpoint:           "ingest.lightstep.com:443",
 		SpanExporterEndpointInsecure:   false,
-		MetricExporterEndpoint:         "",
+		MetricExporterEndpoint:         "ingest.lightstep.com:443",
 		MetricExporterEndpointInsecure: false,
 		MetricReportingPeriod:          "30s",
 		MetricsEnabled:                 true,
@@ -461,6 +461,7 @@ func TestConfigurePropagators(t *testing.T) {
 		WithServiceName("test-service"),
 		WithSpanExporterEndpoint("localhost:443"),
 		WithPropagators([]string{"invalid"}),
+		WithMetricExporterEndpoint("localhost:443"),
 	)
 	defer lsOtel.Shutdown()
 

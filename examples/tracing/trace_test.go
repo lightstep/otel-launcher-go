@@ -24,5 +24,6 @@ import (
 func TestMinimumConfiguration(t *testing.T) {
 	os.Setenv("LS_SERVICE_NAME", "test-service-name")
 	os.Setenv("OTEL_EXPORTER_OTLP_SPAN_ENDPOINT", "invalid-endpoint")
+	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_ENDPOINT", "invalid-endpoint")
 	assert.NotPanics(t, main)
 }
