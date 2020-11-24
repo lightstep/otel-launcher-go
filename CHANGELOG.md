@@ -1,5 +1,7 @@
 ## Unreleased
 
+## 0.14.0
+
 - Add support for `tracecontext` propagator (#32)
 - Update configuration for baggage propagator from `"cc"` to `"baggage"` (#30)
 - Adding LS_METRICS_ENABLED env variable to control host/runtime metrics (#34)
