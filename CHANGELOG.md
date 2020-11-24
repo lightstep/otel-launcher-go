@@ -1,5 +1,9 @@
 ## Unreleased
 
+## 0.14.1
+
+- Update defaault value for metrics exporter endpoint (#38)
+
 ## 0.14.0
 
 - Add support for `tracecontext` propagator (#32)
