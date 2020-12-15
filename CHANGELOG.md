@@ -1,8 +1,12 @@
 ## Unreleased
 
+## 0.15.0
+- Update OpenTelemetry dependencies to 0.15.0
+- Added context param for NewExporter as required by OpenTelemetry 0.15.0
+
 ## 0.14.1
 
-- Update defaault value for metrics exporter endpoint (#38)
+- Update default value for metrics exporter endpoint (#38)
 
 ## 0.14.0
 
