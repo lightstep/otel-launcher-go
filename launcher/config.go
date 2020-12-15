@@ -353,6 +353,7 @@ func newExporter(accessToken, endpoint string, insecure bool) (*otlp.Exporter, e
 		secureOption = otlp.WithInsecure()
 	}
 	return otlp.NewExporter(
+		context.Background(),
 		secureOption,
 		otlp.WithAddress(endpoint),
 		otlp.WithHeaders(headers),
