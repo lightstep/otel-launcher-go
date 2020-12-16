@@ -45,6 +45,13 @@ func main() {
 	ctx := context.Background()
 	meter := metric.Must(otel.Meter("testing"))
 
+	// This example shows 1 instrument each for (UpDown)?(SumObserver|Counter)
+	// The two monotonic instruments of these have a fixed rate of +1.
+	// The two non-monotonic instruments of these have a fixed rate of -1.
+	// There are 2 example ValueObserver instruments (one a Gaussian, one a Sine wave).
+	//
+	// TODO: ValueRecorder examples.
+
 	c1 := meter.NewInt64Counter(prefix + "counter")
 	c2 := meter.NewInt64UpDownCounter(prefix + "updowncounter")
 	go func() {
