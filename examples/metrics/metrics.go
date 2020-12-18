@@ -96,5 +96,7 @@ func main() {
 		},
 	)
 
-	select {}
+	if os.Getenv("NOHANG") == "" {
+		select {}
+	}
 }
