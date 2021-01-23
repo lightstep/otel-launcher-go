@@ -30,9 +30,10 @@ import (
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
 	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/propagation"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/push"
+	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -348,15 +349,17 @@ func newExporter(accessToken, endpoint string, insecure bool) (*otlp.Exporter, e
 		"lightstep-access-token": accessToken,
 	}
 
-	secureOption := otlp.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+	secureOption := otlpgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
 	if insecure {
-		secureOption = otlp.WithInsecure()
+		secureOption = otlpgrpc.WithInsecure()
 	}
 	return otlp.NewExporter(
 		context.Background(),
-		secureOption,
-		otlp.WithAddress(endpoint),
-		otlp.WithHeaders(headers),
+		otlpgrpc.NewDriver(
+			secureOption,
+			otlpgrpc.WithEndpoint(endpoint),
+			otlpgrpc.WithHeaders(headers),
+		),
 	)
 }
 
@@ -401,7 +404,7 @@ func setupMetrics(c Config) (func() error, error) {
 		return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 	}
 
-	period := controller.DefaultPushPeriod
+	period := controller.DefaultPeriod
 	if c.MetricReportingPeriod != "" {
 		period, err = time.ParseDuration(c.MetricReportingPeriod)
 		if err != nil {
@@ -417,12 +420,12 @@ func setupMetrics(c Config) (func() error, error) {
 			selector.NewWithInexpensiveDistribution(),
 			metricExporter,
 		),
-		metricExporter,
+		controller.WithPusher(metricExporter),
 		controller.WithResource(c.Resource),
-		controller.WithPeriod(period),
+		controller.WithCollectPeriod(period),
 	)
 
-	pusher.Start()
+	pusher.Start(context.Background())
 
 	provider := pusher.MeterProvider()
 
@@ -436,7 +439,7 @@ func setupMetrics(c Config) (func() error, error) {
 
 	otel.SetMeterProvider(provider)
 	return func() error {
-		pusher.Stop()
+		pusher.Stop(context.Background())
 		return metricExporter.Shutdown(context.Background())
 	}, nil
 }
