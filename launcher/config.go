@@ -425,7 +425,9 @@ func setupMetrics(c Config) (func() error, error) {
 		controller.WithCollectPeriod(period),
 	)
 
-	pusher.Start(context.Background())
+	if err = pusher.Start(context.Background()); err != nil {
+		return nil, fmt.Errorf("failed to start controller: %v", err)
+	}
 
 	provider := pusher.MeterProvider()
 
@@ -439,7 +441,7 @@ func setupMetrics(c Config) (func() error, error) {
 
 	otel.SetMeterProvider(provider)
 	return func() error {
-		pusher.Stop(context.Background())
+		_ = pusher.Stop(context.Background())
 		return metricExporter.Shutdown(context.Background())
 	}, nil
 }
