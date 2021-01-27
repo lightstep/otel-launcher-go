@@ -1,5 +1,8 @@
 ## Unreleased
 
+## 0.16.0
+- Update OpenTelemetry dependencies to 0.16.0
+
 ## 0.15.0
 - Update OpenTelemetry dependencies to 0.15.0
 - Added context param for NewExporter as required by OpenTelemetry 0.15.0
