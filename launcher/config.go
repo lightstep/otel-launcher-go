@@ -39,6 +39,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/encoding/gzip"
 )
 
 type Option func(*Config)
@@ -359,6 +360,7 @@ func newExporter(accessToken, endpoint string, insecure bool) (*otlp.Exporter, e
 			secureOption,
 			otlpgrpc.WithEndpoint(endpoint),
 			otlpgrpc.WithHeaders(headers),
+			otlpgrpc.WithCompressor(gzip.Name),
 		),
 	)
 }
