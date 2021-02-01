@@ -1,5 +1,8 @@
 ## Unreleased
 
+## 0.16.1
+- Enable gzip compression by default
+
 ## 0.16.0
 - Update OpenTelemetry dependencies to 0.16.0
 
