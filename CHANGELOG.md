@@ -2,6 +2,7 @@
 
 ### Changed
 - Update OpenTelemetry dependencies to 0.17.0
+- Add support for `ottrace` propagator
 
 ## 0.16.1
 - Enable gzip compression by default
