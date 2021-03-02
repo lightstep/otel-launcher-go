@@ -32,6 +32,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
 	"go.opentelemetry.io/otel/label"
+	metricglobal "go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
@@ -441,7 +442,7 @@ func setupMetrics(c Config) (func() error, error) {
 		return nil, fmt.Errorf("failed to start host metrics: %v", err)
 	}
 
-	otel.SetMeterProvider(provider)
+	metricglobal.SetMeterProvider(provider)
 	return func() error {
 		_ = pusher.Stop(context.Background())
 		return metricExporter.Shutdown(context.Background())
