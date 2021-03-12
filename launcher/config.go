@@ -29,9 +29,9 @@ import (
 	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
-	"go.opentelemetry.io/otel/label"
 	metricglobal "go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
@@ -310,18 +310,18 @@ func newResource(c *Config) *resource.Resource {
 		os.Unsetenv("OTEL_RESOURCE_LABELS")
 	}
 
-	attributes := []label.KeyValue{
-		label.String(conventions.AttributeTelemetrySDKName, "launcher"),
-		label.String(conventions.AttributeTelemetrySDKLanguage, "go"),
-		label.String(conventions.AttributeTelemetrySDKVersion, version),
+	attributes := []attribute.KeyValue{
+		attribute.String(conventions.AttributeTelemetrySDKName, "launcher"),
+		attribute.String(conventions.AttributeTelemetrySDKLanguage, "go"),
+		attribute.String(conventions.AttributeTelemetrySDKVersion, version),
 	}
 
 	if len(c.ServiceName) > 0 {
-		attributes = append(attributes, label.String(conventions.AttributeServiceName, c.ServiceName))
+		attributes = append(attributes, attribute.String(conventions.AttributeServiceName, c.ServiceName))
 	}
 
 	if len(c.ServiceVersion) > 0 {
-		attributes = append(attributes, label.String(conventions.AttributeServiceVersion, c.ServiceVersion))
+		attributes = append(attributes, attribute.String(conventions.AttributeServiceVersion, c.ServiceVersion))
 	}
 
 	for key, value := range c.resourceAttributes {
@@ -329,7 +329,7 @@ func newResource(c *Config) *resource.Resource {
 			if key == conventions.AttributeHostName {
 				hostnameSet = true
 			}
-			attributes = append(attributes, label.String(key, value))
+			attributes = append(attributes, attribute.String(key, value))
 		}
 	}
 
@@ -338,7 +338,7 @@ func newResource(c *Config) *resource.Resource {
 		if err != nil {
 			c.logger.Debugf("unable to set host.name. Set OTEL_RESOURCE_ATTRIBUTES=\"host.name=<your_host_name>\" env var or configure WithResourceAttributes in code: %v", err)
 		} else {
-			attributes = append(attributes, label.String(conventions.AttributeHostName, hostname))
+			attributes = append(attributes, attribute.String(conventions.AttributeHostName, hostname))
 		}
 	}
 
