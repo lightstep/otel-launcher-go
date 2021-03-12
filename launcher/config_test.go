@@ -473,7 +473,7 @@ func TestConfigurePropagators(t *testing.T) {
 	)
 	defer lsOtel.Shutdown()
 
-	expected := "invalid configuration: unsupported propagators. Supported options: b3,cc"
+	expected := "invalid configuration: unsupported propagators. Supported options: b3,baggage,tracecontext,ottrace"
 	if !strings.Contains(logger.output[0], expected) {
 		t.Errorf("\nString not found: %v\nIn: %v", expected, logger.output[0])
 	}

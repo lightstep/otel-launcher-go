@@ -28,6 +28,7 @@ import (
 	hostMetrics "go.opentelemetry.io/contrib/instrumentation/host"
 	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
 	"go.opentelemetry.io/contrib/propagators/b3"
+	"go.opentelemetry.io/contrib/propagators/ot"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp"
@@ -271,6 +272,7 @@ func configurePropagators(c *Config) error {
 		"b3":           b3.B3{},
 		"baggage":      propagation.Baggage{},
 		"tracecontext": propagation.TraceContext{},
+		"ottrace":      ot.OT{},
 	}
 	var props []propagation.TextMapPropagator
 	for _, key := range c.Propagators {
@@ -280,7 +282,7 @@ func configurePropagators(c *Config) error {
 		}
 	}
 	if len(props) == 0 {
-		return fmt.Errorf("invalid configuration: unsupported propagators. Supported options: b3,cc")
+		return fmt.Errorf("invalid configuration: unsupported propagators. Supported options: b3,baggage,tracecontext,ottrace")
 	}
 	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
 		props...,
