@@ -31,7 +31,7 @@ import (
 	"time"
 
 	"github.com/lightstep/otel-launcher-go/launcher"
-	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	metricglobal "go.opentelemetry.io/otel/metric/global"
 )
@@ -90,9 +90,9 @@ func main() {
 		func(_ context.Context, result metric.Float64ObserverResult) {
 			secs := float64(time.Now().UnixNano()) / float64(time.Second)
 
-			result.Observe(math.Sin(secs/(200*math.Pi)), label.String("period", "fast"))
-			result.Observe(math.Sin(secs/(1000*math.Pi)), label.String("period", "regular"))
-			result.Observe(math.Sin(secs/(5000*math.Pi)), label.String("period", "slow"))
+			result.Observe(math.Sin(secs/(200*math.Pi)), attribute.String("period", "fast"))
+			result.Observe(math.Sin(secs/(1000*math.Pi)), attribute.String("period", "regular"))
+			result.Observe(math.Sin(secs/(5000*math.Pi)), attribute.String("period", "slow"))
 		},
 	)
 

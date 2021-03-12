@@ -24,8 +24,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
-	"go.opentelemetry.io/otel/label"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -296,12 +296,12 @@ func TestDefaultConfig(t *testing.T) {
 		WithErrorHandler(handler),
 	)
 
-	attributes := []label.KeyValue{
-		label.String("host.name", host()),
-		label.String("service.version", "unknown"),
-		label.String("telemetry.sdk.name", "launcher"),
-		label.String("telemetry.sdk.language", "go"),
-		label.String("telemetry.sdk.version", version),
+	attributes := []attribute.KeyValue{
+		attribute.String("host.name", host()),
+		attribute.String("service.version", "unknown"),
+		attribute.String("telemetry.sdk.name", "launcher"),
+		attribute.String("telemetry.sdk.language", "go"),
+		attribute.String("telemetry.sdk.version", version),
 	}
 
 	expected := Config{
@@ -332,13 +332,13 @@ func TestEnvironmentVariables(t *testing.T) {
 		WithErrorHandler(handler),
 	)
 
-	attributes := []label.KeyValue{
-		label.String("host.name", host()),
-		label.String("service.name", "test-service-name"),
-		label.String("service.version", "test-service-version"),
-		label.String("telemetry.sdk.name", "launcher"),
-		label.String("telemetry.sdk.language", "go"),
-		label.String("telemetry.sdk.version", version),
+	attributes := []attribute.KeyValue{
+		attribute.String("host.name", host()),
+		attribute.String("service.name", "test-service-name"),
+		attribute.String("service.version", "test-service-version"),
+		attribute.String("telemetry.sdk.name", "launcher"),
+		attribute.String("telemetry.sdk.language", "go"),
+		attribute.String("telemetry.sdk.version", version),
 	}
 
 	expected := Config{
@@ -379,13 +379,13 @@ func TestConfigurationOverrides(t *testing.T) {
 		WithPropagators([]string{"b3"}),
 	)
 
-	attributes := []label.KeyValue{
-		label.String("host.name", host()),
-		label.String("service.name", "override-service-name"),
-		label.String("service.version", "override-service-version"),
-		label.String("telemetry.sdk.name", "launcher"),
-		label.String("telemetry.sdk.language", "go"),
-		label.String("telemetry.sdk.version", version),
+	attributes := []attribute.KeyValue{
+		attribute.String("host.name", host()),
+		attribute.String("service.name", "override-service-name"),
+		attribute.String("service.version", "override-service-version"),
+		attribute.String("telemetry.sdk.name", "launcher"),
+		attribute.String("telemetry.sdk.language", "go"),
+		attribute.String("telemetry.sdk.version", version),
 	}
 
 	expected := Config{
@@ -410,6 +410,14 @@ type TestCarrier struct {
 	values map[string]string
 }
 
+func (t TestCarrier) Keys() []string {
+	keys := make([]string, 0, len(t.values))
+	for k := range t.values {
+		keys = append(keys, k)
+	}
+	return keys
+}
+
 func (t TestCarrier) Get(key string) string {
 	return t.values[key]
 }
@@ -420,8 +428,8 @@ func (t TestCarrier) Set(key string, value string) {
 
 func TestConfigurePropagators(t *testing.T) {
 	ctx := baggage.ContextWithValues(context.Background(),
-		label.String("keyone", "foo1"),
-		label.String("keytwo", "bar1"),
+		attribute.String("keyone", "foo1"),
+		attribute.String("keytwo", "bar1"),
 	)
 	unsetEnvironment()
 	logger := &testLogger{}
@@ -483,15 +491,15 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		ServiceVersion: "test-version",
 	}
 	resource := newResource(&config)
-	expected := []label.KeyValue{
-		label.String("host.name", host()),
-		label.String("label1", "value1"),
-		label.String("label2", "value2"),
-		label.String("service.name", "test-service"),
-		label.String("service.version", "test-version"),
-		label.String("telemetry.sdk.language", "go"),
-		label.String("telemetry.sdk.name", "launcher"),
-		label.String("telemetry.sdk.version", version),
+	expected := []attribute.KeyValue{
+		attribute.String("host.name", host()),
+		attribute.String("label1", "value1"),
+		attribute.String("label2", "value2"),
+		attribute.String("service.name", "test-service"),
+		attribute.String("service.version", "test-version"),
+		attribute.String("telemetry.sdk.language", "go"),
+		attribute.String("telemetry.sdk.name", "launcher"),
+		attribute.String("telemetry.sdk.version", version),
 	}
 	assert.Equal(t, expected, resource.Attributes())
 
@@ -501,13 +509,13 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		ServiceVersion: "test-version",
 	}
 	resource = newResource(&config)
-	expected = []label.KeyValue{
-		label.String("host.name", host()),
-		label.String("service.name", "test-service"),
-		label.String("service.version", "test-version"),
-		label.String("telemetry.sdk.language", "go"),
-		label.String("telemetry.sdk.name", "launcher"),
-		label.String("telemetry.sdk.version", version),
+	expected = []attribute.KeyValue{
+		attribute.String("host.name", host()),
+		attribute.String("service.name", "test-service"),
+		attribute.String("service.version", "test-version"),
+		attribute.String("telemetry.sdk.language", "go"),
+		attribute.String("telemetry.sdk.name", "launcher"),
+		attribute.String("telemetry.sdk.version", version),
 	}
 	assert.Equal(t, expected, resource.Attributes())
 
@@ -517,13 +525,13 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		ServiceVersion: "test-version",
 	}
 	resource = newResource(&config)
-	expected = []label.KeyValue{
-		label.String("host.name", "host123"),
-		label.String("service.name", "test-service-b"),
-		label.String("service.version", "test-version"),
-		label.String("telemetry.sdk.language", "go"),
-		label.String("telemetry.sdk.name", "launcher"),
-		label.String("telemetry.sdk.version", version),
+	expected = []attribute.KeyValue{
+		attribute.String("host.name", "host123"),
+		attribute.String("service.name", "test-service-b"),
+		attribute.String("service.version", "test-version"),
+		attribute.String("telemetry.sdk.language", "go"),
+		attribute.String("telemetry.sdk.name", "launcher"),
+		attribute.String("telemetry.sdk.version", version),
 	}
 	assert.Equal(t, expected, resource.Attributes())
 }

@@ -25,7 +25,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
@@ -68,15 +68,15 @@ func getSpan(ctx context.Context) {
 // example of adding an attribute to a span
 func addAttribute(ctx context.Context) {
 	span := trace.SpanFromContext(ctx)
-	span.SetAttributes(label.String("attr1", "value1"))
+	span.SetAttributes(attribute.String("attr1", "value1"))
 }
 
 // example of adding an event to a span
 func addEvent(ctx context.Context) {
 	span := trace.SpanFromContext(ctx)
-	span.AddEvent("event1", trace.WithAttributes([]label.KeyValue{
-		label.String("event-attr1", "event-string1"),
-		label.Int64("event-attr2", 10),
+	span.AddEvent("event1", trace.WithAttributes([]attribute.KeyValue{
+		attribute.String("event-attr1", "event-string1"),
+		attribute.Int64("event-attr2", 10),
 	}...))
 }
 
@@ -97,10 +97,10 @@ func createChild(ctx context.Context, tracer trace.Tracer) {
 // example of setting resource attributes
 func setResourceAttributes() {
 	host, _ := os.Hostname()
-	attributes := []label.KeyValue{
-		label.String(conventions.AttributeServiceName, "service123"),
-		label.String(conventions.AttributeServiceVersion, "1.2.3"),
-		label.String(conventions.AttributeHostName, host),
+	attributes := []attribute.KeyValue{
+		attribute.String(conventions.AttributeServiceName, "service123"),
+		attribute.String(conventions.AttributeServiceVersion, "1.2.3"),
+		attribute.String(conventions.AttributeHostName, host),
 	}
 	tp := sdktrace.NewTracerProvider(
 		sdktrace.WithResource(resource.NewWithAttributes(attributes...)),
@@ -111,8 +111,8 @@ func setResourceAttributes() {
 // example of setting baggage
 func setBaggage() {
 	ctx := baggage.ContextWithValues(context.Background(),
-		label.String("keyone", "foo1"),
-		label.String("keytwo", "bar1"),
+		attribute.String("keyone", "foo1"),
+		attribute.String("keytwo", "bar1"),
 	)
 
 	fmt.Printf("key keyone: %v\n", baggage.Value(ctx, "keyone"))
