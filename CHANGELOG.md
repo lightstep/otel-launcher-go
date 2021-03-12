@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Changed
+- Update OpenTelemetry dependencies to 0.18.0
 - Update OpenTelemetry dependencies to 0.17.0
 
 ## 0.16.1
