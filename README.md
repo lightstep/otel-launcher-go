@@ -4,7 +4,7 @@
 
 # Launcher, a Lightstep Distro for OpenTelemetry 🚀
 
-_NOTE: This is in beta and is expected to GA in Fall 2020._
+_NOTE: This is in beta._
 
 ### What is Launcher?
 
