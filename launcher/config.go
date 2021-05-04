@@ -269,7 +269,7 @@ type Launcher struct {
 // configurePropagators configures B3 propagation by default
 func configurePropagators(c *Config) error {
 	propagatorsMap := map[string]propagation.TextMapPropagator{
-		"b3":           b3.B3{},
+		"b3":           b3.B3{InjectEncoding: b3.B3MultipleHeader},
 		"baggage":      propagation.Baggage{},
 		"tracecontext": propagation.TraceContext{},
 		"ottrace":      ot.OT{},
@@ -380,7 +380,7 @@ func setupTracing(c Config) (func() error, error) {
 
 	bsp := trace.NewBatchSpanProcessor(spanExporter)
 	tp := trace.NewTracerProvider(
-		trace.WithConfig(trace.Config{DefaultSampler: trace.AlwaysSample()}),
+		trace.WithSampler(trace.AlwaysSample()),
 		trace.WithSpanProcessor(bsp),
 		trace.WithResource(c.Resource),
 	)
@@ -425,7 +425,7 @@ func setupMetrics(c Config) (func() error, error) {
 			selector.NewWithInexpensiveDistribution(),
 			metricExporter,
 		),
-		controller.WithPusher(metricExporter),
+		controller.WithExporter(metricExporter),
 		controller.WithResource(c.Resource),
 		controller.WithCollectPeriod(period),
 	)

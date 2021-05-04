@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+### Changed
+- Update OpenTelemetry dependencies to 0.20.0
+
 ## [0.18.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v0.18.0) - 2021-03-16
 
 ### Changed
