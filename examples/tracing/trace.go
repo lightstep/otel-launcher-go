@@ -23,9 +23,9 @@ import (
 	"github.com/lightstep/otel-launcher-go/launcher"
 	"go.opentelemetry.io/collector/translator/conventions"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
@@ -44,7 +44,7 @@ func main() {
 	ctx2, finish2 := tracer.Start(ctx1, "bar")
 	defer finish2.End()
 
-	ctx3, finish3 := tracer.Start(ctx2, "baz")
+	ctx3, finish3 := tracer.Start(setBaggage(ctx2), "baz")
 	defer finish3.End()
 
 	ctx := ctx3
@@ -54,7 +54,6 @@ func main() {
 	recordException(ctx)
 	createChild(ctx, tracer)
 	setResourceAttributes()
-	setBaggage()
 
 	fmt.Println("OpenTelemetry example")
 }
@@ -103,18 +102,16 @@ func setResourceAttributes() {
 		attribute.String(conventions.AttributeHostName, host),
 	}
 	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithResource(resource.NewWithAttributes(attributes...)),
+		sdktrace.WithResource(resource.NewWithAttributes("schema", attributes...)),
 	)
 	otel.SetTracerProvider(tp)
 }
 
 // example of setting baggage
-func setBaggage() {
-	ctx := baggage.ContextWithValues(context.Background(),
-		attribute.String("keyone", "foo1"),
-		attribute.String("keytwo", "bar1"),
-	)
+func setBaggage(ctx context.Context) context.Context {
+	mem1, _ := baggage.NewMember("keyone", "foo1")
+	mem2, _ := baggage.NewMember("keytwo", "bar1")
+	bag, _ := baggage.New(mem1, mem2)
 
-	fmt.Printf("key keyone: %v\n", baggage.Value(ctx, "keyone"))
-	fmt.Printf("key keytwo: %v\n", baggage.Value(ctx, "keytwo"))
+	return baggage.ContextWithBaggage(context.Background(), bag)
 }
