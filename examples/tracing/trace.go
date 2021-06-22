@@ -18,21 +18,25 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/lightstep/otel-launcher-go/launcher"
-	"go.opentelemetry.io/collector/translator/conventions"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/resource"
-	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
 )
 
 func main() {
-	lsLauncher := launcher.ConfigureOpentelemetry()
+	attributes := map[string]string{
+		"book.condition": "good",
+		"book.category":  "science",
+	}
+
+	lsLauncher := launcher.ConfigureOpentelemetry(
+		// example for setting resource attributes:
+		launcher.WithResourceAttributes(attributes),
+	)
 	defer lsLauncher.Shutdown()
 	tracer := otel.Tracer("ex.com/basic")
 
@@ -44,7 +48,7 @@ func main() {
 	ctx2, finish2 := tracer.Start(ctx1, "bar")
 	defer finish2.End()
 
-	ctx3, finish3 := tracer.Start(ctx2, "baz")
+	ctx3, finish3 := tracer.Start(setBaggage(ctx2), "baz")
 	defer finish3.End()
 
 	ctx := ctx3
@@ -53,8 +57,6 @@ func main() {
 	addEvent(ctx)
 	recordException(ctx)
 	createChild(ctx, tracer)
-	setResourceAttributes()
-	setBaggage()
 
 	fmt.Println("OpenTelemetry example")
 }
@@ -62,7 +64,7 @@ func main() {
 // example of getting the current span
 func getSpan(ctx context.Context) {
 	span := trace.SpanFromContext(ctx)
-	fmt.Printf("current span: %v\n", span)
+	fmt.Printf("current span: %v\n", span.SpanContext().SpanID())
 }
 
 // example of adding an attribute to a span
@@ -91,30 +93,14 @@ func recordException(ctx context.Context) {
 func createChild(ctx context.Context, tracer trace.Tracer) {
 	_, childSpan := tracer.Start(ctx, "child")
 	defer childSpan.End()
-	fmt.Printf("child span: %v\n", childSpan)
-}
-
-// example of setting resource attributes
-func setResourceAttributes() {
-	host, _ := os.Hostname()
-	attributes := []attribute.KeyValue{
-		attribute.String(conventions.AttributeServiceName, "service123"),
-		attribute.String(conventions.AttributeServiceVersion, "1.2.3"),
-		attribute.String(conventions.AttributeHostName, host),
-	}
-	tp := sdktrace.NewTracerProvider(
-		sdktrace.WithResource(resource.NewWithAttributes(attributes...)),
-	)
-	otel.SetTracerProvider(tp)
+	fmt.Printf("child span: %v\n", childSpan.SpanContext().SpanID())
 }
 
 // example of setting baggage
-func setBaggage() {
-	ctx := baggage.ContextWithValues(context.Background(),
-		attribute.String("keyone", "foo1"),
-		attribute.String("keytwo", "bar1"),
-	)
+func setBaggage(ctx context.Context) context.Context {
+	mem1, _ := baggage.NewMember("keyone", "foo1")
+	mem2, _ := baggage.NewMember("keytwo", "bar1")
+	bag, _ := baggage.New(mem1, mem2)
 
-	fmt.Printf("key keyone: %v\n", baggage.Value(ctx, "keyone"))
-	fmt.Printf("key keytwo: %v\n", baggage.Value(ctx, "keytwo"))
+	return baggage.ContextWithBaggage(ctx, bag)
 }

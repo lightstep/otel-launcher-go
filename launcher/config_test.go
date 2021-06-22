@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/sdk/resource"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
 const (
@@ -316,7 +317,7 @@ func TestDefaultConfig(t *testing.T) {
 		AccessToken:                    "",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
-		Resource:                       resource.NewWithAttributes(attributes...),
+		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
@@ -352,7 +353,7 @@ func TestEnvironmentVariables(t *testing.T) {
 		AccessToken:                    "token",
 		LogLevel:                       "debug",
 		Propagators:                    []string{"b3", "w3c"},
-		Resource:                       resource.NewWithAttributes(attributes...),
+		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
@@ -399,7 +400,7 @@ func TestConfigurationOverrides(t *testing.T) {
 		AccessToken:                    "override-access-token",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
-		Resource:                       resource.NewWithAttributes(attributes...),
+		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
@@ -427,10 +428,12 @@ func (t TestCarrier) Set(key string, value string) {
 }
 
 func TestConfigurePropagators(t *testing.T) {
-	ctx := baggage.ContextWithValues(context.Background(),
-		attribute.String("keyone", "foo1"),
-		attribute.String("keytwo", "bar1"),
-	)
+	mem1, _ := baggage.NewMember("keyone", "foo1")
+	mem2, _ := baggage.NewMember("keytwo", "bar1")
+	bag, _ := baggage.New(mem1, mem2)
+
+	ctx := baggage.ContextWithBaggage(context.Background(), bag)
+
 	unsetEnvironment()
 	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(

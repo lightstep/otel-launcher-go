@@ -31,8 +31,10 @@ import (
 	"go.opentelemetry.io/contrib/propagators/ot"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	metricglobal "go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/propagation"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
@@ -40,6 +42,7 @@ import (
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.opentelemetry.io/otel/sdk/trace"
+	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding/gzip"
 )
@@ -291,25 +294,13 @@ func configurePropagators(c *Config) error {
 }
 
 func newResource(c *Config) *resource.Resource {
-	// workaround until the following change is released
-	// https://github.com/open-telemetry/opentelemetry-go/pull/1042
-	reset := false
-	if len(os.Getenv("OTEL_RESOURCE_LABELS")) == 0 {
-		reset = true
-		os.Setenv("OTEL_RESOURCE_LABELS", os.Getenv("OTEL_RESOURCE_ATTRIBUTES"))
-	}
-	detector := resource.FromEnv{}
-	r, _ := detector.Detect(context.Background())
+	r := resource.Environment()
 
 	hostnameSet := false
 	for iter := r.Iter(); iter.Next(); {
 		if iter.Attribute().Key == conventions.AttributeHostName && len(iter.Attribute().Value.Emit()) > 0 {
 			hostnameSet = true
 		}
-	}
-
-	if reset {
-		os.Unsetenv("OTEL_RESOURCE_LABELS")
 	}
 
 	attributes := []attribute.KeyValue{
@@ -345,25 +336,56 @@ func newResource(c *Config) *resource.Resource {
 	}
 
 	attributes = append(r.Attributes(), attributes...)
-	return resource.NewWithAttributes(attributes...)
+
+	// These detectors can't actually fail, ignoring the error.
+	r, _ = resource.New(
+		context.Background(),
+		resource.WithSchemaURL(semconv.SchemaURL),
+		resource.WithAttributes(attributes...),
+	)
+
+	// Note: There are new detectors we may wish to take advantage
+	// of, now available in the default SDK (e.g., WithProcess(),
+	// WithOSType(), ...).
+	return r
 }
 
-func newExporter(accessToken, endpoint string, insecure bool) (*otlp.Exporter, error) {
+func newTraceExporter(accessToken, endpoint string, insecure bool) (*otlptrace.Exporter, error) {
 	headers := map[string]string{
 		"lightstep-access-token": accessToken,
 	}
 
-	secureOption := otlpgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+	secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
 	if insecure {
-		secureOption = otlpgrpc.WithInsecure()
+		secureOption = otlptracegrpc.WithInsecure()
 	}
-	return otlp.NewExporter(
+	return otlptrace.New(
 		context.Background(),
-		otlpgrpc.NewDriver(
+		otlptracegrpc.NewClient(
 			secureOption,
-			otlpgrpc.WithEndpoint(endpoint),
-			otlpgrpc.WithHeaders(headers),
-			otlpgrpc.WithCompressor(gzip.Name),
+			otlptracegrpc.WithEndpoint(endpoint),
+			otlptracegrpc.WithHeaders(headers),
+			otlptracegrpc.WithCompressor(gzip.Name),
+		),
+	)
+}
+
+func newMetricsExporter(accessToken, endpoint string, insecure bool) (*otlpmetric.Exporter, error) {
+	headers := map[string]string{
+		"lightstep-access-token": accessToken,
+	}
+
+	secureOption := otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
+	if insecure {
+		secureOption = otlpmetricgrpc.WithInsecure()
+	}
+	return otlpmetric.New(
+		context.Background(),
+		otlpmetricgrpc.NewClient(
+			secureOption,
+			otlpmetricgrpc.WithEndpoint(endpoint),
+			otlpmetricgrpc.WithHeaders(headers),
+			otlpmetricgrpc.WithCompressor(gzip.Name),
 		),
 	)
 }
@@ -373,7 +395,7 @@ func setupTracing(c Config) (func() error, error) {
 		c.logger.Debugf("tracing is disabled by configuration: no endpoint set")
 		return nil, nil
 	}
-	spanExporter, err := newExporter(c.AccessToken, c.SpanExporterEndpoint, c.SpanExporterEndpointInsecure)
+	spanExporter, err := newTraceExporter(c.AccessToken, c.SpanExporterEndpoint, c.SpanExporterEndpointInsecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create span exporter: %v", err)
 	}
@@ -404,7 +426,7 @@ func setupMetrics(c Config) (func() error, error) {
 		c.logger.Debugf("metrics are disabled by configuration: no endpoint set")
 		return nil, nil
 	}
-	metricExporter, err := newExporter(c.AccessToken, c.MetricExporterEndpoint, c.MetricExporterEndpointInsecure)
+	metricExporter, err := newMetricsExporter(c.AccessToken, c.MetricExporterEndpoint, c.MetricExporterEndpointInsecure)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 	}

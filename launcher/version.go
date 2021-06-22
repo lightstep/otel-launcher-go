@@ -14,4 +14,4 @@
 
 package launcher
 
-const version = "0.18.0"
+const version = "1.0.0-RC1"
