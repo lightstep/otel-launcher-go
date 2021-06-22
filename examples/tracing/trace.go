@@ -28,13 +28,13 @@ import (
 )
 
 func main() {
-
 	attributes := map[string]string{
 		"book.condition": "good",
 		"book.category":  "science",
 	}
 
 	lsLauncher := launcher.ConfigureOpentelemetry(
+		// example for setting resource attributes:
 		launcher.WithResourceAttributes(attributes),
 	)
 	defer lsLauncher.Shutdown()
@@ -64,7 +64,7 @@ func main() {
 // example of getting the current span
 func getSpan(ctx context.Context) {
 	span := trace.SpanFromContext(ctx)
-	fmt.Printf("current span: %v\n", span)
+	fmt.Printf("current span: %v\n", span.SpanContext().SpanID())
 }
 
 // example of adding an attribute to a span
@@ -93,7 +93,7 @@ func recordException(ctx context.Context) {
 func createChild(ctx context.Context, tracer trace.Tracer) {
 	_, childSpan := tracer.Start(ctx, "child")
 	defer childSpan.End()
-	fmt.Printf("child span: %v\n", childSpan)
+	fmt.Printf("child span: %v\n", childSpan.SpanContext().SpanID())
 }
 
 // example of setting baggage
@@ -102,5 +102,5 @@ func setBaggage(ctx context.Context) context.Context {
 	mem2, _ := baggage.NewMember("keytwo", "bar1")
 	bag, _ := baggage.New(mem1, mem2)
 
-	return baggage.ContextWithBaggage(context.Background(), bag)
+	return baggage.ContextWithBaggage(ctx, bag)
 }
