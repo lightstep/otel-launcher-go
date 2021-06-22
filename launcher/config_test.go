@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
 const (
@@ -316,7 +317,7 @@ func TestDefaultConfig(t *testing.T) {
 		AccessToken:                    "",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
-		Resource:                       resource.NewWithAttributes("schema", attributes...),
+		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
@@ -352,7 +353,7 @@ func TestEnvironmentVariables(t *testing.T) {
 		AccessToken:                    "token",
 		LogLevel:                       "debug",
 		Propagators:                    []string{"b3", "w3c"},
-		Resource:                       resource.NewWithAttributes("schema", attributes...),
+		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
@@ -399,7 +400,7 @@ func TestConfigurationOverrides(t *testing.T) {
 		AccessToken:                    "override-access-token",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
-		Resource:                       resource.NewWithAttributes("schema", attributes...),
+		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
 		logger:                         logger,
 		errorHandler:                   handler,
 	}
