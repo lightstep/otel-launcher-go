@@ -3,7 +3,6 @@ module github.com/lightstep/otel-launcher-go
 go 1.14
 
 require (
-	github.com/go-ole/go-ole v1.2.5 // indirect
 	github.com/sethvargo/go-envconfig v0.3.2
 	github.com/stretchr/testify v1.7.0
 	go.opentelemetry.io/collector v0.28.0
