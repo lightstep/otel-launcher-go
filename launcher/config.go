@@ -50,8 +50,16 @@ import (
 type Option func(*Config)
 
 // WithAccessToken configures the lightstep access token
+// remain compatible with the Lightstep-only launcher for now...
 func WithAccessToken(accessToken string) Option {
+	// this will actually get used
 	return func(c *Config) {
+		// duplicating this isn't great but for now let's just get it working
+		if c.Headers == nil {
+			c.Headers = make(map[string]string)
+		}
+		c.Headers["lightstep-access-token"] = accessToken
+		// this is only used by the tests now, too much work to remove in this pass
 		c.AccessToken = accessToken
 	}
 }
@@ -81,6 +89,18 @@ func WithServiceName(name string) Option {
 func WithServiceVersion(version string) Option {
 	return func(c *Config) {
 		c.ServiceVersion = version
+	}
+}
+
+// WithHeaders configures OTLP/gRPC connection headers
+func WithHeaders(headers map[string]string) Option {
+	return func(c *Config) {
+		if c.Headers == nil {
+			c.Headers = make(map[string]string)
+		}
+		for k, v := range headers {
+			c.Headers[k] = v
+		}
 	}
 }
 
@@ -184,17 +204,18 @@ const (
 )
 
 type Config struct {
-	SpanExporterEndpoint           string   `env:"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT,default=ingest.lightstep.com:443"`
-	SpanExporterEndpointInsecure   bool     `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
-	ServiceName                    string   `env:"LS_SERVICE_NAME"`
-	ServiceVersion                 string   `env:"LS_SERVICE_VERSION,default=unknown"`
-	MetricExporterEndpoint         string   `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT,default=ingest.lightstep.com:443"`
-	MetricExporterEndpointInsecure bool     `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
-	MetricsEnabled                 bool     `env:"LS_METRICS_ENABLED,default=true"`
-	AccessToken                    string   `env:"LS_ACCESS_TOKEN"`
-	LogLevel                       string   `env:"OTEL_LOG_LEVEL,default=info"`
-	Propagators                    []string `env:"OTEL_PROPAGATORS,default=b3"`
-	MetricReportingPeriod          string   `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
+	SpanExporterEndpoint           string            `env:"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT,default=ingest.lightstep.com:443"`
+	SpanExporterEndpointInsecure   bool              `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
+	ServiceName                    string            `env:"LS_SERVICE_NAME"`
+	ServiceVersion                 string            `env:"LS_SERVICE_VERSION,default=unknown"`
+	Headers                        map[string]string `env:"OTEL_EXPORTER_OTLP_HEADERS"`
+	MetricExporterEndpoint         string            `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT,default=ingest.lightstep.com:443"`
+	MetricExporterEndpointInsecure bool              `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
+	MetricsEnabled                 bool              `env:"LS_METRICS_ENABLED,default=true"`
+	AccessToken                    string            `env:"LS_ACCESS_TOKEN"`
+	LogLevel                       string            `env:"OTEL_LOG_LEVEL,default=info"`
+	Propagators                    []string          `env:"OTEL_PROPAGATORS,default=b3"`
+	MetricReportingPeriod          string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
 	resourceAttributes             map[string]string
 	Resource                       *resource.Resource
 	logger                         Logger
@@ -239,9 +260,15 @@ func validateConfiguration(c Config) error {
 		}
 	}
 
+	// the last check looks like lightstep-specific so for now skip it if the endpooints are not default
+	if c.SpanExporterEndpoint == DefaultMetricExporterEndpoint || c.MetricExporterEndpoint == DefaultMetricExporterEndpoint {
+		return nil
+	}
+
 	if accessTokenLen > 0 && (accessTokenLen != 32 && accessTokenLen != 84 && accessTokenLen != 104) {
 		return fmt.Errorf("invalid configuration: access token length incorrect. Ensure token is set correctly")
 	}
+
 	return nil
 }
 
@@ -350,11 +377,10 @@ func newResource(c *Config) *resource.Resource {
 	return r
 }
 
-func newTraceExporter(accessToken, endpoint string, insecure bool) (*otlptrace.Exporter, error) {
-	headers := map[string]string{
-		"lightstep-access-token": accessToken,
+func newTraceExporter(endpoint string, insecure bool, headers map[string]string) (*otlptrace.Exporter, error) {
+	if headers == nil {
+		headers = make(map[string]string)
 	}
-
 	secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
 	if insecure {
 		secureOption = otlptracegrpc.WithInsecure()
@@ -370,11 +396,10 @@ func newTraceExporter(accessToken, endpoint string, insecure bool) (*otlptrace.E
 	)
 }
 
-func newMetricsExporter(accessToken, endpoint string, insecure bool) (*otlpmetric.Exporter, error) {
-	headers := map[string]string{
-		"lightstep-access-token": accessToken,
+func newMetricsExporter(endpoint string, insecure bool, headers map[string]string) (*otlpmetric.Exporter, error) {
+	if headers == nil {
+		headers = make(map[string]string)
 	}
-
 	secureOption := otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
 	if insecure {
 		secureOption = otlpmetricgrpc.WithInsecure()
@@ -395,7 +420,7 @@ func setupTracing(c Config) (func() error, error) {
 		c.logger.Debugf("tracing is disabled by configuration: no endpoint set")
 		return nil, nil
 	}
-	spanExporter, err := newTraceExporter(c.AccessToken, c.SpanExporterEndpoint, c.SpanExporterEndpointInsecure)
+	spanExporter, err := newTraceExporter(c.SpanExporterEndpoint, c.SpanExporterEndpointInsecure, c.Headers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create span exporter: %v", err)
 	}
@@ -426,7 +451,7 @@ func setupMetrics(c Config) (func() error, error) {
 		c.logger.Debugf("metrics are disabled by configuration: no endpoint set")
 		return nil, nil
 	}
-	metricExporter, err := newMetricsExporter(c.AccessToken, c.MetricExporterEndpoint, c.MetricExporterEndpointInsecure)
+	metricExporter, err := newMetricsExporter(c.MetricExporterEndpoint, c.MetricExporterEndpointInsecure, c.Headers)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 	}

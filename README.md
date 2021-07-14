@@ -32,6 +32,24 @@ func main() {
 }
 ```
 
+For non-lightstep providers, you can set headers directly instead.
+
+```go
+import "github.com/lightstep/otel-launcher-go/launcher"
+
+func main() {
+    otel := launcher.ConfigureOpentelemetry(
+        launcher.WithServiceName("service-name"),
+        launcher.WithHeaders(map[string]string{
+            "service-auth-key": "value",
+            "service-useful-field": "testing",
+        })
+    )
+    defer otel.Shutdown()
+}
+```
+
+
 Additional options
 
 ### Configuration Options
@@ -40,6 +58,7 @@ Additional options
 |------------------|------------------|--------|-------|
 |WithServiceName            |LS_SERVICE_NAME                    |y       |-                               |
 |WithServiceVersion         |LS_SERVICE_VERSION                 |n       |unknown                         |
+|WithHeaders                |OTEL_EXPORTER_OTLP_HEADERS         |n       |{}                              |
 |WithSpanExporterEndpoint   |OTEL_EXPORTER_OTLP_SPAN_ENDPOINT   |n       |ingest.lightstep.com:443        |
 |WithSpanExporterInsecure   |OTEL_EXPORTER_OTLP_SPAN_INSECURE   |n       |false                           |
 |WithMetricExporterEndpoint |OTEL_EXPORTER_OTLP_METRIC_ENDPOINT |n       |ingest.lightstep.com:443        |
