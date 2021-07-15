@@ -260,11 +260,7 @@ func validateConfiguration(c Config) error {
 		}
 	}
 
-	// the last check looks like lightstep-specific so for now skip it if the endpooints are not default
-	if c.SpanExporterEndpoint == DefaultMetricExporterEndpoint || c.MetricExporterEndpoint == DefaultMetricExporterEndpoint {
-		return nil
-	}
-
+	// TODO(@tobert) will probably break on some providers but seems fine for my use cases right now
 	if accessTokenLen > 0 && (accessTokenLen != 32 && accessTokenLen != 84 && accessTokenLen != 104) {
 		return fmt.Errorf("invalid configuration: access token length incorrect. Ensure token is set correctly")
 	}

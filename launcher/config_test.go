@@ -397,6 +397,7 @@ func TestConfigurationOverrides(t *testing.T) {
 		MetricExporterEndpoint:         "override-metrics-url",
 		MetricExporterEndpointInsecure: false,
 		MetricReportingPeriod:          "30s",
+		Headers:                        map[string]string{"lightstep-access-token": "override-access-token"},
 		AccessToken:                    "override-access-token",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
