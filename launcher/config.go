@@ -272,7 +272,7 @@ type Launcher struct {
 // configurePropagators configures B3 propagation by default
 func configurePropagators(c *Config) error {
 	propagatorsMap := map[string]propagation.TextMapPropagator{
-		"b3":           b3.B3{InjectEncoding: b3.B3MultipleHeader},
+		"b3":           b3.New(b3.WithInjectEncoding(b3.B3MultipleHeader)),
 		"baggage":      propagation.Baggage{},
 		"tracecontext": propagation.TraceContext{},
 		"ottrace":      ot.OT{},
