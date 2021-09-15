@@ -8,11 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
-## [1.0.0-RC1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.0.0-RC1) - 2021-06-21
+## [1.0.0-RC3](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.0.0-RC3) - 2021-09-15
 
 ### Changed
-- Update OpenTelemetry tracing dependencies to 1.0.0-RC1
-- Update OpenTelemetry metrics dependencies to 0.21.0
+- Update OpenTelemetry tracing dependencies to 1.0.0-RC3
+- Update OpenTelemetry metrics dependencies to 0.23.0
 - Remove support for deprecated `OTEL_RESOURCE_LABELS` environment variable, as
   it has been replaced by `OTEL_RESOURCE_ATTRIBUTES` upstream.
 
