@@ -239,7 +239,7 @@ func validateConfiguration(c Config) error {
 		}
 	}
 
-	if accessTokenLen > 0 && (accessTokenLen != 32 && accessTokenLen != 84 && accessTokenLen != 104) {
+	if accessTokenLen > 0 && (c.AccessToken != "developer" && accessTokenLen != 32 && accessTokenLen != 84 && accessTokenLen != 104) {
 		return fmt.Errorf("invalid configuration: access token length incorrect. Ensure token is set correctly")
 	}
 	return nil
