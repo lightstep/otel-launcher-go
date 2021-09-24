@@ -23,29 +23,16 @@ import (
 	"os"
 	"time"
 
+	"github.com/lightstep/otel-launcher-go/pipelines"
 	"github.com/sethvargo/go-envconfig"
 	"go.opentelemetry.io/collector/translator/conventions"
-	hostMetrics "go.opentelemetry.io/contrib/instrumentation/host"
-	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
-	"go.opentelemetry.io/contrib/propagators/b3"
-	"go.opentelemetry.io/contrib/propagators/ot"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
-	metricglobal "go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/propagation"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
-	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
-	"google.golang.org/grpc/credentials"
-	"google.golang.org/grpc/encoding/gzip"
 )
+
+const lightstepAccessTokenHeader = "lightstep-access-token"
 
 type Option func(*Config)
 
@@ -59,8 +46,6 @@ func WithAccessToken(accessToken string) Option {
 			c.Headers = make(map[string]string)
 		}
 		c.Headers["lightstep-access-token"] = accessToken
-		// this is only used by the tests now, too much work to remove in this pass
-		c.AccessToken = accessToken
 	}
 }
 
@@ -212,7 +197,6 @@ type Config struct {
 	MetricExporterEndpoint         string            `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT,default=ingest.lightstep.com:443"`
 	MetricExporterEndpointInsecure bool              `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
 	MetricsEnabled                 bool              `env:"LS_METRICS_ENABLED,default=true"`
-	AccessToken                    string            `env:"LS_ACCESS_TOKEN"`
 	LogLevel                       string            `env:"OTEL_LOG_LEVEL,default=info"`
 	Propagators                    []string          `env:"OTEL_PROPAGATORS,default=b3"`
 	MetricReportingPeriod          string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
@@ -233,6 +217,13 @@ func checkEndpointDefault(value, defValue string) error {
 	return nil
 }
 
+func accessToken(c Config) string {
+	if c.Headers == nil {
+		return ""
+	}
+	return c.Headers[lightstepAccessTokenHeader]
+}
+
 func validateConfiguration(c Config) error {
 	if len(c.ServiceName) == 0 {
 		serviceNameSet := false
@@ -249,7 +240,7 @@ func validateConfiguration(c Config) error {
 		}
 	}
 
-	accessTokenLen := len(c.AccessToken)
+	accessTokenLen := len(accessToken(c))
 	if accessTokenLen == 0 {
 		if err := checkEndpointDefault(c.SpanExporterEndpoint, DefaultSpanExporterEndpoint); err != nil {
 			return err
@@ -290,30 +281,6 @@ func newConfig(opts ...Option) Config {
 type Launcher struct {
 	config        Config
 	shutdownFuncs []func() error
-}
-
-// configurePropagators configures B3 propagation by default
-func configurePropagators(c *Config) error {
-	propagatorsMap := map[string]propagation.TextMapPropagator{
-		"b3":           b3.New(b3.WithInjectEncoding(b3.B3MultipleHeader)),
-		"baggage":      propagation.Baggage{},
-		"tracecontext": propagation.TraceContext{},
-		"ottrace":      ot.OT{},
-	}
-	var props []propagation.TextMapPropagator
-	for _, key := range c.Propagators {
-		prop := propagatorsMap[key]
-		if prop != nil {
-			props = append(props, prop)
-		}
-	}
-	if len(props) == 0 {
-		return fmt.Errorf("invalid configuration: unsupported propagators. Supported options: b3,baggage,tracecontext,ottrace")
-	}
-	otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator(
-		props...,
-	))
-	return nil
 }
 
 func newResource(c *Config) *resource.Resource {
@@ -373,71 +340,18 @@ func newResource(c *Config) *resource.Resource {
 	return r
 }
 
-func newTraceExporter(endpoint string, insecure bool, headers map[string]string) (*otlptrace.Exporter, error) {
-	if headers == nil {
-		headers = make(map[string]string)
-	}
-	secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
-	if insecure {
-		secureOption = otlptracegrpc.WithInsecure()
-	}
-	return otlptrace.New(
-		context.Background(),
-		otlptracegrpc.NewClient(
-			secureOption,
-			otlptracegrpc.WithEndpoint(endpoint),
-			otlptracegrpc.WithHeaders(headers),
-			otlptracegrpc.WithCompressor(gzip.Name),
-		),
-	)
-}
-
-func newMetricsExporter(endpoint string, insecure bool, headers map[string]string) (*otlpmetric.Exporter, error) {
-	if headers == nil {
-		headers = make(map[string]string)
-	}
-	secureOption := otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
-	if insecure {
-		secureOption = otlpmetricgrpc.WithInsecure()
-	}
-	return otlpmetric.New(
-		context.Background(),
-		otlpmetricgrpc.NewClient(
-			secureOption,
-			otlpmetricgrpc.WithEndpoint(endpoint),
-			otlpmetricgrpc.WithHeaders(headers),
-			otlpmetricgrpc.WithCompressor(gzip.Name),
-		),
-	)
-}
-
 func setupTracing(c Config) (func() error, error) {
 	if c.SpanExporterEndpoint == "" {
 		c.logger.Debugf("tracing is disabled by configuration: no endpoint set")
 		return nil, nil
 	}
-	spanExporter, err := newTraceExporter(c.SpanExporterEndpoint, c.SpanExporterEndpointInsecure, c.Headers)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create span exporter: %v", err)
-	}
-
-	bsp := trace.NewBatchSpanProcessor(spanExporter)
-	tp := trace.NewTracerProvider(
-		trace.WithSampler(trace.AlwaysSample()),
-		trace.WithSpanProcessor(bsp),
-		trace.WithResource(c.Resource),
-	)
-
-	if err = configurePropagators(&c); err != nil {
-		return nil, err
-	}
-
-	otel.SetTracerProvider(tp)
-
-	return func() error {
-		_ = bsp.Shutdown(context.Background())
-		return spanExporter.Shutdown(context.Background())
-	}, nil
+	return pipelines.NewTracePipeline(pipelines.PipelineConfig{
+		Endpoint:    c.SpanExporterEndpoint,
+		Insecure:    c.SpanExporterEndpointInsecure,
+		Headers:     c.Headers,
+		Resource:    c.Resource,
+		Propagators: c.Propagators,
+	})
 }
 
 type setupFunc func(Config) (func() error, error)
@@ -447,51 +361,13 @@ func setupMetrics(c Config) (func() error, error) {
 		c.logger.Debugf("metrics are disabled by configuration: no endpoint set")
 		return nil, nil
 	}
-	metricExporter, err := newMetricsExporter(c.MetricExporterEndpoint, c.MetricExporterEndpointInsecure, c.Headers)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create metric exporter: %v", err)
-	}
-
-	period := controller.DefaultPeriod
-	if c.MetricReportingPeriod != "" {
-		period, err = time.ParseDuration(c.MetricReportingPeriod)
-		if err != nil {
-			return nil, fmt.Errorf("invalid metric reporting period: %v", err)
-		}
-		if period <= 0 {
-
-			return nil, fmt.Errorf("invalid metric reporting period: %v", c.MetricReportingPeriod)
-		}
-	}
-	pusher := controller.New(
-		processor.New(
-			selector.NewWithInexpensiveDistribution(),
-			metricExporter,
-		),
-		controller.WithExporter(metricExporter),
-		controller.WithResource(c.Resource),
-		controller.WithCollectPeriod(period),
-	)
-
-	if err = pusher.Start(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to start controller: %v", err)
-	}
-
-	provider := pusher.MeterProvider()
-
-	if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(provider)); err != nil {
-		return nil, fmt.Errorf("failed to start runtime metrics: %v", err)
-	}
-
-	if err = hostMetrics.Start(hostMetrics.WithMeterProvider(provider)); err != nil {
-		return nil, fmt.Errorf("failed to start host metrics: %v", err)
-	}
-
-	metricglobal.SetMeterProvider(provider)
-	return func() error {
-		_ = pusher.Stop(context.Background())
-		return metricExporter.Shutdown(context.Background())
-	}, nil
+	return pipelines.NewMetricsPipeline(pipelines.PipelineConfig{
+		Endpoint:        c.MetricExporterEndpoint,
+		Insecure:        c.MetricExporterEndpointInsecure,
+		Headers:         c.Headers,
+		Resource:        c.Resource,
+		ReportingPeriod: c.MetricReportingPeriod,
+	})
 }
 
 func ConfigureOpentelemetry(opts ...Option) Launcher {
@@ -502,6 +378,15 @@ func ConfigureOpentelemetry(opts ...Option) Launcher {
 		c.logger.Debugf("configuration")
 		s, _ := json.MarshalIndent(c, "", "\t")
 		c.logger.Debugf(string(s))
+	}
+
+	if c.Headers == nil {
+		c.Headers = map[string]string{}
+	}
+
+	token := os.Getenv("LS_ACCESS_TOKEN")
+	if len(token) > 0 && len(c.Headers[lightstepAccessTokenHeader]) == 0 {
+		c.Headers[lightstepAccessTokenHeader] = token
 	}
 
 	err := validateConfiguration(c)
@@ -516,6 +401,7 @@ func ConfigureOpentelemetry(opts ...Option) Launcher {
 	ls := Launcher{
 		config: c,
 	}
+
 	for _, setup := range []setupFunc{setupTracing, setupMetrics} {
 		shutdown, err := setup(c)
 		if err != nil {
