@@ -186,7 +186,7 @@ const (
 type Config struct {
 	SpanExporterEndpoint           string   `env:"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT,default=ingest.lightstep.com:443"`
 	SpanExporterEndpointInsecure   bool     `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
-	ServiceName                    string   `env:"LS_SERVICE_NAME"`
+	ServiceName                    string   `env:"OTEL_SERVICE_NAME"`
 	ServiceVersion                 string   `env:"LS_SERVICE_VERSION,default=unknown"`
 	MetricExporterEndpoint         string   `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT,default=ingest.lightstep.com:443"`
 	MetricExporterEndpointInsecure bool     `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
@@ -224,7 +224,7 @@ func validateConfiguration(c Config) error {
 			}
 		}
 		if !serviceNameSet {
-			return errors.New("invalid configuration: service name missing. Set LS_SERVICE_NAME env var or configure WithServiceName in code")
+			return errors.New("invalid configuration: service name missing. Set OTEL_SERVICE_NAME env var or configure WithServiceName in code")
 		}
 	}
 

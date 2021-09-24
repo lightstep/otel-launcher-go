@@ -571,7 +571,7 @@ func TestEmptyHostnameDefaultsToOsHostname(t *testing.T) {
 }
 
 func setEnvironment() {
-	os.Setenv("LS_SERVICE_NAME", "test-service-name")
+	os.Setenv("OTEL_SERVICE_NAME", "test-service-name")
 	os.Setenv("LS_SERVICE_VERSION", "test-service-version")
 	os.Setenv("LS_ACCESS_TOKEN", "token")
 	os.Setenv("OTEL_EXPORTER_OTLP_SPAN_ENDPOINT", "satellite-url")
@@ -586,7 +586,7 @@ func setEnvironment() {
 
 func unsetEnvironment() {
 	vars := []string{
-		"LS_SERVICE_NAME",
+		"OTEL_SERVICE_NAME",
 		"LS_SERVICE_VERSION",
 		"LS_ACCESS_TOKEN",
 		"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT",

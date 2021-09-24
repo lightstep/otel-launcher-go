@@ -10,11 +10,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [1.0.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.0.0) - 2021-09-22
 
+### Breaking change
+
+- Removed support for `LS_SERVICE_NAME` in favour of OpenTelemetry standard `OTEL_SERVICE_NAME`
+
 ### Changed
+
 - Update OpenTelemetry tracing dependencies to 1.0.0
+
 ## [1.0.0-RC3](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.0.0-RC3) - 2021-09-15
 
 ### Changed
+
 - Update OpenTelemetry tracing dependencies to 1.0.0-RC3
 - Update OpenTelemetry metrics dependencies to 0.23.0
 - Remove support for deprecated `OTEL_RESOURCE_LABELS` environment variable, as
@@ -23,25 +30,30 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.20.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v0.20.0) - 2021-05-10
 
 ### Changed
+
 - Update OpenTelemetry dependencies to 0.20.0
 
 ## [0.18.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v0.18.0) - 2021-03-16
 
 ### Changed
+
 - Update OpenTelemetry dependencies to 0.18.0
 
 ### Added
+
 - Add support for `ottrace` propagator
 
 ## [0.16.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v0.16.1) - 2021-02-01
 
 ### Changed
+
 - Enable gzip compression by default
 - Update OpenTelemetry dependencies to 0.16.0
 
 ## [0.15.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v0.15.0) - 2020-12-15
 
 ### Changed
+
 - Update OpenTelemetry dependencies to 0.15.0
 - Added context param for NewExporter as required by OpenTelemetry 0.15.0
 
@@ -54,9 +66,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [0.14.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v0.14.0) - 2020-11-23
 
 ### Changed
+
 - Update configuration for baggage propagator from `"cc"` to `"baggage"` (#30)
 
 ### Added
+
 - Add support for `tracecontext` propagator (#32)
 - Adding LS_METRICS_ENABLED env variable to control host/runtime metrics (#34)
 

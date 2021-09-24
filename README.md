@@ -38,7 +38,7 @@ Additional options
 
 |Config Option     |Env Variable      |Required|Default|
 |------------------|------------------|--------|-------|
-|WithServiceName            |LS_SERVICE_NAME                    |y       |-                               |
+|WithServiceName            |OTEL_SERVICE_NAME                  |y       |-                               |
 |WithServiceVersion         |LS_SERVICE_VERSION                 |n       |unknown                         |
 |WithSpanExporterEndpoint   |OTEL_EXPORTER_OTLP_SPAN_ENDPOINT   |n       |ingest.lightstep.com:443        |
 |WithSpanExporterInsecure   |OTEL_EXPORTER_OTLP_SPAN_INSECURE   |n       |false                           |

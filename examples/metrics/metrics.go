@@ -15,7 +15,7 @@
 // Package main configures OpenTelemetry metrics and starts reporting
 // runtime and host metrics.  For example:
 //
-//   LS_SERVICE_NAME=foo \
+//   OTEL_SERVICE_NAME=foo \
 //   OTEL_EXPORTER_OTLP_SPAN_ENDPOINT=localhost:9999 \
 //   OTEL_EXPORTER_OTLP_METRIC_ENDPOINT=localhost:9999 \
 //   go run ./metrics.go
@@ -39,7 +39,7 @@ import (
 func main() {
 	defer launcher.ConfigureOpentelemetry().Shutdown()
 
-	name := os.Getenv("LS_SERVICE_NAME")
+	name := os.Getenv("OTEL_SERVICE_NAME")
 	prefix := fmt.Sprint("otel.", name, ".")
 
 	ctx := context.Background()
