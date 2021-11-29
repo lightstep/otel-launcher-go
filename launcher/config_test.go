@@ -269,7 +269,7 @@ func TestDebugEnabled(t *testing.T) {
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
-		WithAccessToken("access-token-123"),
+		WithAccessToken("access-token-123-123456789abcdef"),
 		WithSpanExporterEndpoint("localhost:443"),
 		WithLogLevel("debug"),
 		WithResourceAttributes(map[string]string{
