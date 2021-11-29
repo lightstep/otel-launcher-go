@@ -6,3 +6,9 @@ updates:
   - dependencies
   schedule:
     interval: daily
+- package-ecosystem: gomod
+  directory: /pipelines
+  labels:
+  - dependencies
+  schedule:
+    interval: daily
