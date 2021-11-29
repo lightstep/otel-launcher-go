@@ -12,3 +12,9 @@ updates:
   - dependencies
   schedule:
     interval: daily
+- package-ecosystem: gomod
+  directory: /tools
+  labels:
+  - dependencies
+  schedule:
+    interval: daily
