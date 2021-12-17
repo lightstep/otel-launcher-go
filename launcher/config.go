@@ -25,7 +25,6 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/pipelines"
 	"github.com/sethvargo/go-envconfig"
-	"go.opentelemetry.io/collector/translator/conventions"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -228,7 +227,7 @@ func validateConfiguration(c Config) error {
 	if len(c.ServiceName) == 0 {
 		serviceNameSet := false
 		for _, kv := range c.Resource.Attributes() {
-			if kv.Key == conventions.AttributeServiceName {
+			if kv.Key == semconv.ServiceNameKey {
 				if len(kv.Value.AsString()) > 0 {
 					serviceNameSet = true
 				}
@@ -288,28 +287,28 @@ func newResource(c *Config) *resource.Resource {
 
 	hostnameSet := false
 	for iter := r.Iter(); iter.Next(); {
-		if iter.Attribute().Key == conventions.AttributeHostName && len(iter.Attribute().Value.Emit()) > 0 {
+		if iter.Attribute().Key == semconv.HostNameKey && len(iter.Attribute().Value.Emit()) > 0 {
 			hostnameSet = true
 		}
 	}
 
 	attributes := []attribute.KeyValue{
-		attribute.String(conventions.AttributeTelemetrySDKName, "launcher"),
-		attribute.String(conventions.AttributeTelemetrySDKLanguage, "go"),
-		attribute.String(conventions.AttributeTelemetrySDKVersion, version),
+		semconv.TelemetrySDKNameKey.String("launcher"),
+		semconv.TelemetrySDKLanguageGo,
+		semconv.TelemetrySDKVersionKey.String(version),
 	}
 
 	if len(c.ServiceName) > 0 {
-		attributes = append(attributes, attribute.String(conventions.AttributeServiceName, c.ServiceName))
+		attributes = append(attributes, semconv.ServiceNameKey.String(c.ServiceName))
 	}
 
 	if len(c.ServiceVersion) > 0 {
-		attributes = append(attributes, attribute.String(conventions.AttributeServiceVersion, c.ServiceVersion))
+		attributes = append(attributes, semconv.ServiceVersionKey.String(c.ServiceVersion))
 	}
 
 	for key, value := range c.resourceAttributes {
 		if len(value) > 0 {
-			if key == conventions.AttributeHostName {
+			if key == string(semconv.HostNameKey) {
 				hostnameSet = true
 			}
 			attributes = append(attributes, attribute.String(key, value))
@@ -321,7 +320,7 @@ func newResource(c *Config) *resource.Resource {
 		if err != nil {
 			c.logger.Debugf("unable to set host.name. Set OTEL_RESOURCE_ATTRIBUTES=\"host.name=<your_host_name>\" env var or configure WithResourceAttributes in code: %v", err)
 		} else {
-			attributes = append(attributes, attribute.String(conventions.AttributeHostName, hostname))
+			attributes = append(attributes, semconv.HostNameKey.String(hostname))
 		}
 	}
 
