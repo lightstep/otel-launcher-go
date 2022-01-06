@@ -5,9 +5,9 @@ go 1.16
 require (
 	go.opentelemetry.io/contrib/instrumentation/host v0.23.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.23.0
-	go.opentelemetry.io/contrib/propagators/b3 v0.23.0
+	go.opentelemetry.io/contrib/propagators/b3 v1.3.0
 	go.opentelemetry.io/contrib/propagators/ot v0.23.0
-	go.opentelemetry.io/otel v1.0.0
+	go.opentelemetry.io/otel v1.3.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.23.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.23.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.0.0
