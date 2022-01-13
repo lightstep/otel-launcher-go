@@ -377,8 +377,6 @@ func ConfigureOpentelemetry(opts ...Option) Launcher {
 		c.logger.Debugf("configuration")
 		s, _ := json.MarshalIndent(c, "", "\t")
 		c.logger.Debugf(string(s))
-
-		fmt.Fprint(os.Stderr, string(s))
 	}
 
 	if c.Headers == nil {
