@@ -4,8 +4,6 @@
 
 # Launcher, a Lightstep Distro for OpenTelemetry 🚀
 
-_NOTE: This is in beta._
-
 ### What is Launcher?
 
 Launcher is a configuration layer that chooses default values for configuration options that many OpenTelemetry users want. It provides a single function in each language to simplify discovery of the options and components available to users. The goal of Launcher is to help users that aren't familiar with OpenTelemetry quickly ramp up on what they need to get going and instrument.
