@@ -114,7 +114,7 @@ func WithMetricExporterInsecure(insecure bool) Option {
 // WithResourceAttributes configures attributes on the resource
 func WithResourceAttributes(attributes map[string]string) Option {
 	return func(c *Config) {
-		c.resourceAttributes = attributes
+		c.ResourceAttributes = attributes
 	}
 }
 
@@ -199,7 +199,7 @@ type Config struct {
 	LogLevel                       string            `env:"OTEL_LOG_LEVEL,default=info"`
 	Propagators                    []string          `env:"OTEL_PROPAGATORS,default=b3"`
 	MetricReportingPeriod          string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
-	resourceAttributes             map[string]string
+	ResourceAttributes             map[string]string
 	Resource                       *resource.Resource
 	logger                         Logger
 	errorHandler                   otel.ErrorHandler
@@ -306,12 +306,12 @@ func newResource(c *Config) *resource.Resource {
 		attributes = append(attributes, semconv.ServiceVersionKey.String(c.ServiceVersion))
 	}
 
-	for key, value := range c.resourceAttributes {
+	for key, value := range c.ResourceAttributes {
 		if len(value) > 0 {
 			if key == string(semconv.HostNameKey) {
 				hostnameSet = true
 			}
-			attributes = append(attributes, attribute.String(key, value))
+			attributes = append(attributes, semconv.HostNameKey.String(value))
 		}
 	}
 
