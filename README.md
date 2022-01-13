@@ -43,7 +43,7 @@ func main() {
         launcher.WithHeaders(map[string]string{
             "service-auth-key": "value",
             "service-useful-field": "testing",
-        })
+        }),
     )
     defer otel.Shutdown()
 }

@@ -1,0 +1,20 @@
+version: 2
+updates:
+- package-ecosystem: gomod
+  directory: /
+  labels:
+  - dependencies
+  schedule:
+    interval: daily
+- package-ecosystem: gomod
+  directory: /pipelines
+  labels:
+  - dependencies
+  schedule:
+    interval: daily
+- package-ecosystem: gomod
+  directory: /tools
+  labels:
+  - dependencies
+  schedule:
+    interval: daily

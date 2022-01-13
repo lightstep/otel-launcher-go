@@ -3,14 +3,17 @@ module github.com/lightstep/otel-launcher-go
 go 1.16
 
 require (
-	github.com/kr/pretty v0.3.0 // indirect
-	github.com/lightstep/otel-launcher-go/pipelines v0.0.0-00010101000000-000000000000
+	github.com/kr/text v0.2.0 // indirect
+	github.com/lightstep/otel-launcher-go/pipelines v0.0.0-20220106234948-aab622036bba
 	github.com/sethvargo/go-envconfig v0.4.0
 	github.com/stretchr/testify v1.7.0
-	go.opentelemetry.io/otel v1.2.0
-	go.opentelemetry.io/otel/metric v0.25.0
-	go.opentelemetry.io/otel/sdk v1.2.0
-	go.opentelemetry.io/otel/trace v1.2.0
+	go.opentelemetry.io/otel v1.3.0
+	go.opentelemetry.io/otel/metric v0.26.0
+	go.opentelemetry.io/otel/sdk v1.3.0
+	go.opentelemetry.io/otel/trace v1.3.0
+	golang.org/x/net v0.0.0-20220111093109-d55c255bac03 // indirect
+	google.golang.org/genproto v0.0.0-20220112215332-a9c7c0acf9f2 // indirect
+	google.golang.org/grpc v1.43.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 )
 
