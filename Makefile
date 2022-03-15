@@ -120,6 +120,11 @@ examples:
 
 .PHONY: lint
 lint: $(TOOLS_DIR)/golangci-lint $(TOOLS_DIR)/misspell
+	set -e; for dir in $(ALL_GO_MOD_DIRS) $(TOOLS_MOD_DIR); do \
+	  echo "go mod tidy in $${dir}"; \
+	  (cd "$${dir}" && \
+	    go mod tidy); \
+	done
 	set -e; for dir in $(ALL_GO_MOD_DIRS); do \
 	  echo "golangci-lint in $${dir}"; \
 	  (cd "$${dir}" && \
@@ -127,11 +132,6 @@ lint: $(TOOLS_DIR)/golangci-lint $(TOOLS_DIR)/misspell
 	    $(TOOLS_DIR)/golangci-lint run); \
 	done
 	$(TOOLS_DIR)/misspell -w $(ALL_DOCS)
-	set -e; for dir in $(ALL_GO_MOD_DIRS) $(TOOLS_MOD_DIR); do \
-	  echo "go mod tidy in $${dir}"; \
-	  (cd "$${dir}" && \
-	    go mod tidy); \
-	done
 
 generate: $(TOOLS_DIR)/stringer
 	set -e; for dir in $(ALL_GO_MOD_DIRS); do \
