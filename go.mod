@@ -6,7 +6,7 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lightstep/otel-launcher-go/pipelines v0.0.0-20220106234948-aab622036bba
 	github.com/sethvargo/go-envconfig v0.5.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	go.opentelemetry.io/otel v1.5.0
 	go.opentelemetry.io/otel/metric v0.27.0
 	go.opentelemetry.io/otel/sdk v1.5.0
