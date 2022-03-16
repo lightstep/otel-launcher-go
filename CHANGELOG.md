@@ -11,6 +11,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## 💡 Enhancements 💡
 
 - use semconv package instead of collector package (#69)
+- update OpenTelemetry SDK dependencies to 1.4.0 (#112)
+- update OpenTelemetry metrics to 0.27.0 (#114)
 
 ## [1.0.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.0.0) - 2021-09-22
 
