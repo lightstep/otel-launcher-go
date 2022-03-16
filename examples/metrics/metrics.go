@@ -64,28 +64,28 @@ func main() {
 
 	startTime := time.Now()
 
-	meter.NewInt64SumObserver(
-		prefix+"sumobserver",
+	meter.NewInt64CounterObserver(
+		prefix+"counterobserver",
 		func(_ context.Context, result metric.Int64ObserverResult) {
 			result.Observe(int64(time.Since(startTime).Seconds()))
 		},
 	)
 
-	meter.NewInt64UpDownSumObserver(
-		prefix+"updownsumobserver",
+	meter.NewInt64UpDownCounterObserver(
+		prefix+"updowncounterobserver",
 		func(_ context.Context, result metric.Int64ObserverResult) {
 			result.Observe(-int64(time.Since(startTime).Seconds()))
 		},
 	)
 
-	meter.NewInt64ValueObserver(
-		prefix+"valueobserver",
+	meter.NewInt64GaugeObserver(
+		prefix+"gauge",
 		func(_ context.Context, result metric.Int64ObserverResult) {
 			result.Observe(int64(50 + rand.NormFloat64()*50))
 		},
 	)
 
-	meter.NewFloat64ValueObserver(
+	meter.NewFloat64GaugeObserver(
 		prefix+"sine_wave",
 		func(_ context.Context, result metric.Float64ObserverResult) {
 			secs := float64(time.Now().UnixNano()) / float64(time.Second)

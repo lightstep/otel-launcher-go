@@ -12,6 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package launcher
+package pipelines
 
-const version = "1.0.0"
+import "go.opentelemetry.io/otel/sdk/resource"
+
+type PipelineConfig struct {
+	Endpoint        string
+	Insecure        bool
+	Headers         map[string]string
+	Resource        *resource.Resource
+	ReportingPeriod string
+	Propagators     []string
+}
+
+type PipelineSetupFunc func(PipelineConfig) (func() error, error)

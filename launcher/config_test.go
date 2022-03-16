@@ -269,7 +269,7 @@ func TestDebugEnabled(t *testing.T) {
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
-		WithAccessToken("access-token-123"),
+		WithAccessToken("access-token-123-123456789abcdef"),
 		WithSpanExporterEndpoint("localhost:443"),
 		WithLogLevel("debug"),
 		WithResourceAttributes(map[string]string{
@@ -314,7 +314,6 @@ func TestDefaultConfig(t *testing.T) {
 		MetricExporterEndpointInsecure: false,
 		MetricReportingPeriod:          "30s",
 		MetricsEnabled:                 true,
-		AccessToken:                    "",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
 		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
@@ -350,7 +349,6 @@ func TestEnvironmentVariables(t *testing.T) {
 		MetricExporterEndpoint:         "metrics-url",
 		MetricExporterEndpointInsecure: true,
 		MetricReportingPeriod:          "30s",
-		AccessToken:                    "token",
 		LogLevel:                       "debug",
 		Propagators:                    []string{"b3", "w3c"},
 		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
@@ -397,7 +395,7 @@ func TestConfigurationOverrides(t *testing.T) {
 		MetricExporterEndpoint:         "override-metrics-url",
 		MetricExporterEndpointInsecure: false,
 		MetricReportingPeriod:          "30s",
-		AccessToken:                    "override-access-token",
+		Headers:                        map[string]string{"lightstep-access-token": "override-access-token"},
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
 		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
