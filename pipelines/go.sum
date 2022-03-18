@@ -90,8 +90,8 @@ github.com/yusufpapurcu/wmi v1.2.2 h1:KBNDSne4vP5mbSWnJbO+51IMOXJB67QiYCSBrubbPR
 github.com/yusufpapurcu/wmi v1.2.2/go.mod h1:SBZ9tNy3G9/m5Oi98Zks0QjeHVDvuK0qfxQmPyzfmi0=
 go.opentelemetry.io/contrib/instrumentation/host v0.29.0 h1:dPT8KmaLkx4IBUVtG69oqKnfP8892RMMYcqDItGdRLU=
 go.opentelemetry.io/contrib/instrumentation/host v0.29.0/go.mod h1:pdZRsF/PWG4bBbzab08YSnM3p8vpq9ue34ADPZCbdfE=
-go.opentelemetry.io/contrib/instrumentation/runtime v0.29.0 h1:ZnLxB76QjHDLnrUWLYgcCc8lcdRGoraTLvJEWmwwC80=
-go.opentelemetry.io/contrib/instrumentation/runtime v0.29.0/go.mod h1:qGVpMUNpULYYXRYCQB3DNUe+of22Y+M28i1Oke8SuKQ=
+go.opentelemetry.io/contrib/instrumentation/runtime v0.30.0 h1:chMoQpB7M6RQs0DrlblcJ7oC+SuGf9p4O1HfigUiOms=
+go.opentelemetry.io/contrib/instrumentation/runtime v0.30.0/go.mod h1:qGVpMUNpULYYXRYCQB3DNUe+of22Y+M28i1Oke8SuKQ=
 go.opentelemetry.io/contrib/propagators/b3 v1.4.0 h1:wDb2ct7xMzossYpx44w81skxkEyeT2IRnBgYKqyEork=
 go.opentelemetry.io/contrib/propagators/b3 v1.4.0/go.mod h1:K399DN23drp0RQGXCbSPOt9075HopQigMgUL99oR8hc=
 go.opentelemetry.io/contrib/propagators/ot v1.4.0 h1:sHp8P5+xmMORvsgKjIPPX4U97JUgSqY4xPWa6ncF1PA=
