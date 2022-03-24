@@ -23,4 +23,4 @@ fi
 echo $VERSION > ./VERSION
 
 sed -i '' "s/const version.*/const version = \"$VERSION\"/" ./launcher/version.go
-
+go get github.com/lightstep/otel-launcher-go/pipelines@v$VERSION

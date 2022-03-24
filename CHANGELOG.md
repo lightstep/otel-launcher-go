@@ -8,6 +8,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.5.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.5.1) - 2022-03-24
+
+### 🧰 Bug fixes 🧰
+
+- tag `github.com/lightstep/otel-launcher-go/pipelines` and update go.mod for launcher
+
 ## [1.5.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.5.0) - 2022-03-18
 
 ## 💡 Enhancements 💡
