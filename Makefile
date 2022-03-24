@@ -18,7 +18,9 @@ TOOLS_MOD_DIR := ./tools
 ALL_DOCS := $(shell find . -name '*.md' -type f | sort)
 # All directories with go.mod files related to opentelemetry library. Used for building, testing and linting.
 ALL_GO_MOD_DIRS := $(filter-out $(TOOLS_MOD_DIR), $(shell find . -type f -name 'go.mod' -exec dirname {} \; | sort))
+ALL_MODULES := $(filter-out $(TOOLS_MOD_DIR), $(shell find . -type f -name "go.mod" -exec dirname {} \; | sort | egrep  '^./' ))
 ALL_COVERAGE_MOD_DIRS := $(shell find . -type f -name 'go.mod' -exec dirname {} \; | egrep -v '^./example|^$(TOOLS_MOD_DIR)' | sort)
+TAG := "v$(shell cat ./VERSION)"
 
 # Mac OS Catalina 10.5.x doesn't support 386. Hence skip 386 test
 SKIP_386_TEST = false
@@ -161,6 +163,32 @@ else
 		@echo 'ver not defined. call make ver=<version eg 1.2.3> version'
 endif
 
-release_tag:
-	git tag v`cat ./VERSION`
-	git push origin v`cat ./VERSION`
+.PHONY: add-tag
+add-tag:
+	@[ "${TAG}" ] || ( echo ">> env var TAG is not set"; exit 1 )
+	@echo "Adding tag ${TAG}"
+	@git tag -a ${TAG} -s -m "Version ${TAG}"
+	@set -e; for dir in $(ALL_MODULES); do \
+	  (echo Adding tag "$${dir:2}/$${TAG}" && \
+	 	git tag -a "$${dir:2}/$${TAG}" -s -m "Version ${dir:2}/${TAG}" ); \
+	done
+
+.PHONY: push-tag
+push-tag:
+	@[ "${TAG}" ] || ( echo ">> env var TAG is not set"; exit 1 )
+	@echo "Pushing tag ${TAG}"
+	@git push git@github.com:lightstep/otel-launcher-go.git ${TAG}
+	@set -e; for dir in $(ALL_MODULES); do \
+	  (echo Pushing tag "$${dir:2}/$${TAG}" && \
+	 	git push git@github.com:lightstep/otel-launcher-go.git "$${dir:2}/$${TAG}"); \
+	done
+
+.PHONY: delete-tag
+delete-tag:
+	@[ "${TAG}" ] || ( echo ">> env var TAG is not set"; exit 1 )
+	@echo "Deleting tag ${TAG}"
+	@git tag -d ${TAG}
+	@set -e; for dir in $(ALL_MODULES); do \
+	  (echo Deleting tag "$${dir:2}/$${TAG}" && \
+	 	git tag -d "$${dir:2}/$${TAG}" ); \
+	done
