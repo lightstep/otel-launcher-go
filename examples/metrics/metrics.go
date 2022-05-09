@@ -32,8 +32,8 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/launcher"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
 	metricglobal "go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 func main() {
@@ -43,7 +43,7 @@ func main() {
 	prefix := fmt.Sprint("otel.", name, ".")
 
 	ctx := context.Background()
-	meter := metric.Must(metricglobal.Meter("testing"))
+	meter := metricglobal.Meter("testing")
 
 	// This example shows 1 instrument each for (UpDown)?(SumObserver|Counter)
 	// The two monotonic instruments of these have a fixed rate of +1.
@@ -52,8 +52,8 @@ func main() {
 	//
 	// TODO: ValueRecorder examples.
 
-	c1 := meter.NewInt64Counter(prefix + "counter")
-	c2 := meter.NewInt64UpDownCounter(prefix + "updowncounter")
+	c1, _ := meter.SyncInt64().Counter(prefix + "counter")
+	c2, _ := meter.SyncInt64().UpDownCounter(prefix + "updowncounter")
 	go func() {
 		for {
 			c1.Add(ctx, 1)
@@ -64,37 +64,65 @@ func main() {
 
 	startTime := time.Now()
 
-	meter.NewInt64CounterObserver(
-		prefix+"counterobserver",
-		func(_ context.Context, result metric.Int64ObserverResult) {
-			result.Observe(int64(time.Since(startTime).Seconds()))
+	counterObserver, _ := meter.AsyncInt64().Counter(
+		prefix + "counterobserver",
+	)
+
+	err := meter.RegisterCallback([]instrument.Asynchronous{counterObserver},
+		func(ctx context.Context) {
+			counterObserver.Observe(ctx, int64(time.Since(startTime).Seconds()))
 		},
 	)
 
-	meter.NewInt64UpDownCounterObserver(
-		prefix+"updowncounterobserver",
-		func(_ context.Context, result metric.Int64ObserverResult) {
-			result.Observe(-int64(time.Since(startTime).Seconds()))
+	if err != nil {
+		fmt.Printf("%v", err)
+	}
+
+	updownCounterObserver, _ := meter.AsyncInt64().UpDownCounter(
+		prefix + "updowncounterobserver",
+	)
+
+	err = meter.RegisterCallback([]instrument.Asynchronous{updownCounterObserver},
+		func(ctx context.Context) {
+			updownCounterObserver.Observe(ctx, -int64(time.Since(startTime).Seconds()))
 		},
 	)
 
-	meter.NewInt64GaugeObserver(
-		prefix+"gauge",
-		func(_ context.Context, result metric.Int64ObserverResult) {
-			result.Observe(int64(50 + rand.NormFloat64()*50))
+	if err != nil {
+		fmt.Printf("%v", err)
+	}
+
+	gauge, _ := meter.AsyncInt64().Gauge(
+		prefix + "gauge",
+	)
+
+	err = meter.RegisterCallback([]instrument.Asynchronous{gauge},
+		func(ctx context.Context) {
+			gauge.Observe(ctx, int64(50+rand.NormFloat64()*50))
 		},
 	)
 
-	meter.NewFloat64GaugeObserver(
-		prefix+"sine_wave",
-		func(_ context.Context, result metric.Float64ObserverResult) {
+	if err != nil {
+		fmt.Printf("%v", err)
+	}
+
+	sineWave, _ := meter.AsyncFloat64().Gauge(
+		prefix + "sine_wave",
+	)
+
+	err = meter.RegisterCallback([]instrument.Asynchronous{sineWave},
+		func(ctx context.Context) {
 			secs := float64(time.Now().UnixNano()) / float64(time.Second)
 
-			result.Observe(math.Sin(secs/(200*math.Pi)), attribute.String("period", "fast"))
-			result.Observe(math.Sin(secs/(1000*math.Pi)), attribute.String("period", "regular"))
-			result.Observe(math.Sin(secs/(5000*math.Pi)), attribute.String("period", "slow"))
+			sineWave.Observe(ctx, math.Sin(secs/(200*math.Pi)), attribute.String("period", "fast"))
+			sineWave.Observe(ctx, math.Sin(secs/(1000*math.Pi)), attribute.String("period", "regular"))
+			sineWave.Observe(ctx, math.Sin(secs/(5000*math.Pi)), attribute.String("period", "slow"))
 		},
 	)
+
+	if err != nil {
+		fmt.Printf("%v", err)
+	}
 
 	if os.Getenv("NOHANG") == "" {
 		select {}
