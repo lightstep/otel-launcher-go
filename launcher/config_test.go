@@ -551,21 +551,21 @@ func TestServiceNameViaResourceAttributes(t *testing.T) {
 
 func TestEmptyHostnameDefaultsToOsHostname(t *testing.T) {
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "host.name=")
-	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
 		WithServiceName("test-service"),
 		WithSpanExporterEndpoint("localhost:443"),
-		WithLogLevel("debug"),
+		WithAccessToken(fakeAccessToken()),
 		WithResourceAttributes(map[string]string{
 			"attr1":     "val1",
 			"host.name": "",
 		}),
 	)
 	defer lsOtel.Shutdown()
-	output := strings.Join(logger.output[:], ",")
-	assert.Contains(t, output, "host.name")
-	assert.Contains(t, output, host())
+
+	attrs := attribute.NewSet(lsOtel.config.Resource.Attributes()...)
+	v, ok := attrs.Value("host.name")
+	assert.Equal(t, host(), v.AsString())
+	assert.True(t, ok)
 }
 
 func TestConfigWithResourceAttributes(t *testing.T) {
