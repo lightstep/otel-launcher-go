@@ -311,7 +311,7 @@ func newResource(c *Config) *resource.Resource {
 			if key == string(semconv.HostNameKey) {
 				hostnameSet = true
 			}
-			attributes = append(attributes, semconv.HostNameKey.String(value))
+			attributes = append(attributes, attribute.String(key, value))
 		}
 	}
 
