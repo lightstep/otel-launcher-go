@@ -169,8 +169,8 @@ add-tag:
 	@echo "Adding tag ${TAG}"
 	@git tag -a ${TAG} -s -m "Version ${TAG}"
 	@set -e; for dir in $(ALL_MODULES); do \
-	  (echo Adding tag "$${dir:2}/$${TAG}" && \
-	 	git tag -a "$${dir:2}/$${TAG}" -s -m "Version ${dir:2}/${TAG}" ); \
+	  (echo Adding tag "$${dir:2}/${TAG}" && \
+	 	git tag -a "$${dir:2}/${TAG}" -s -m "Version ${dir:2}/${TAG}" ); \
 	done
 
 .PHONY: push-tag
@@ -179,8 +179,8 @@ push-tag:
 	@echo "Pushing tag ${TAG}"
 	@git push git@github.com:lightstep/otel-launcher-go.git ${TAG}
 	@set -e; for dir in $(ALL_MODULES); do \
-	  (echo Pushing tag "$${dir:2}/$${TAG}" && \
-	 	git push git@github.com:lightstep/otel-launcher-go.git "$${dir:2}/$${TAG}"); \
+	  (echo Pushing tag "$${dir:2}/${TAG}" && \
+	 	git push git@github.com:lightstep/otel-launcher-go.git "$${dir:2}/${TAG}"); \
 	done
 
 .PHONY: delete-tag
@@ -189,6 +189,6 @@ delete-tag:
 	@echo "Deleting tag ${TAG}"
 	@git tag -d ${TAG}
 	@set -e; for dir in $(ALL_MODULES); do \
-	  (echo Deleting tag "$${dir:2}/$${TAG}" && \
-	 	git tag -d "$${dir:2}/$${TAG}" ); \
+	  (echo Deleting tag "$${dir:2}/${TAG}" && \
+	 	git tag -d "$${dir:2}/${TAG}" ); \
 	done
