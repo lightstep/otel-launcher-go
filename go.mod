@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/kr/text v0.2.0 // indirect
-	github.com/lightstep/otel-launcher-go/pipelines v1.5.1
+	github.com/lightstep/otel-launcher-go/pipelines v1.5.2
 	github.com/sethvargo/go-envconfig v0.6.0
 	github.com/stretchr/testify v1.7.1
 	go.opentelemetry.io/otel v1.6.3
