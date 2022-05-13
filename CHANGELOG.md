@@ -8,6 +8,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.5.2](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.5.2) - 2022-05-12
+
+### 🧰 Bug fixes 🧰
+
+- `WithResourceAttributes()` fixed, had been non-functional [#165](https://github.com/lightstep/otel-launcher-go/pull/165)
+
 ## [1.5.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.5.1) - 2022-03-24
 
 ### 🧰 Bug fixes 🧰
