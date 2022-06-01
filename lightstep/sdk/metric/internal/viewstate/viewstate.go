@@ -98,7 +98,7 @@ type Updater[N number.Any] interface {
 
 // Accumulator is an intermediate interface used for short-term
 // aggregation.  Every Accumulator is also an Updater.  The owner of
-// an Accumulator is responsible for maintaining the the current set
+// an Accumulator is responsible for maintaining the current set
 // of Accumulators, defined as those which have been Updated and not
 // yet had SnapshotAndProcess() called.
 type Accumulator interface {

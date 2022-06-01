@@ -47,8 +47,6 @@ type compiledAsyncBase[N number.Any, Storage any, Methods aggregator.Methods[N, 
 func (cav *compiledAsyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set) Accumulator {
 	ac := &asyncAccumulator[N, Storage, Methods]{}
 
-	cav.initStorage(&ac.snapshot)
-	ac.current = 0
 	ac.findStorage = cav.storageFinder(kvs)
 
 	return ac
@@ -104,6 +102,10 @@ func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 		} else {
 			methods.Reset(exists)
 		}
+
+		// Note: This can be improved with a Copy() or Swap()
+		// operation in the Methods, since Merge() may be
+		// relatively expensive by comparison.
 		methods.Merge(exists, storage)
 
 		point.Attributes = set

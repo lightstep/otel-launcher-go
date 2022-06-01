@@ -58,7 +58,6 @@ func (acc *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess() {
 type asyncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
 	lock        sync.Mutex
 	current     N
-	snapshot    Storage
 	findStorage func() *Storage
 }
 
@@ -73,7 +72,5 @@ func (acc *asyncAccumulator[N, Storage, Methods]) SnapshotAndProcess() {
 	defer acc.lock.Unlock()
 
 	var methods Methods
-	methods.Reset(&acc.snapshot)
-	methods.Update(&acc.snapshot, acc.current)
-	methods.Merge(acc.findStorage(), &acc.snapshot)
+	methods.Update(acc.findStorage(), acc.current)
 }
