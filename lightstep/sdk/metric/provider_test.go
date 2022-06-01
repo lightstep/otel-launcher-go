@@ -18,9 +18,16 @@ import (
 	"context"
 	"testing"
 
-	"go.opentelemetry.io/otel/attribute"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"go.opentelemetry.io/otel/attribute"
 )
+
+func must[T any](t T, err error) T {
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
 
 // TODO: incomplete
 func TestOutputReuse(t *testing.T) {
