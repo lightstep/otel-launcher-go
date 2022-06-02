@@ -20,8 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"go.opentelemetry.io/otel"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"go.opentelemetry.io/otel"
 )
 
 // PushExporter is an interface for push-based exporters.
@@ -112,9 +112,9 @@ func (pr *PeriodicReader) collect(ctx context.Context, method func(context.Conte
 
 	// The lock ensures that re-use of `pr.data` is successful, it
 	// means that shutdown, flush, and ordinary collection are
-	// exclusive.  Note that shutdown will cancel an concurrent
-	// (ordinary) export, while flush will wait on for a
-	// concurrent export.
+	// exclusive.  Note that shutdown will cancel a concurrent
+	// (ordinary) export, while flush will wait for a concurrent
+	// export.
 	pr.data = pr.producer.Produce(&pr.data)
 
 	return method(ctx, pr.data)

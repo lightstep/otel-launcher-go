@@ -16,7 +16,12 @@ package metric // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/me
 
 import (
 	"context"
+	"fmt"
+
+	"go.opentelemetry.io/otel"
 )
+
+var ErrMultipleReaderRegistration = fmt.Errorf("reader has multiple registrations")
 
 // ManualReader is a a simple Reader that allows an application to
 // read metrics on demand.  It simply stores the Producer interface
@@ -44,6 +49,9 @@ func (mr *ManualReader) String() string {
 // Register stores the Producer which enables the caller to read
 // metrics on demand.
 func (mr *ManualReader) Register(p Producer) {
+	if mr.Producer != nil {
+		otel.Handle(fmt.Errorf("%v: %w", mr.Name, ErrMultipleReaderRegistration))
+	}
 	mr.Producer = p
 }
 

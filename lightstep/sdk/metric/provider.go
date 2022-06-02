@@ -16,15 +16,17 @@ package metric // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/me
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
-	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"go.uber.org/multierr"
 )
 
 // MeterProvider handles the creation and coordination of Meters. All Meters
@@ -41,6 +43,8 @@ type MeterProvider struct {
 
 // Compile-time check MeterProvider implements metric.MeterProvider.
 var _ metric.MeterProvider = (*MeterProvider)(nil)
+
+var ErrAlreadyShutdown = fmt.Errorf("provider was already shut down")
 
 // NewMeterProvider returns a new and configured MeterProvider.
 //
@@ -117,9 +121,11 @@ func (mp *MeterProvider) Meter(name string, options ...metric.MeterOption) metri
 //
 // This method is safe to call concurrently.
 func (mp *MeterProvider) ForceFlush(ctx context.Context) error {
-	// TODO (#2820): implement.
-	// TODO: test this is concurrent safe.
-	return nil
+	var err error
+	for _, r := range mp.cfg.readers {
+		err = multierr.Append(err, r.ForceFlush(ctx))
+	}
+	return err
 }
 
 // Shutdown shuts down the MeterProvider flushing all pending telemetry and
@@ -138,9 +144,21 @@ func (mp *MeterProvider) ForceFlush(ctx context.Context) error {
 //
 // This method is safe to call concurrently.
 func (mp *MeterProvider) Shutdown(ctx context.Context) error {
-	// TODO (#2820): implement.
-	// TODO: test this is concurrent safe.
-	return nil
+	var err error
+
+	mp.lock.Lock()
+	defer mp.lock.Unlock()
+
+	if mp.meters == nil {
+		return ErrAlreadyShutdown
+	}
+
+	for _, r := range mp.cfg.readers {
+		err = multierr.Append(err, r.Shutdown(ctx))
+	}
+
+	mp.meters = nil
+	return err
 }
 
 // getOrdered returns meters in the order they were registered.
