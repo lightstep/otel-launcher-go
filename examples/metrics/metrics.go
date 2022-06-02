@@ -45,19 +45,29 @@ func main() {
 	ctx := context.Background()
 	meter := metricglobal.Meter("testing")
 
-	// This example shows 1 instrument each for (UpDown)?(SumObserver|Counter)
-	// The two monotonic instruments of these have a fixed rate of +1.
-	// The two non-monotonic instruments of these have a fixed rate of -1.
-	// There are 2 example ValueObserver instruments (one a Gaussian, one a Sine wave).
-	//
-	// TODO: ValueRecorder examples.
+	// This example shows 1 instrument each for synchronous and
+	// asynchronous Counter and UpDownCounter.  The two monotonic
+	// instruments of these have a fixed rate of +1.  The two
+	// non-monotonic instruments of these have a fixed rate of -1.
+	// There are 2 example Gauge instruments (one a Gaussian, one
+	// a Sine wave), and one Histogram.
 
 	c1, _ := meter.SyncInt64().Counter(prefix + "counter")
 	c2, _ := meter.SyncInt64().UpDownCounter(prefix + "updowncounter")
+	hist, _ := meter.SyncFloat64().Histogram(prefix + "histogram")
 	go func() {
 		for {
 			c1.Add(ctx, 1)
 			c2.Add(ctx, -1)
+
+			secs := float64(time.Now().UnixNano()) / float64(time.Second)
+			mult := math.Sin(secs / (40 * math.Pi))
+			mult *= mult
+
+			for i := 0; i < 10000; i++ {
+				hist.Record(ctx, mult*(100+rand.NormFloat64()*100))
+			}
+
 			time.Sleep(time.Second)
 		}
 	}()
@@ -114,6 +124,7 @@ func main() {
 		func(ctx context.Context) {
 			secs := float64(time.Now().UnixNano()) / float64(time.Second)
 
+			sineWave.Observe(ctx, math.Sin(secs/(50*math.Pi)), attribute.String("period", "fastest"))
 			sineWave.Observe(ctx, math.Sin(secs/(200*math.Pi)), attribute.String("period", "fast"))
 			sineWave.Observe(ctx, math.Sin(secs/(1000*math.Pi)), attribute.String("period", "regular"))
 			sineWave.Observe(ctx, math.Sin(secs/(5000*math.Pi)), attribute.String("period", "slow"))

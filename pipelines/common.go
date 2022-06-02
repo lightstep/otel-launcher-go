@@ -14,7 +14,9 @@
 
 package pipelines
 
-import "go.opentelemetry.io/otel/sdk/resource"
+import (
+	"go.opentelemetry.io/otel/sdk/resource"
+)
 
 type PipelineConfig struct {
 	Endpoint        string
@@ -23,6 +25,9 @@ type PipelineConfig struct {
 	Resource        *resource.Resource
 	ReportingPeriod string
 	Propagators     []string
+
+	// TemporalityPreference is one of "cumulative", "delta", or "stateless"
+	TemporalityPreference string
 }
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)

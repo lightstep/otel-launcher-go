@@ -314,6 +314,7 @@ func TestDefaultConfig(t *testing.T) {
 		MetricExporterEndpointInsecure: false,
 		MetricReportingPeriod:          "30s",
 		MetricsEnabled:                 true,
+		MetricTemporalityPreference:    "cumulative",
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
 		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
@@ -349,6 +350,7 @@ func TestEnvironmentVariables(t *testing.T) {
 		MetricExporterEndpoint:         "metrics-url",
 		MetricExporterEndpointInsecure: true,
 		MetricReportingPeriod:          "30s",
+		MetricTemporalityPreference:    "delta",
 		LogLevel:                       "debug",
 		Propagators:                    []string{"b3", "w3c"},
 		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
@@ -372,6 +374,7 @@ func TestConfigurationOverrides(t *testing.T) {
 		WithSpanExporterInsecure(false),
 		WithMetricExporterEndpoint("override-metrics-url"),
 		WithMetricExporterInsecure(false),
+		WithMetricTemporalityPreference("stateless"),
 		WithLogLevel("info"),
 		WithLogger(logger),
 		WithErrorHandler(handler),
@@ -395,6 +398,7 @@ func TestConfigurationOverrides(t *testing.T) {
 		MetricExporterEndpoint:         "override-metrics-url",
 		MetricExporterEndpointInsecure: false,
 		MetricReportingPeriod:          "30s",
+		MetricTemporalityPreference:    "stateless",
 		Headers:                        map[string]string{"lightstep-access-token": "override-access-token"},
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
@@ -600,6 +604,7 @@ func setEnvironment() {
 	os.Setenv("OTEL_LOG_LEVEL", "debug")
 	os.Setenv("OTEL_PROPAGATORS", "b3,w3c")
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-name-b")
+	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE", "delta")
 	os.Setenv("LS_METRICS_ENABLED", "false")
 }
 
@@ -616,6 +621,7 @@ func unsetEnvironment() {
 		"OTEL_PROPAGATORS",
 		"OTEL_RESOURCE_ATTRIBUTES",
 		"OTEL_EXPORTER_OTLP_METRIC_PERIOD",
+		"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE",
 		"LS_METRICS_ENABLED",
 	}
 	for _, envvar := range vars {
