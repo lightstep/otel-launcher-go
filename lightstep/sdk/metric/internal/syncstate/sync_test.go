@@ -21,7 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
@@ -33,6 +35,18 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
+)
+
+var (
+	endTime    = time.Unix(100, 0)
+	middleTime = endTime.Add(-time.Millisecond)
+	startTime  = endTime.Add(-2 * time.Millisecond)
+
+	testSequence = data.Sequence{
+		Start: startTime,
+		Last:  middleTime,
+		Now:   endTime,
+	}
 )
 
 func deltaUpdate(old, new int64) int64 {
@@ -173,6 +187,111 @@ func testSyncStateConcurrency(t *testing.T, numReaders int, tempo aggregation.Te
 	}
 }
 
-func TestSyncStateNoopInstrument(t *testing.T) {
-	// TODO: test with disabled instrument
+func TestSyncStatePartialNoopInstrument(t *testing.T) {
+	ctx := context.Background()
+	vopts := []view.Option{
+		view.WithClause(
+			view.MatchInstrumentName("dropme"),
+			view.WithAggregation(aggregation.DropKind),
+		),
+	}
+	lib := instrumentation.Library{
+		Name: "testlib",
+	}
+	vcs := make([]*viewstate.Compiler, 2)
+	vcs[0] = viewstate.New(lib, view.New("dropper", vopts...))
+	vcs[1] = viewstate.New(lib, view.New("keeper"))
+
+	desc := test.Descriptor("dropme", sdkinstrument.HistogramKind, number.Float64Kind)
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 2)
+	pipes[0], _ = vcs[0].Compile(desc)
+	pipes[1], _ = vcs[1].Compile(desc)
+
+	require.Nil(t, pipes[0])
+	require.NotNil(t, pipes[1])
+
+	inst := NewInstrument(desc, nil, pipes)
+	require.NotNil(t, inst)
+
+	hist := NewHistogram[float64, number.Float64Traits](inst)
+	require.NotNil(t, hist)
+
+	hist.Record(ctx, 1)
+	hist.Record(ctx, 2)
+	hist.Record(ctx, 3)
+
+	inst.SnapshotAndProcess()
+
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+	)
+
+	// Note: Create a merged histogram that is exactly equal to
+	// the one we expect.  Merging creates a slightly different
+	// struct, despite identical value, so we merge to create the
+	// expected value:
+	expectHist := histogram.NewFloat64(aggregator.HistogramConfig{})
+	mergeIn := histogram.NewFloat64(aggregator.HistogramConfig{}, 1, 2, 3)
+	expectHist.Merge(mergeIn)
+
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[1].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			test.Point(startTime, endTime,
+				expectHist,
+				aggregation.CumulativeTemporality,
+			),
+		),
+	)
+}
+
+func TestSyncStateFullNoopInstrument(t *testing.T) {
+	ctx := context.Background()
+	vopts := []view.Option{
+		view.WithClause(
+			view.MatchInstrumentName("dropme"),
+			view.WithAggregation(aggregation.DropKind),
+		),
+	}
+	lib := instrumentation.Library{
+		Name: "testlib",
+	}
+	vcs := make([]*viewstate.Compiler, 2)
+	vcs[0] = viewstate.New(lib, view.New("dropper", vopts...))
+	vcs[1] = viewstate.New(lib, view.New("keeper", vopts...))
+
+	desc := test.Descriptor("dropme", sdkinstrument.HistogramKind, number.Float64Kind)
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 2)
+	pipes[0], _ = vcs[0].Compile(desc)
+	pipes[1], _ = vcs[1].Compile(desc)
+
+	require.Nil(t, pipes[0])
+	require.Nil(t, pipes[1])
+
+	inst := NewInstrument(desc, nil, pipes)
+	require.Nil(t, inst)
+
+	hist := NewHistogram[float64, number.Float64Traits](inst)
+	require.NotNil(t, hist)
+
+	hist.Record(ctx, 1)
+	hist.Record(ctx, 2)
+	hist.Record(ctx, 3)
+
+	// There's no instrument, nothing to Snapshot
+	require.Equal(t, 0, len(vcs[0].Collectors()))
+	require.Equal(t, 0, len(vcs[1].Collectors()))
 }

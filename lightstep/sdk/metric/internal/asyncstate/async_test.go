@@ -51,27 +51,42 @@ var (
 )
 
 type testSDK struct {
-	compiler *viewstate.Compiler
+	compilers []*viewstate.Compiler
 }
 
 func (tsdk *testSDK) compile(desc sdkinstrument.Descriptor) pipeline.Register[viewstate.Instrument] {
-	comp, err := tsdk.compiler.Compile(desc)
-	if err != nil {
-		panic(err)
+	reg := pipeline.NewRegister[viewstate.Instrument](len(tsdk.compilers))
+
+	for i, comp := range tsdk.compilers {
+		inst, err := comp.Compile(desc)
+		if err != nil {
+			panic(err)
+		}
+		reg[i] = inst
 	}
-	reg := pipeline.NewRegister[viewstate.Instrument](1)
-	reg[0] = comp
 	return reg
 }
 
 func testAsync(name string, opts ...view.Option) *testSDK {
 	return &testSDK{
-		compiler: viewstate.New(testLibrary, view.New(name, opts...)),
+		compilers: []*viewstate.Compiler{
+			viewstate.New(testLibrary, view.New(name, opts...)),
+			viewstate.New(testLibrary, view.New(name, opts...)),
+		},
 	}
 }
 
-func testState() *State {
-	return NewState(0)
+func testAsync2(name string, opts1, opts2 []view.Option) *testSDK {
+	return &testSDK{
+		compilers: []*viewstate.Compiler{
+			viewstate.New(testLibrary, view.New(name, opts1...)),
+			viewstate.New(testLibrary, view.New(name, opts2...)),
+		},
+	}
+}
+
+func testState(num int) *State {
+	return NewState(num)
 }
 
 func testObserver[N number.Any, Traits number.Traits[N]](tsdk *testSDK, name string, ik sdkinstrument.Kind, opts ...instrument.Option) Observer[N, Traits] {
@@ -154,7 +169,7 @@ func TestCallbackInvalidation(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	state := testState()
+	state := testState(0)
 
 	// run the callback once legitimately
 	cb.Run(context.Background(), state)
@@ -172,7 +187,7 @@ func TestCallbackInvalidation(t *testing.T) {
 		t,
 		test.CollectScope(
 			t,
-			tsdk.compiler.Collectors(),
+			tsdk.compilers[0].Collectors(),
 			testSequence,
 		),
 		test.Instrument(
@@ -182,7 +197,7 @@ func TestCallbackInvalidation(t *testing.T) {
 	)
 }
 
-func TestCallbackUndeclaredInstrument(t *testing.T) {
+func TestCallbackInstrumentUndeclaredForCalback(t *testing.T) {
 	errors := test.OTelErrors()
 
 	tt := testAsync("test")
@@ -198,7 +213,7 @@ func TestCallbackUndeclaredInstrument(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	state := testState()
+	state := testState(0)
 
 	// run the callback once legitimately
 	cb.Run(context.Background(), state)
@@ -214,7 +229,7 @@ func TestCallbackUndeclaredInstrument(t *testing.T) {
 		t,
 		test.CollectScope(
 			t,
-			tt.compiler.Collectors(),
+			tt.compilers[0].Collectors(),
 			testSequence,
 		),
 		test.Instrument(
@@ -222,48 +237,6 @@ func TestCallbackUndeclaredInstrument(t *testing.T) {
 		),
 		test.Instrument(
 			cntr2.inst.descriptor,
-		),
-	)
-}
-
-func TestCallbackDroppedInstrument(t *testing.T) {
-	errors := test.OTelErrors()
-
-	tt := testAsync("test",
-		view.WithClause(
-			view.MatchInstrumentName("drop"),
-			view.WithAggregation(aggregation.DropKind),
-		),
-	)
-
-	cntrDrop := testObserver[float64, number.Float64Traits](tt, "drop", sdkinstrument.CounterObserverKind)
-	cntrKeep := testObserver[float64, number.Float64Traits](tt, "keep", sdkinstrument.CounterObserverKind)
-
-	cb, _ := NewCallback([]instrument.Asynchronous{cntrKeep}, tt, func(ctx context.Context) {
-		cntrDrop.Observe(ctx, 1000)
-		cntrKeep.Observe(ctx, 1000)
-	})
-
-	state := testState()
-
-	cb.Run(context.Background(), state)
-
-	cntrKeep.inst.SnapshotAndProcess(state)
-	cntrDrop.inst.SnapshotAndProcess(state)
-
-	require.Equal(t, 1, len(*errors))
-	require.Contains(t, (*errors)[0].Error(), "instrument not declared for use in callback")
-
-	test.RequireEqualMetrics(
-		t,
-		test.CollectScope(
-			t,
-			tt.compiler.Collectors(),
-			testSequence,
-		),
-		test.Instrument(
-			cntrKeep.inst.descriptor,
-			test.Point(startTime, endTime, sum.NewMonotonicFloat64(1000), aggregation.CumulativeTemporality),
 		),
 	)
 }
@@ -277,7 +250,7 @@ func TestInstrumentUseOutsideCallback(t *testing.T) {
 
 	cntr.Observe(context.Background(), 1000)
 
-	state := testState()
+	state := testState(0)
 
 	cntr.inst.SnapshotAndProcess(state)
 
@@ -288,11 +261,85 @@ func TestInstrumentUseOutsideCallback(t *testing.T) {
 		t,
 		test.CollectScope(
 			t,
-			tt.compiler.Collectors(),
+			tt.compilers[0].Collectors(),
 			testSequence,
 		),
 		test.Instrument(
 			cntr.inst.descriptor,
+		),
+	)
+}
+
+func TestCallbackDisabledInstrument(t *testing.T) {
+	tt := testAsync2(
+		"test",
+		[]view.Option{
+			view.WithClause(
+				view.MatchInstrumentName("drop1"),
+				view.WithAggregation(aggregation.DropKind),
+			),
+			view.WithClause(
+				view.MatchInstrumentName("drop2"),
+				view.WithAggregation(aggregation.DropKind),
+			),
+		},
+		[]view.Option{
+			view.WithClause(
+				view.MatchInstrumentName("drop2"),
+				view.WithAggregation(aggregation.DropKind),
+			),
+		},
+	)
+
+	cntrDrop1 := testObserver[float64, number.Float64Traits](tt, "drop1", sdkinstrument.CounterObserverKind)
+	cntrDrop2 := testObserver[float64, number.Float64Traits](tt, "drop2", sdkinstrument.CounterObserverKind)
+	cntrKeep := testObserver[float64, number.Float64Traits](tt, "keep", sdkinstrument.CounterObserverKind)
+
+	cb, _ := NewCallback([]instrument.Asynchronous{cntrDrop1, cntrDrop2, cntrKeep}, tt, func(ctx context.Context) {
+		cntrKeep.Observe(ctx, 1000)
+		cntrDrop1.Observe(ctx, 1001)
+		cntrDrop2.Observe(ctx, 1002)
+	})
+
+	runFor := func(num int) {
+		state := testState(num)
+
+		cb.Run(context.Background(), state)
+
+		cntrKeep.inst.SnapshotAndProcess(state)
+		cntrDrop1.inst.SnapshotAndProcess(state)
+		cntrDrop2.inst.SnapshotAndProcess(state)
+	}
+
+	runFor(0)
+	runFor(1)
+
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			tt.compilers[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			cntrKeep.inst.descriptor,
+			test.Point(startTime, endTime, sum.NewMonotonicFloat64(1000), aggregation.CumulativeTemporality),
+		),
+	)
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			tt.compilers[1].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			cntrDrop1.inst.descriptor,
+			test.Point(startTime, endTime, sum.NewMonotonicFloat64(1001), aggregation.CumulativeTemporality),
+		),
+		test.Instrument(
+			cntrKeep.inst.descriptor,
+			test.Point(startTime, endTime, sum.NewMonotonicFloat64(1000), aggregation.CumulativeTemporality),
 		),
 	)
 }

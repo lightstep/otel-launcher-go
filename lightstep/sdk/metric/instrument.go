@@ -15,14 +15,14 @@
 package metric // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 
 import (
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/metric/instrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/asyncstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/syncstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 // instrumentConstructor refers to either the syncstate or asyncstate
@@ -45,9 +45,9 @@ func configureInstrument[T any](
 	opts []instrument.Option,
 	nk number.Kind,
 	ik sdkinstrument.Kind,
-	listPtr *[]T,
-	ctor instrumentConstructor[T],
-) (T, error) {
+	listPtr *[]*T,
+	ctor instrumentConstructor[*T],
+) (*T, error) {
 	// Compute the instrument descriptor
 	cfg := instrument.NewConfig(opts...)
 	desc := sdkinstrument.NewDescriptor(name, ik, nk, cfg.Description(), cfg.Unit())
@@ -82,7 +82,9 @@ func configureInstrument[T any](
 	inst := ctor(desc, m, compiled)
 	err := conflicts.AsError()
 
-	m.byDesc[desc] = inst
+	if inst != nil {
+		m.byDesc[desc] = inst
+	}
 	*listPtr = append(*listPtr, inst)
 	if err != nil {
 		// Handle instrument creation errors when they're new,

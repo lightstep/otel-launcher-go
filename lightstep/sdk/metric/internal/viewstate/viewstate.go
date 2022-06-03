@@ -294,7 +294,6 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 			v.collectors = append(v.collectors, leaf)
 			existingInsts = append(existingInsts, leaf)
 			v.names[behavior.desc.Name] = existingInsts
-
 		}
 		if len(existingInsts) > 1 || semanticErr != nil {
 			c := Conflict{

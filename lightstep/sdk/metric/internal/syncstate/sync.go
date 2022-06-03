@@ -54,6 +54,16 @@ type Instrument struct {
 // second parameter is an opaque value used in the asyncstate package,
 // passed here to make these two packages generalize.
 func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeline.Register[viewstate.Instrument]) *Instrument {
+	var nonnil []viewstate.Instrument
+	for _, comp := range compiled {
+		if comp != nil {
+			nonnil = append(nonnil, comp)
+		}
+	}
+	if nonnil == nil {
+		// When no readers enable the instrument, no need for an instrument.
+		return nil
+	}
 	return &Instrument{
 		descriptor: desc,
 
@@ -64,8 +74,8 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 		// viewstate.Combine produces a single concrete
 		// viewstate.Instrument.  Only when there are multiple
 		// views or multiple pipelines will the combination
-		// produce a viewstate.multiInstrment here.
-		compiled: viewstate.Combine(desc, compiled...),
+		// produce a viewstate.multiInstrument here.
+		compiled: viewstate.Combine(desc, nonnil...),
 	}
 }
 
@@ -139,7 +149,8 @@ func (rec *record) snapshotAndProcess() bool {
 
 // capture performs a single update for any synchronous instrument.
 func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Instrument, num N, attrs []attribute.KeyValue) {
-	if inst.compiled == nil {
+	if inst == nil {
+		// Instrument was completely disabled by the view.
 		return
 	}
 

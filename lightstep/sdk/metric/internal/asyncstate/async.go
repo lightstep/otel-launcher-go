@@ -80,6 +80,9 @@ func NewState(pipe int) *State {
 // NewInstrument returns a new Instrument; this compiles individual
 // instruments for each reader.
 func NewInstrument(desc sdkinstrument.Descriptor, opaque interface{}, compiled pipeline.Register[viewstate.Instrument]) *Instrument {
+	// Note: we return a non-nil instrument even when all readers
+	// disabled the instrument. This ensures that certain error
+	// checks still work (wrong meter, wrong callback, etc).
 	return &Instrument{
 		opaque:     opaque,
 		descriptor: desc,
@@ -101,12 +104,14 @@ func (inst *Instrument) SnapshotAndProcess(state *State) {
 func (inst *Instrument) get(cs *callbackState, attrs []attribute.KeyValue) viewstate.Accumulator {
 	comp := inst.compiled[cs.state.pipe]
 
-	// @@@ nil check?
+	if comp == nil {
+		// The view disabled the instrument.
+		return nil
+	}
 
 	cs.state.lock.Lock()
 	defer cs.state.lock.Unlock()
 
-	aset := attribute.NewSet(attrs...)
 	imap, has := cs.state.store[inst]
 
 	if !has {
@@ -114,6 +119,7 @@ func (inst *Instrument) get(cs *callbackState, attrs []attribute.KeyValue) views
 		cs.state.store[inst] = imap
 	}
 
+	aset := attribute.NewSet(attrs...)
 	se, has := imap[aset]
 	if !has {
 		se = comp.NewAccumulator(aset)
@@ -140,5 +146,7 @@ func capture[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *I
 		return
 	}
 
-	inst.get(cs, attrs).(viewstate.Updater[N]).Update(value)
+	if acc := inst.get(cs, attrs); acc != nil {
+		acc.(viewstate.Updater[N]).Update(value)
+	}
 }

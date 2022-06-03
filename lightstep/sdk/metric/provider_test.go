@@ -299,6 +299,5 @@ func TestDuplicateInstrumentConflict(t *testing.T) {
 	// there is only one conflict passed to otel.Handle()--only
 	// the first error is handled, even though it happened twice.
 	require.Equal(t, 1, len(*errs))
-	fmt.Println((*errs)[0])
 	require.True(t, errors.Is((*errs)[0], viewstate.ViewConflictsError{}))
 }
