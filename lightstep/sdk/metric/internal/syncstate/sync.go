@@ -89,7 +89,10 @@ func (inst *Instrument) SnapshotAndProcess() {
 		// this deletion:
 		inst.current.Delete(key)
 
-		// Last we'll see of this.
+		// We have an exclusive reference to this accumulator
+		// now, but there could have been an update between
+		// the snapshotAndProcess() and tryUnmap() above, so
+		// snapshotAndProcess one last time.
 		_ = rec.snapshotAndProcess()
 		return true
 	})
@@ -114,7 +117,7 @@ type record struct {
 	accumulator viewstate.Accumulator
 }
 
-// snapshotAndProcessRecord checks whether the accumulator has been
+// snapshotAndProcess checks whether the accumulator has been
 // modified since the last collection (by any reader), returns a
 // boolean indicating whether the record is active.  If active, calls
 // SnapshotAndProcess on the associated accumulator and returns true.
