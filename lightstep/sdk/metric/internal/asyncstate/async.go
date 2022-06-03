@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"sync"
 
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 type (
@@ -100,6 +100,8 @@ func (inst *Instrument) SnapshotAndProcess(state *State) {
 
 func (inst *Instrument) get(cs *callbackState, attrs []attribute.KeyValue) viewstate.Accumulator {
 	comp := inst.compiled[cs.state.pipe]
+
+	// @@@ nil check?
 
 	cs.state.lock.Lock()
 	defer cs.state.lock.Unlock()

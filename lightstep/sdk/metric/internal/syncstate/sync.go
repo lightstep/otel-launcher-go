@@ -20,11 +20,11 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"go.opentelemetry.io/otel/attribute"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // Instrument maintains a mapping from attribute.Set to an internal
@@ -107,7 +107,7 @@ type record struct {
 	// supports checking for no updates during a round.
 	collectedCount int64
 
-	// accumulator is can be a multi-accumulator if there
+	// accumulator can be a multi-accumulator if there
 	// are multiple behaviors or multiple readers, but
 	// these distinctions are not relevant for synchronous
 	// instruments.
@@ -122,13 +122,13 @@ type record struct {
 // returns false.
 func (rec *record) snapshotAndProcess() bool {
 	mods := atomic.LoadInt64(&rec.updateCount)
-	coll := rec.collectedCount
+	coll := atomic.LoadInt64(&rec.collectedCount)
 
 	if mods == coll {
 		return false
 	}
 	// Updates happened in this interval, collect and continue.
-	rec.collectedCount = mods
+	atomic.StoreInt64(&rec.collectedCount, mods)
 
 	rec.accumulator.SnapshotAndProcess()
 	return true
@@ -155,6 +155,7 @@ func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Ins
 // the input attributes.
 func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) (*record, viewstate.Updater[N]) {
 	aset := attribute.NewSet(attrs...)
+
 	if lookup, ok := inst.current.Load(aset); ok {
 		// Existing record case.
 		rec := lookup.(*record)
@@ -168,8 +169,12 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) (
 		// record below.
 	}
 
+	// Note: the accumulator set below is created speculatively;
+	// if it is never returned, it will not be updated and can be
+	// safely discarded.
 	newRec := &record{
-		refMapped: refcountMapped{value: 2},
+		refMapped:   refcountMapped{value: 2},
+		accumulator: inst.compiled.NewAccumulator(aset),
 	}
 
 	for {
@@ -184,6 +189,5 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) (
 		break
 	}
 
-	newRec.accumulator = inst.compiled.NewAccumulator(aset)
 	return newRec, newRec.accumulator.(viewstate.Updater[N])
 }
