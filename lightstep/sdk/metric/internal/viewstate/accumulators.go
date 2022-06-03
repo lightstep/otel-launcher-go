@@ -38,6 +38,9 @@ func (acc multiAccumulator[N]) Update(value N) {
 
 // syncAccumulator
 type syncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
+	// syncLock prevents two readers from calling
+	// SnapshotAndProcess at the same moment.
+	syncLock    sync.Mutex
 	current     Storage
 	snapshot    Storage
 	findStorage func() *Storage
@@ -50,26 +53,28 @@ func (acc *syncAccumulator[N, Storage, Methods]) Update(number N) {
 
 func (acc *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess() {
 	var methods Methods
-	methods.SynchronizedMove(&acc.current, &acc.snapshot)
-	methods.Merge(acc.findStorage(), &acc.snapshot)
+	acc.syncLock.Lock()
+	defer acc.syncLock.Unlock()
+	methods.Move(&acc.current, &acc.snapshot)
+	methods.Merge(&acc.snapshot, acc.findStorage())
 }
 
 // asyncAccumulator
 type asyncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
-	lock        sync.Mutex
+	asyncLock   sync.Mutex
 	current     N
 	findStorage func() *Storage
 }
 
 func (acc *asyncAccumulator[N, Storage, Methods]) Update(number N) {
-	acc.lock.Lock()
-	defer acc.lock.Unlock()
+	acc.asyncLock.Lock()
+	defer acc.asyncLock.Unlock()
 	acc.current = number
 }
 
 func (acc *asyncAccumulator[N, Storage, Methods]) SnapshotAndProcess() {
-	acc.lock.Lock()
-	defer acc.lock.Unlock()
+	acc.asyncLock.Lock()
+	defer acc.asyncLock.Unlock()
 
 	var methods Methods
 	methods.Update(acc.findStorage(), acc.current)

@@ -59,15 +59,13 @@ type statefulSyncInstrument[N number.Any, Storage any, Methods aggregator.Method
 
 // Collect for synchronous cumulative temporality.
 func (p *statefulSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
-	var methods Methods
-
-	p.lock.Lock()
-	defer p.lock.Unlock()
+	p.instLock.Lock()
+	defer p.instLock.Unlock()
 
 	ioutput := p.appendInstrument(output)
 
 	for set, storage := range p.data {
-		p.appendPoint(ioutput, set, methods.ToAggregation(storage), aggregation.CumulativeTemporality, seq.Start, seq.Now)
+		p.appendPoint(ioutput, set, storage, aggregation.CumulativeTemporality, seq.Start, seq.Now, false)
 	}
 }
 
@@ -78,43 +76,23 @@ type statelessSyncInstrument[N number.Any, Storage any, Methods aggregator.Metho
 
 // Collect for synchronous delta temporality.
 func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
-	var methods Methods
+	//var methods Methods
 
-	p.lock.Lock()
-	defer p.lock.Unlock()
+	p.instLock.Lock()
+	defer p.instLock.Unlock()
 
 	ioutput := p.appendInstrument(output)
 
 	for set, storage := range p.data {
-		if !methods.HasChange(storage) {
-			delete(p.data, set)
-			continue
-		}
+		// TODO: Race condition here. Somehow refcount the
+		// storage?  Use a refcount_mapped object?
 
-		// Possibly re-use the underlying storage.  For
-		// synchronous instruments, where accumulation happens
-		// between collection events (e.g., due to other
-		// readers collecting), we must reset the storage now
-		// or completely clear the map.
-		point, exists := p.appendOrReusePoint(ioutput)
-		if exists == nil {
-			exists = p.newStorage()
-		} else {
-			methods.Reset(exists)
-		}
+		// if !methods.HasChange(storage) {
+		// 	delete(p.data, set)
+		// 	continue
+		// }
 
-		// Note: This can be improved with a Copy() or Swap()
-		// operation in the Methods, since Merge() may be
-		// relatively expensive by comparison.
-		methods.Merge(exists, storage)
-
-		point.Attributes = set
-		point.Aggregation = methods.ToAggregation(exists)
-		point.Temporality = aggregation.DeltaTemporality
-		point.Start = seq.Last
-		point.End = seq.Now
-
-		methods.Reset(storage)
+		p.appendPoint(ioutput, set, storage, aggregation.DeltaTemporality, seq.Last, seq.Now, true)
 	}
 }
 
@@ -126,16 +104,13 @@ type statelessAsyncInstrument[N number.Any, Storage any, Methods aggregator.Meth
 
 // Collect for asynchronous cumulative temporality.
 func (p *statelessAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
-	var methods Methods
-
-	p.lock.Lock()
-	defer p.lock.Unlock()
+	p.instLock.Lock()
+	defer p.instLock.Unlock()
 
 	ioutput := p.appendInstrument(output)
 
 	for set, storage := range p.data {
-		// Copy the underlying storage.
-		p.appendPoint(ioutput, set, methods.ToAggregation(storage), aggregation.CumulativeTemporality, seq.Start, seq.Now)
+		p.appendPoint(ioutput, set, storage, aggregation.CumulativeTemporality, seq.Start, seq.Now, false)
 	}
 
 	// Reset the entire map.
@@ -153,8 +128,8 @@ type statefulAsyncInstrument[N number.Any, Storage any, Methods aggregator.Metho
 func (p *statefulAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
 	var methods Methods
 
-	p.lock.Lock()
-	defer p.lock.Unlock()
+	p.instLock.Lock()
+	defer p.instLock.Unlock()
 
 	ioutput := p.appendInstrument(output)
 
@@ -174,7 +149,7 @@ func (p *statefulAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 				storage = pval
 			}
 		}
-		p.appendPoint(ioutput, set, methods.ToAggregation(storage), aggregation.DeltaTemporality, seq.Last, seq.Now)
+		p.appendPoint(ioutput, set, storage, aggregation.DeltaTemporality, seq.Last, seq.Now, false)
 	}
 	// Copy the current to the prior and reset.
 	p.prior = p.data

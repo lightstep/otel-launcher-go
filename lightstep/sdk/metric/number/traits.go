@@ -21,7 +21,7 @@ import (
 )
 
 // Traits is the generic traits interface for numbers used in the SDK.
-type Traits[N int64 | float64] interface {
+type Traits[N Any] interface {
 	// FromNumber turns a generic 64bits into the correct machine type.
 	FromNumber(Number) N
 
@@ -30,6 +30,9 @@ type Traits[N int64 | float64] interface {
 
 	// SetAtomic sets `ptr` to `value`.
 	SetAtomic(ptr *N, value N)
+
+	// GetAtomic reads `ptr`.
+	GetAtomic(ptr *N) N
 
 	// AddAtomic sets `ptr` to `value+*ptr`.
 	AddAtomic(ptr *N, value N)
@@ -50,12 +53,18 @@ type Traits[N int64 | float64] interface {
 // Int64Traits implements Traits[int64].
 type Int64Traits struct{}
 
+var _ Traits[int64] = Int64Traits{}
+
 func (Int64Traits) ToNumber(x int64) Number {
 	return Number(x)
 }
 
 func (Int64Traits) FromNumber(n Number) int64 {
 	return int64(n)
+}
+
+func (Int64Traits) GetAtomic(ptr *int64) int64 {
+	return atomic.LoadInt64(ptr)
 }
 
 func (Int64Traits) SetAtomic(ptr *int64, value int64) {
@@ -85,12 +94,18 @@ func (Int64Traits) Kind() Kind {
 // Float64Traits implements Traits[float64].
 type Float64Traits struct{}
 
+var _ Traits[float64] = Float64Traits{}
+
 func (Float64Traits) ToNumber(x float64) Number {
 	return Number(math.Float64bits(x))
 }
 
 func (Float64Traits) FromNumber(n Number) float64 {
 	return math.Float64frombits(uint64(n))
+}
+
+func (Float64Traits) GetAtomic(ptr *float64) float64 {
+	return math.Float64frombits(atomic.LoadUint64((*uint64)(unsafe.Pointer(ptr))))
 }
 
 func (Float64Traits) SetAtomic(ptr *float64, value float64) {

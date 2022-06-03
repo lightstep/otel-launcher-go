@@ -28,7 +28,7 @@ import (
 
 // instrumentBase is the common type embedded in any of the compiled instrument views.
 type instrumentBase[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
-	lock     sync.Mutex
+	instLock sync.Mutex
 	fromName string
 	desc     sdkinstrument.Descriptor
 	acfg     aggregator.Config
@@ -65,8 +65,8 @@ func (metric *instrumentBase[N, Storage, Methods]) initStorage(s *Storage) {
 }
 
 func (metric *instrumentBase[N, Storage, Methods]) mergeDescription(d string) {
-	metric.lock.Lock()
-	defer metric.lock.Unlock()
+	metric.instLock.Lock()
+	defer metric.instLock.Unlock()
 	if len(d) > len(metric.desc.Description) {
 		metric.desc.Description = d
 	}
@@ -83,8 +83,8 @@ func (metric *instrumentBase[N, Storage, Methods]) storageFinder(
 	}
 
 	return func() *Storage {
-		metric.lock.Lock()
-		defer metric.lock.Unlock()
+		metric.instLock.Lock()
+		defer metric.instLock.Unlock()
 
 		storage, has := metric.data[kvs]
 		if has {
@@ -116,16 +116,27 @@ func (metric *instrumentBase[N, Storage, Methods]) appendInstrument(output *[]da
 	return inst
 }
 
-// appendPoint is used in cases where the output Aggregation is the
-// stored object; use appendOrReusePoint in the case where the output
-// Aggregation is a copy of the stored object (in case the stored
-// object will be reset on collection, as opposed to a second pass to
-// reset delta temporality outputs before the next accumulation.
-func (metric *instrumentBase[N, Storage, Methods]) appendPoint(inst *data.Instrument, set attribute.Set, agg aggregation.Aggregation, tempo aggregation.Temporality, start, end time.Time) {
-	point := data.ReallocateFrom(&inst.Points)
+// copyPoint is used in cases where the output Aggregation is a copy
+// of the stored object.
+func (metric *instrumentBase[N, Storage, Methods]) appendPoint(inst *data.Instrument, set attribute.Set, storage *Storage, tempo aggregation.Temporality, start, end time.Time, reset bool) {
+	var methods Methods
+
+	// Possibly re-use the underlying storage.
+	point, out := metric.appendOrReusePoint(inst)
+	if out == nil {
+		out = metric.newStorage()
+	}
+
+	if reset {
+		// Note: synchronized move uses swap for expensive
+		// copies, like histogram.
+		methods.Move(storage, out)
+	} else {
+		methods.Copy(storage, out)
+	}
 
 	point.Attributes = set
-	point.Aggregation = agg
+	point.Aggregation = methods.ToAggregation(out)
 	point.Temporality = tempo
 	point.Start = start
 	point.End = end

@@ -60,7 +60,7 @@ type Compiler struct {
 	library instrumentation.Library
 
 	// lock protects collectors and names.
-	lock sync.Mutex
+	compilerLock sync.Mutex
 
 	// collectors is the de-duplicated list of metric outputs, which may
 	// contain conflicting identities.
@@ -170,8 +170,8 @@ func New(library instrumentation.Library, views *view.Views) *Compiler {
 }
 
 func (v *Compiler) Collectors() []data.Collector {
-	v.lock.Lock()
-	defer v.lock.Unlock()
+	v.compilerLock.Lock()
+	defer v.compilerLock.Unlock()
 	return v.collectors
 }
 
@@ -228,8 +228,8 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 		}
 	}
 
-	v.lock.Lock()
-	defer v.lock.Unlock()
+	v.compilerLock.Lock()
+	defer v.compilerLock.Unlock()
 
 	var conflicts ViewConflictsBuilder
 	var compiled []Instrument

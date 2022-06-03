@@ -90,7 +90,15 @@ func (pp *providerProducer) Produce(inout *data.Metrics) data.Metrics {
 
 // collectFor collects from a single meter.
 func (m *meter) collectFor(ctx context.Context, pipe int, seq data.Sequence, output *data.Metrics) {
-	// Use m.lock to briefly access the current lists: syncInsts, asyncInsts, callbacks
+	// Use m.lock to briefly access the current lists: syncInsts,
+	// asyncInsts, callbacks.  By releasing these locks, we allow
+	// new instruments and callbacks to be registered while
+	// collection happens. The items themselves are synchronized,
+	// and the slices are only appended to, so shallow copies are
+	// safe. If new instruments and callbacks are registered while
+	// this collection happens, they simply will not collect and
+	// any activity they experience concurrently will be
+	// registered on the next collection by this reader.
 	m.lock.Lock()
 	syncInsts := m.syncInsts
 	asyncInsts := m.asyncInsts

@@ -27,6 +27,9 @@ const (
 	// HistogramKind indicates a Histogram instrument.
 	HistogramKind
 
+	// TODO: replace "Observer" with "Asynchronous" or "Observable",
+	// both of which are recommended in the API spec.
+
 	// CounterObserverKind indicates a CounterObserver instrument.
 	CounterObserverKind
 	// UpDownCounterObserverKind indicates a UpDownCounterObserver
