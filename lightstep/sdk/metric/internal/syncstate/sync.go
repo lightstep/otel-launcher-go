@@ -140,10 +140,10 @@ func (rec *record) snapshotAndProcess() bool {
 	if mods == coll {
 		return false
 	}
+	rec.accumulator.SnapshotAndProcess()
+
 	// Updates happened in this interval, collect and continue.
 	atomic.StoreInt64(&rec.collectedCount, mods)
-
-	rec.accumulator.SnapshotAndProcess()
 	return true
 }
 
