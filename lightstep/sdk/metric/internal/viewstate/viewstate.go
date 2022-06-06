@@ -110,7 +110,7 @@ type Accumulator interface {
 	// There is no return value from this method; the caller can
 	// safely forget an Accumulator after this method is called,
 	// provided Update is not used again.
-	SnapshotAndProcess()
+	SnapshotAndProcess(final bool)
 }
 
 // leafInstrument is one of the (synchronous or asynchronous),
@@ -332,11 +332,11 @@ func newSyncView[
 	// is being copied before the new object is returned to the
 	// user, and the extra allocation cost here would be
 	// noticeable.
-	metric := instrumentBase[N, Storage, Methods]{
+	metric := instrumentBase[N, Storage, int64, Methods]{
 		fromName:   behavior.fromName,
 		desc:       behavior.desc,
 		acfg:       behavior.acfg,
-		data:       map[attribute.Set]*Storage{},
+		data:       map[attribute.Set]*storageHolder[Storage, int64]{},
 		keysSet:    behavior.keysSet,
 		keysFilter: behavior.keysFilter,
 	}
@@ -393,11 +393,11 @@ func newAsyncView[
 	// is being copied before the new object is returned to the
 	// user, and the extra allocation cost here would be
 	// noticeable.
-	metric := instrumentBase[N, Storage, Methods]{
+	metric := instrumentBase[N, Storage, notUsed, Methods]{
 		fromName:   behavior.fromName,
 		desc:       behavior.desc,
 		acfg:       behavior.acfg,
-		data:       map[attribute.Set]*Storage{},
+		data:       map[attribute.Set]*storageHolder[Storage, notUsed]{},
 		keysSet:    behavior.keysSet,
 		keysFilter: behavior.keysFilter,
 	}

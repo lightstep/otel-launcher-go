@@ -34,7 +34,7 @@ type instrumentConstructor[T any] func(
 	instrument sdkinstrument.Descriptor,
 	opaque interface{},
 	compiled pipeline.Register[viewstate.Instrument],
-) T
+) *T
 
 // configureInstrument applies the instrument configuration, checks
 // for an existing definition for the same descriptor, and compiles
@@ -46,7 +46,7 @@ func configureInstrument[T any](
 	nk number.Kind,
 	ik sdkinstrument.Kind,
 	listPtr *[]*T,
-	ctor instrumentConstructor[*T],
+	ctor instrumentConstructor[T],
 ) (*T, error) {
 	// Compute the instrument descriptor
 	cfg := instrument.NewConfig(opts...)
@@ -65,7 +65,7 @@ func configureInstrument[T any](
 			conflicts.Combine(err)
 		}
 
-		return lookup.(T), conflicts.AsError()
+		return lookup.(*T), conflicts.AsError()
 	}
 
 	// Compile the instrument for each pipeline. the first time.

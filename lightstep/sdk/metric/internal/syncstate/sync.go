@@ -85,7 +85,7 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 func (inst *Instrument) SnapshotAndProcess() {
 	inst.current.Range(func(key interface{}, value interface{}) bool {
 		rec := value.(*record)
-		if rec.snapshotAndProcess() {
+		if rec.snapshotAndProcess(false) {
 			return true
 		}
 		// Having no updates since last collection, try to unmap:
@@ -103,7 +103,7 @@ func (inst *Instrument) SnapshotAndProcess() {
 		// now, but there could have been an update between
 		// the snapshotAndProcess() and tryUnmap() above, so
 		// snapshotAndProcess one last time.
-		_ = rec.snapshotAndProcess()
+		_ = rec.snapshotAndProcess(true)
 		return true
 	})
 }
@@ -133,14 +133,14 @@ type record struct {
 // SnapshotAndProcess on the associated accumulator and returns true.
 // If updates happened since the last collection (by any reader),
 // returns false.
-func (rec *record) snapshotAndProcess() bool {
+func (rec *record) snapshotAndProcess(final bool) bool {
 	mods := atomic.LoadInt64(&rec.updateCount)
 	coll := atomic.LoadInt64(&rec.collectedCount)
 
 	if mods == coll {
 		return false
 	}
-	rec.accumulator.SnapshotAndProcess()
+	rec.accumulator.SnapshotAndProcess(final)
 
 	// Updates happened in this interval, collect and continue.
 	atomic.StoreInt64(&rec.collectedCount, mods)
@@ -187,7 +187,7 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) (
 	// if it is never returned, it will not be updated and can be
 	// safely discarded.
 	newRec := &record{
-		refMapped:   refcountMapped{value: 2},
+		refMapped:   newRefcountMapped(),
 		accumulator: inst.compiled.NewAccumulator(aset),
 	}
 

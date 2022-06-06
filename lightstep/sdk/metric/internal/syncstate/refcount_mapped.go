@@ -30,6 +30,12 @@ type refcountMapped struct {
 	value int64
 }
 
+func newRefcountMapped() refcountMapped {
+	return refcountMapped{
+		value: 2,
+	}
+}
+
 // ref returns true if the entry is still mapped and increases the
 // reference usages, if unmapped returns false.
 func (rm *refcountMapped) ref() bool {

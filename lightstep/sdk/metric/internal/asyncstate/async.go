@@ -97,7 +97,7 @@ func (inst *Instrument) SnapshotAndProcess(state *State) {
 	defer state.lock.Unlock()
 
 	for _, acc := range state.store[inst] {
-		acc.SnapshotAndProcess()
+		acc.SnapshotAndProcess(false)
 	}
 }
 
