@@ -16,6 +16,7 @@ package syncstate
 
 import (
 	"context"
+	"math"
 	"math/rand"
 	"sync"
 	"testing"
@@ -316,4 +317,70 @@ func TestSyncStateFullNoopInstrument(t *testing.T) {
 	// There's no instrument, nothing to Snapshot
 	require.Equal(t, 0, len(vcs[0].Collectors()))
 	require.Equal(t, 0, len(vcs[1].Collectors()))
+}
+
+func TestOutOfRangeValues(t *testing.T) {
+	for _, desc := range []sdkinstrument.Descriptor{
+		test.Descriptor("cf", sdkinstrument.CounterKind, number.Float64Kind),
+		test.Descriptor("uf", sdkinstrument.UpDownCounterKind, number.Float64Kind),
+		test.Descriptor("hf", sdkinstrument.HistogramKind, number.Float64Kind),
+		test.Descriptor("ci", sdkinstrument.CounterKind, number.Int64Kind),
+		test.Descriptor("ui", sdkinstrument.UpDownCounterKind, number.Int64Kind),
+		test.Descriptor("hi", sdkinstrument.HistogramKind, number.Int64Kind),
+	} {
+		ctx := context.Background()
+		lib := instrumentation.Library{
+			Name: "testlib",
+		}
+		vcs := make([]*viewstate.Compiler, 1)
+		vcs[0] = viewstate.New(lib, view.New("test"))
+
+		pipes := make(pipeline.Register[viewstate.Instrument], 1)
+		pipes[0], _ = vcs[0].Compile(desc)
+
+		inst := NewInstrument(desc, nil, pipes)
+		require.NotNil(t, inst)
+
+		var negOne aggregation.Aggregation
+
+		if desc.NumberKind == number.Float64Kind {
+			cntr := NewCounter[float64, number.Float64Traits](inst)
+
+			cntr.Add(ctx, -1)
+			cntr.Add(ctx, math.NaN())
+			cntr.Add(ctx, math.Inf(+1))
+			cntr.Add(ctx, math.Inf(-1))
+			negOne = sum.NewNonMonotonicFloat64(-1)
+		} else {
+			cntr := NewCounter[int64, number.Int64Traits](inst)
+
+			cntr.Add(ctx, -1)
+			negOne = sum.NewNonMonotonicInt64(-1)
+		}
+
+		inst.SnapshotAndProcess()
+
+		var expectPoints []data.Point
+
+		if desc.Kind == sdkinstrument.UpDownCounterKind {
+			expectPoints = append(expectPoints, test.Point(
+				startTime, endTime,
+				negOne,
+				aggregation.CumulativeTemporality,
+			))
+		}
+
+		test.RequireEqualMetrics(
+			t,
+			test.CollectScope(
+				t,
+				vcs[0].Collectors(),
+				testSequence,
+			),
+			test.Instrument(
+				desc,
+				expectPoints...,
+			),
+		)
+	}
 }

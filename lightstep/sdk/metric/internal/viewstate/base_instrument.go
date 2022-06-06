@@ -26,14 +26,19 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-type syncAuxiliary int64
-
-type asyncAuxiliary struct{}
-
+// storageHolder is a generic struct for holding one storage and one
+// auxiliary field.  Storage will be one of the aggregators.  The
+// auxiliary type depends on whether synchronous or asynchronous.
+//
+// Auxiliary is an int64 reference count for synchronous instruments
+// and notUsed for asynchronous instruments.
 type storageHolder[Storage, Auxiliary any] struct {
 	auxiliary Auxiliary
 	storage   Storage
 }
+
+// notUsed is the Auxiliary type for asynchronous instruments.
+type notUsed struct{}
 
 // instrumentBase is the common type embedded in any of the compiled instrument views.
 type instrumentBase[N number.Any, Storage, Auxiliary any, Methods aggregator.Methods[N, Storage]] struct {

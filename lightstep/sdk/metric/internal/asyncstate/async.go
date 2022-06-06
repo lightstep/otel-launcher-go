@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
@@ -97,7 +98,9 @@ func (inst *Instrument) SnapshotAndProcess(state *State) {
 	defer state.lock.Unlock()
 
 	for _, acc := range state.store[inst] {
-		acc.SnapshotAndProcess(false)
+		// SnapshotAndProcess is always final for asynchronous state, since
+		// the map is built anew for each collection.
+		acc.SnapshotAndProcess(true)
 	}
 }
 
@@ -143,6 +146,10 @@ func capture[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *I
 	}
 	if _, ok := cb.instruments[inst]; !ok {
 		otel.Handle(fmt.Errorf("async instrument not declared for use in callback"))
+		return
+	}
+
+	if !aggregator.RangeTest[N, Traits](value, inst.descriptor.Kind) {
 		return
 	}
 

@@ -16,11 +16,13 @@ package asyncstate // import "github.com/lightstep/otel-launcher-go/lightstep/sd
 
 import (
 	"context"
+	"math"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
@@ -342,4 +344,65 @@ func TestCallbackDisabledInstrument(t *testing.T) {
 			test.Point(startTime, endTime, sum.NewMonotonicFloat64(1000), aggregation.CumulativeTemporality),
 		),
 	)
+}
+
+func TestOutOfRangeValues(t *testing.T) {
+	errors := test.OTelErrors()
+
+	tt := testAsync("test")
+
+	c := testObserver[float64, number.Float64Traits](tt, "c", sdkinstrument.CounterObserverKind)
+	u := testObserver[float64, number.Float64Traits](tt, "u", sdkinstrument.UpDownCounterObserverKind)
+	g := testObserver[float64, number.Float64Traits](tt, "g", sdkinstrument.GaugeObserverKind)
+
+	cb, _ := NewCallback([]instrument.Asynchronous{
+		c, u, g,
+	}, tt, func(ctx context.Context) {
+		c.Observe(ctx, math.NaN())
+		c.Observe(ctx, math.Inf(+1))
+		c.Observe(ctx, math.Inf(-1))
+		u.Observe(ctx, math.NaN())
+		u.Observe(ctx, math.Inf(+1))
+		u.Observe(ctx, math.Inf(-1))
+		g.Observe(ctx, math.NaN())
+		g.Observe(ctx, math.Inf(+1))
+		g.Observe(ctx, math.Inf(-1))
+	})
+
+	runFor := func(num int) {
+		state := testState(num)
+
+		cb.Run(context.Background(), state)
+
+		c.inst.SnapshotAndProcess(state)
+		u.inst.SnapshotAndProcess(state)
+		g.inst.SnapshotAndProcess(state)
+	}
+
+	for i := 0; i < 2; i++ {
+		runFor(i)
+
+		test.RequireEqualMetrics(
+			t,
+			test.CollectScope(
+				t,
+				tt.compilers[i].Collectors(),
+				testSequence,
+			),
+			test.Instrument(
+				c.inst.descriptor,
+			),
+			test.Instrument(
+				u.inst.descriptor,
+			),
+			test.Instrument(
+				g.inst.descriptor,
+			),
+		)
+	}
+
+	// 2 readers x 3 error conditions x 3 instruments
+	require.Equal(t, 2*3*3, len(*errors))
+	require.Contains(t, (*errors), aggregator.ErrNaNInput)
+	require.Contains(t, (*errors), aggregator.ErrInfInput)
 }

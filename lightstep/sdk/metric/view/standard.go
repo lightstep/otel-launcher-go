@@ -20,8 +20,8 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 )
 
-// StandardAggregation is the specified default aggregation Kind for
-// each instrument Kind.
+// StandardAggregationKind returns a function that configures the
+// specified default aggregation Kind for each instrument Kind.
 func StandardAggregationKind(ik sdkinstrument.Kind) aggregation.Kind {
 	switch ik {
 	case sdkinstrument.HistogramKind:
@@ -35,14 +35,15 @@ func StandardAggregationKind(ik sdkinstrument.Kind) aggregation.Kind {
 	}
 }
 
-// StandardTemporality returns the specified default Cumulative
-// temporality for all instrument kinds.
+// StandardTemporality returns a function that conifigures the
+// specified default Cumulative temporality for all instrument kinds.
 func StandardTemporality(ik sdkinstrument.Kind) aggregation.Temporality {
 	return aggregation.CumulativeTemporality
 }
 
-// DeltaPreferredTemporality returns the specified Delta temporality
-// for all instrument kinds except UpDownCounter, which remain Cumulative.
+// DeltaPreferredTemporality returns a function that configures a
+// preference for Delta temporality for all instrument kinds except
+// UpDownCounter, which remain Cumulative.
 func DeltaPreferredTemporality(ik sdkinstrument.Kind) aggregation.Temporality {
 	switch ik {
 	case sdkinstrument.UpDownCounterKind, sdkinstrument.UpDownCounterObserverKind:
@@ -52,7 +53,7 @@ func DeltaPreferredTemporality(ik sdkinstrument.Kind) aggregation.Temporality {
 	}
 }
 
-// StandardConfig returns two default-initialized aggregator.Configs.
+// StandardConfig returns a function that configures two default aggregator.Configs.
 func StandardConfig(ik sdkinstrument.Kind) (ints, floats aggregator.Config) {
 	return aggregator.Config{}, aggregator.Config{}
 }

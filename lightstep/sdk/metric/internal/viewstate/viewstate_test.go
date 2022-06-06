@@ -976,7 +976,7 @@ func TestDeltaTemporalityGauge(t *testing.T) {
 }
 
 // TestSyncDeltaTemporalityCounter ensures that counter and updowncounter
-// are skip points with delta temporality and no change.
+// skip points with delta temporality and no change.
 func TestSyncDeltaTemporalityCounter(t *testing.T) {
 	views := view.New(
 		"test",
@@ -1079,4 +1079,58 @@ func TestSyncDeltaTemporalityCounter(t *testing.T) {
 	observe(100, 100)
 	expectValues(100, 100, seq)
 	tick()
+}
+
+func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
+	views := view.New(
+		"test",
+		view.WithDefaultAggregationTemporalitySelector(
+			func(ik sdkinstrument.Kind) aggregation.Temporality {
+				return aggregation.DeltaTemporality // Always delta
+			}),
+	)
+
+	vc := New(testLib, views)
+
+	inst, err := testCompile(vc, "counter", sdkinstrument.CounterKind, number.Float64Kind)
+	require.NoError(t, err)
+
+	attr := attribute.String("A", "1")
+	set := attribute.NewSet(attr)
+
+	acc1 := inst.NewAccumulator(set)
+	acc2 := inst.NewAccumulator(set)
+
+	acc1.(Updater[float64]).Update(1)
+	acc2.(Updater[float64]).Update(1)
+
+	// There are two references to one entry in the map.
+	require.Equal(t, 1, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+
+	acc1.SnapshotAndProcess(false)
+	acc2.SnapshotAndProcess(true)
+
+	var output data.Scope
+
+	test.RequireEqualMetrics(t,
+		testCollectSequenceReuse(t, vc, testSequence, &output),
+		test.Instrument(
+			test.Descriptor("counter", sdkinstrument.CounterKind, number.Float64Kind),
+			test.Point(middleTime, endTime, sum.NewMonotonicFloat64(2), delta, attr),
+		),
+	)
+
+	require.Equal(t, 1, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+
+	acc1.SnapshotAndProcess(true)
+
+	test.RequireEqualMetrics(t,
+		testCollectSequenceReuse(t, vc, testSequence, &output),
+		test.Instrument(
+			test.Descriptor("counter", sdkinstrument.CounterKind, number.Float64Kind),
+		),
+	)
+
+	require.Equal(t, 0, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+
 }

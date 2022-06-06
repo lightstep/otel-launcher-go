@@ -22,14 +22,14 @@ import "math"
 type Kind int8
 
 const (
-	// Int64Kind means that the Number stores int64.
+	// Int64Kind indicates int64.
 	Int64Kind Kind = iota
 
-	// Float64Kind means that the Number stores float64.
+	// Float64Kind indicates float64.
 	Float64Kind
 )
 
-// Number is a generic 64bit numeric value.
+// Number is a 64bit numeric value, one of the Any interface types.
 type Number uint64
 
 // Any is any of the supported generic Number types.

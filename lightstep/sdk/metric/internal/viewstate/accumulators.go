@@ -34,13 +34,12 @@ func (csv *compiledSyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.S
 	csv.initStorage(&sc.current)
 	csv.initStorage(&sc.snapshot)
 
-	holder := csv.findStorage(kvs)
-
-	sc.holder = holder
-
+	sc.holder = csv.findStorage(kvs)
 	return sc
 }
 
+// findStorage locates the output Storage and adds to the auxiliary
+// reference count for synchronous instruments.
 func (csv *compiledSyncBase[N, Storage, Methods]) findStorage(
 	kvs attribute.Set,
 ) *storageHolder[Storage, int64] {
@@ -64,10 +63,10 @@ func (cav *compiledAsyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.
 	ac := &asyncAccumulator[N, Storage, Methods]{}
 
 	ac.holder = cav.findStorage(kvs)
-
 	return ac
 }
 
+// findStorage locates the output Storage for asynchronous instruments.
 func (cav *compiledAsyncBase[N, Storage, Methods]) findStorage(
 	kvs attribute.Set,
 ) *storageHolder[Storage, notUsed] {
@@ -76,8 +75,7 @@ func (cav *compiledAsyncBase[N, Storage, Methods]) findStorage(
 	cav.instLock.Lock()
 	defer cav.instLock.Unlock()
 
-	entry := cav.getOrCreateEntry(kvs)
-	return entry
+	return cav.getOrCreateEntry(kvs)
 }
 
 // multiAccumulator
@@ -117,11 +115,10 @@ func (acc *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess(final bool) 
 	methods.Move(&acc.current, &acc.snapshot)
 	methods.Merge(&acc.snapshot, &acc.holder.storage)
 	if final {
+		// On the final snapshot-and-process, decrement the auxiliary reference count.
 		atomic.AddInt64(&acc.holder.auxiliary, -1)
 	}
 }
-
-type notUsed struct{}
 
 // asyncAccumulator
 type asyncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {

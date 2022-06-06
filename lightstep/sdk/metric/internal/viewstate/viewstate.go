@@ -110,6 +110,10 @@ type Accumulator interface {
 	// There is no return value from this method; the caller can
 	// safely forget an Accumulator after this method is called,
 	// provided Update is not used again.
+	//
+	// When `final` is true, this is the last time the Accumulator
+	// will be snapshot and processed (according to the caller's
+	// reference counting).
 	SnapshotAndProcess(final bool)
 }
 

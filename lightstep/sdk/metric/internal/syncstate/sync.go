@@ -20,6 +20,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
@@ -155,6 +156,10 @@ func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Ins
 	}
 
 	// Note: Here, this is the place to use context, e.g., extract baggage.
+
+	if !aggregator.RangeTest[N, Traits](num, inst.descriptor.Kind) {
+		return
+	}
 
 	rec, updater := acquireRecord[N](inst, attrs)
 	defer rec.refMapped.unref()

@@ -37,7 +37,7 @@ type Traits[N Any] interface {
 	// AddAtomic sets `ptr` to `value+*ptr`.
 	AddAtomic(ptr *N, value N)
 
-	// AddAtomic sets `ptr` to `value` and returns the former value.
+	// SwapAtomic sets `ptr` to `value` and returns the former value.
 	SwapAtomic(ptr *N, value N) N
 
 	// IsNaN indicates whether `math.IsNaN()` is true (impossible for int64).
@@ -46,7 +46,7 @@ type Traits[N Any] interface {
 	// IsInf indicates whether `math.IsInf()` is true (impossible for int64).
 	IsInf(value N) bool
 
-	// Kind of
+	// Kind returns the number kind of these Traits.
 	Kind() Kind
 }
 
