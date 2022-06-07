@@ -14,19 +14,12 @@ more resolution, and negatives scales correspond with less resolution.
 Given a maximum size, in terms of the number of buckets, the
 implementation determines the best scale possible given the set of
 measurements received.  The size of the histogram is configured using
-the `WithMaxSize()` option, which defaults to 320.
+the `WithMaxSize()` option, which defaults to 160.
 
-An optional configuration supports fixing the scale in advance, which
-ensures that repeated collection periods will generate consistent
-histogram bucket boundaries, across multiple processes.  This option,
-set by `WithRangeLimit(min, max)`, fixes the scale parameter and is
-recommended in configurations that write through to Prometheus.
-
-When range limits are not fixed, the implementation here maintains the
-best resolution possible.  Since the scale parameter is shared by the
-positive and negative ranges, the best value of the scale parameter is
-determined by the range with the greater difference between minimum
-and maximum bucket index:
+The implementation here maintains the best resolution possible.  Since
+the scale parameter is shared by the positive and negative ranges, the
+best value of the scale parameter is determined by the range with the
+greater difference between minimum and maximum bucket index:
 
 ```golang
 func bucketsNeeded(minValue, maxValue float64, scale int32) int32 {
@@ -76,6 +69,8 @@ The `backing` field is a slice of variable width unsigned integer
 (i.e., `[]uint8`, `[]uint16`, `[]uint32`, or `[]uint64`.  The
 `indexStart` and `indexEnd` fields store the current minimum and
 maximum bucket indices for the current scale.
+
+TODO: Apply Go 1.18 generics treatment to this `interface{}`.
 
 The backing array is circular.  When the first observation is added to
 a set of (positive or negative) buckets, the initial conditition is
