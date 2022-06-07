@@ -28,8 +28,8 @@ type Callback struct {
 	// function is the user-provided callback function.
 	function func(context.Context)
 
-	// instruments are the instruments permitted to be
-	// used inside this callback.
+	// instruments are the set of instruments permitted to be used
+	// inside this callback.
 	instruments map[*Instrument]struct{}
 }
 

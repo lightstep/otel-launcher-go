@@ -202,6 +202,9 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) (
 			if oldRec.refMapped.ref() {
 				return oldRec, oldRec.accumulator.(viewstate.Updater[N])
 			}
+			// When this happens, we are waiting for the call to Delete()
+			// inside SnapshotAndProcess() to complete before inserting
+			// a new record.  This avoids busy-waiting.
 			runtime.Gosched()
 			continue
 		}

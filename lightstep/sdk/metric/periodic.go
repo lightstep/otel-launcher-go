@@ -86,9 +86,9 @@ func (pr *PeriodicReader) start(ctx context.Context) {
 	}
 }
 
-// Shutdown stops the stops the export loop, canceling its Context,
-// and waits for it to return.  Then it issues a ShutdownMetrics with
-// final data.
+// Shutdown stops the export loop, canceling its Context, and waits
+// for it to return.  Then it issues a ShutdownMetrics with final
+// data.
 func (pr *PeriodicReader) Shutdown(ctx context.Context) error {
 	pr.stop()
 	pr.wait.Wait()

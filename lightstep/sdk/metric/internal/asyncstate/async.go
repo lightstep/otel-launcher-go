@@ -104,7 +104,7 @@ func (inst *Instrument) SnapshotAndProcess(state *State) {
 	}
 }
 
-func (inst *Instrument) get(cs *callbackState, attrs []attribute.KeyValue) viewstate.Accumulator {
+func (inst *Instrument) getOrCreate(cs *callbackState, attrs []attribute.KeyValue) viewstate.Accumulator {
 	comp := inst.compiled[cs.state.pipe]
 
 	if comp == nil {
@@ -153,7 +153,7 @@ func capture[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *I
 		return
 	}
 
-	if acc := inst.get(cs, attrs); acc != nil {
+	if acc := inst.getOrCreate(cs, attrs); acc != nil {
 		acc.(viewstate.Updater[N]).Update(value)
 	}
 }

@@ -125,8 +125,12 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) appendInstrument(o
 	return inst
 }
 
-// copyPoint is used in cases where the output Aggregation is a copy
-// of the stored object.
+// appendPoint adds a new point to the output.  Note that the existing
+// slice will be extended, if possible, and the existing Aggregation
+// is potentially re-used.  The variable `reset` determines whether
+// Move() or Copy() is used.  Note that both Move and Copy are
+// synchronized with respect to Update() and Merge(), necesary for the
+// synchronous code path which may see concurrent collection.
 func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) appendPoint(inst *data.Instrument, set attribute.Set, storage *Storage, tempo aggregation.Temporality, start, end time.Time, reset bool) {
 	var methods Methods
 
