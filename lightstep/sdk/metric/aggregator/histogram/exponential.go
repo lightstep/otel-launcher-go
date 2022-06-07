@@ -195,6 +195,13 @@ func (s *State[N, Traits]) update(b *buckets, value float64, incr uint64) {
 // [indexStart, indexEnd] and, if not, returns the minimum size (up to
 // maxSize) will satisfy the new value.
 func (s *State[N, Traits]) incrementIndexBy(b *buckets, index int32, incr uint64) (highLow, bool) {
+	if incr == 0 {
+		// Skipping a bunch of work for 0 increment.  This
+		// happens when merging sparse data, for example.
+		// This also happens UpdateByIncr is used with a 0
+		// increment, means it can be safely skipped.
+		return highLow{}, true
+	}
 	if b.Len() == 0 {
 		if b.backing == nil {
 			b.backing = &bucketsVarwidth[uint8]{
@@ -328,7 +335,7 @@ func (b *buckets) incrementBucket(bucketIndex int32, incr uint64) {
 	}
 }
 
-// Merge combines data from `o` into `s`.  The modification to `o` is synchronized.
+// Merge combines data from `o` into `s`.  The modification to `s` is synchronized.
 func (s *State[N, Traits]) Merge(o *State[N, Traits]) error {
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -351,13 +358,11 @@ func (s *State[N, Traits]) Merge(o *State[N, Traits]) error {
 		minScale-changeScale(hln, s.maxSize),
 	)
 
-	fmt.Println("WAT", s.Scale(), minScale, "mysize", o.positive.Len(), s.positive.Len())
 	s.downscale(s.Scale() - minScale)
 
 	s.mergeBuckets(&s.positive, o, &o.positive, minScale)
 	s.mergeBuckets(&s.negative, o, &o.negative, minScale)
 
-	fmt.Println("now", s.positive.Len())
 	return nil
 }
 

@@ -22,7 +22,8 @@
 // type, which provides pointer-receiver methods that operate on one
 // or two `Storage` objects.
 //
-// This means there are places where a Storage object may appear in a
-// generic type.  Where that happens without the corresponding
-// Methods, it means the Storage is opaque at that level in the code.
+// This means there are places where a Storage object appears as an
+// generic type with no constraints.  Where that happens without the
+// corresponding Methods, it means the Storage is opaque at that level
+// in the code.
 package aggregator // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
