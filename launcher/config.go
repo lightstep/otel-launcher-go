@@ -141,6 +141,15 @@ func WithMetricReportingPeriod(p time.Duration) Option {
 	}
 }
 
+// WithMetricTemporalityPreference controls the temporality preference
+// used for Counter and Histogram (only not for UpDownCounter, which
+// ignores this preference for specified reasons).
+func WithMetricTemporalityPreference(prefName string) Option {
+	return func(c *Config) {
+		c.MetricTemporalityPreference = prefName
+	}
+}
+
 // WithMetricEnabled configures whether metrics should be enabled
 func WithMetricsEnabled(enabled bool) Option {
 	return func(c *Config) {
@@ -199,6 +208,7 @@ type Config struct {
 	LogLevel                       string            `env:"OTEL_LOG_LEVEL,default=info"`
 	Propagators                    []string          `env:"OTEL_PROPAGATORS,default=b3"`
 	MetricReportingPeriod          string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
+	MetricTemporalityPreference    string            `env:"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE,default=cumulative"`
 	ResourceAttributes             map[string]string
 	Resource                       *resource.Resource
 	logger                         Logger
@@ -361,11 +371,12 @@ func setupMetrics(c Config) (func() error, error) {
 		return nil, nil
 	}
 	return pipelines.NewMetricsPipeline(pipelines.PipelineConfig{
-		Endpoint:        c.MetricExporterEndpoint,
-		Insecure:        c.MetricExporterEndpointInsecure,
-		Headers:         c.Headers,
-		Resource:        c.Resource,
-		ReportingPeriod: c.MetricReportingPeriod,
+		Endpoint:              c.MetricExporterEndpoint,
+		Insecure:              c.MetricExporterEndpointInsecure,
+		Headers:               c.Headers,
+		Resource:              c.Resource,
+		ReportingPeriod:       c.MetricReportingPeriod,
+		TemporalityPreference: c.MetricTemporalityPreference,
 	})
 }
 
