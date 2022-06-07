@@ -26,79 +26,88 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
+// storageHolder is a generic struct for holding one storage and one
+// auxiliary field.  Storage will be one of the aggregators.  The
+// auxiliary type depends on whether synchronous or asynchronous.
+//
+// Auxiliary is an int64 reference count for synchronous instruments
+// and notUsed for asynchronous instruments.
+type storageHolder[Storage, Auxiliary any] struct {
+	auxiliary Auxiliary
+	storage   Storage
+}
+
+// notUsed is the Auxiliary type for asynchronous instruments.
+type notUsed struct{}
+
 // instrumentBase is the common type embedded in any of the compiled instrument views.
-type instrumentBase[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
-	lock     sync.Mutex
+type instrumentBase[N number.Any, Storage, Auxiliary any, Methods aggregator.Methods[N, Storage]] struct {
+	instLock sync.Mutex
 	fromName string
 	desc     sdkinstrument.Descriptor
 	acfg     aggregator.Config
-	data     map[attribute.Set]*Storage
+	data     map[attribute.Set]*storageHolder[Storage, Auxiliary]
 
 	keysSet    *attribute.Set
 	keysFilter *attribute.Filter
 }
 
-func (metric *instrumentBase[N, Storage, Methods]) Aggregation() aggregation.Kind {
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) Aggregation() aggregation.Kind {
 	var methods Methods
 	return methods.Kind()
 }
 
-func (metric *instrumentBase[N, Storage, Methods]) OriginalName() string {
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) OriginalName() string {
 	return metric.fromName
 }
 
-func (metric *instrumentBase[N, Storage, Methods]) Descriptor() sdkinstrument.Descriptor {
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) Descriptor() sdkinstrument.Descriptor {
 	return metric.desc
 }
 
-func (metric *instrumentBase[N, Storage, Methods]) Keys() *attribute.Set {
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) Keys() *attribute.Set {
 	return metric.keysSet
 }
 
-func (metric *instrumentBase[N, Storage, Methods]) Config() aggregator.Config {
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) Config() aggregator.Config {
 	return metric.acfg
 }
 
-func (metric *instrumentBase[N, Storage, Methods]) initStorage(s *Storage) {
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) initStorage(s *Storage) {
 	var methods Methods
 	methods.Init(s, metric.acfg)
 }
 
-func (metric *instrumentBase[N, Storage, Methods]) mergeDescription(d string) {
-	metric.lock.Lock()
-	defer metric.lock.Unlock()
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) mergeDescription(d string) {
+	metric.instLock.Lock()
+	defer metric.instLock.Unlock()
 	if len(d) > len(metric.desc.Description) {
 		metric.desc.Description = d
 	}
 }
 
-// storageFinder searches for and possibly allocates an output Storage
-// for this metric.  Filtered keys, if a filter is provided, will be
-// computed once.
-func (metric *instrumentBase[N, Storage, Methods]) storageFinder(
-	kvs attribute.Set,
-) func() *Storage {
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) applyKeysFilter(kvs attribute.Set) attribute.Set {
 	if metric.keysFilter != nil {
 		kvs, _ = attribute.NewSetWithFiltered(kvs.ToSlice(), *metric.keysFilter)
 	}
+	return kvs
+}
 
-	return func() *Storage {
-		metric.lock.Lock()
-		defer metric.lock.Unlock()
-
-		storage, has := metric.data[kvs]
-		if has {
-			return storage
-		}
-
-		ns := metric.newStorage()
-		metric.data[kvs] = ns
-		return ns
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) getOrCreateEntry(kvs attribute.Set) *storageHolder[Storage, Auxiliary] {
+	entry, has := metric.data[kvs]
+	if has {
+		return entry
 	}
+
+	var methods Methods
+	entry = &storageHolder[Storage, Auxiliary]{}
+	methods.Init(&entry.storage, metric.acfg)
+	metric.data[kvs] = entry
+	return entry
 }
 
 // newStorage allocates and initializes a new Storage.
-func (metric *instrumentBase[N, Storage, Methods]) newStorage() *Storage {
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) newStorage() *Storage {
 	ns := new(Storage)
 	metric.initStorage(ns)
 	return ns
@@ -110,22 +119,37 @@ func (metric *instrumentBase[N, Storage, Methods]) newStorage() *Storage {
 // be produced (in the same order); consumers of delta temporality
 // should expect to see empty instruments in the output for metric
 // data that is unchanged.
-func (metric *instrumentBase[N, Storage, Methods]) appendInstrument(output *[]data.Instrument) *data.Instrument {
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) appendInstrument(output *[]data.Instrument) *data.Instrument {
 	inst := data.ReallocateFrom(output)
 	inst.Descriptor = metric.desc
 	return inst
 }
 
-// appendPoint is used in cases where the output Aggregation is the
-// stored object; use appendOrReusePoint in the case where the output
-// Aggregation is a copy of the stored object (in case the stored
-// object will be reset on collection, as opposed to a second pass to
-// reset delta temporality outputs before the next accumulation.
-func (metric *instrumentBase[N, Storage, Methods]) appendPoint(inst *data.Instrument, set attribute.Set, agg aggregation.Aggregation, tempo aggregation.Temporality, start, end time.Time) {
-	point := data.ReallocateFrom(&inst.Points)
+// appendPoint adds a new point to the output.  Note that the existing
+// slice will be extended, if possible, and the existing Aggregation
+// is potentially re-used.  The variable `reset` determines whether
+// Move() or Copy() is used.  Note that both Move and Copy are
+// synchronized with respect to Update() and Merge(), necesary for the
+// synchronous code path which may see concurrent collection.
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) appendPoint(inst *data.Instrument, set attribute.Set, storage *Storage, tempo aggregation.Temporality, start, end time.Time, reset bool) {
+	var methods Methods
+
+	// Possibly re-use the underlying storage.
+	point, out := metric.appendOrReusePoint(inst)
+	if out == nil {
+		out = metric.newStorage()
+	}
+
+	if reset {
+		// Note: synchronized move uses swap for expensive
+		// copies, like histogram.
+		methods.Move(storage, out)
+	} else {
+		methods.Copy(storage, out)
+	}
 
 	point.Attributes = set
-	point.Aggregation = agg
+	point.Aggregation = methods.ToAggregation(out)
 	point.Temporality = tempo
 	point.Start = start
 	point.End = end
@@ -133,7 +157,7 @@ func (metric *instrumentBase[N, Storage, Methods]) appendPoint(inst *data.Instru
 
 // appendOrReusePoint is an alternate to appendPoint; this form is used when
 // the storage will be reset on collection.
-func (metric *instrumentBase[N, Storage, Methods]) appendOrReusePoint(inst *data.Instrument) (*data.Point, *Storage) {
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) appendOrReusePoint(inst *data.Instrument) (*data.Point, *Storage) {
 	point := data.ReallocateFrom(&inst.Points)
 
 	var methods Methods

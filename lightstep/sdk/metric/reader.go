@@ -23,9 +23,9 @@ import (
 // Reader is the interface used between the SDK and an
 // exporter.  Control flow is bi-directional through the
 // Reader, since the SDK initiates ForceFlush and Shutdown
-// while the initiates collection.  The Register() method here
-// informs the Reader that it can begin reading, signaling the
-// start of bi-directional control flow.
+// while the Reader initiates collection.  The Register()
+// method here informs the Reader that it can begin reading,
+// signaling the start of bi-directional control flow.
 //
 // Typically, push-based exporters that are periodic will
 // implement PeroidicExporter themselves and construct a
@@ -54,7 +54,7 @@ type Reader interface {
 type Producer interface {
 	// Produce returns metrics from a single collection.
 	//
-	// Produce may be called concurrently,
+	// Produce may be called concurrently.
 	//
 	// The `in` parameter supports re-use of memory from
 	// one collection to the next.  Callers that pass `in`

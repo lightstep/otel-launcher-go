@@ -432,7 +432,7 @@ func TestDuplicatesMergeDescriptor(t *testing.T) {
 	accUpp := inst1.NewAccumulator(attribute.NewSet())
 	accUpp.(Updater[int64]).Update(1)
 
-	accUpp.SnapshotAndProcess()
+	accUpp.SnapshotAndProcess(false)
 
 	output := testCollect(t, vc)
 
@@ -468,7 +468,7 @@ func TestViewDescription(t *testing.T) {
 	accUpp := inst1.NewAccumulator(attribute.NewSet(attrs...))
 	accUpp.(Updater[int64]).Update(1)
 
-	accUpp.SnapshotAndProcess()
+	accUpp.SnapshotAndProcess(false)
 
 	output := testCollect(t, vc)
 
@@ -507,8 +507,8 @@ func TestKeyFilters(t *testing.T) {
 
 	accUpp1.(Updater[int64]).Update(1)
 	accUpp2.(Updater[int64]).Update(1)
-	accUpp1.SnapshotAndProcess()
-	accUpp2.SnapshotAndProcess()
+	accUpp1.SnapshotAndProcess(false)
+	accUpp2.SnapshotAndProcess(false)
 
 	output := testCollect(t, vc)
 
@@ -557,7 +557,7 @@ func TestTwoViewsOneInt64Instrument(t *testing.T) {
 		inst.NewAccumulator(attribute.NewSet(attribute.String("a", "2"), attribute.String("b", "2"))),
 	} {
 		acc.(Updater[int64]).Update(1)
-		acc.SnapshotAndProcess()
+		acc.SnapshotAndProcess(false)
 	}
 
 	output := testCollect(t, vc)
@@ -619,7 +619,7 @@ func TestHistogramTwoAggregations(t *testing.T) {
 	acc.(Updater[float64]).Update(2)
 	acc.(Updater[float64]).Update(3)
 	acc.(Updater[float64]).Update(4)
-	acc.SnapshotAndProcess()
+	acc.SnapshotAndProcess(false)
 
 	output := testCollect(t, vc)
 
@@ -654,11 +654,11 @@ func TestAllKeysFilter(t *testing.T) {
 
 	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("a", "1")))
 	acc1.(Updater[float64]).Update(1)
-	acc1.SnapshotAndProcess()
+	acc1.SnapshotAndProcess(false)
 
 	acc2 := inst.NewAccumulator(attribute.NewSet(attribute.String("b", "2")))
 	acc2.(Updater[float64]).Update(1)
-	acc2.SnapshotAndProcess()
+	acc2.SnapshotAndProcess(false)
 
 	output := testCollect(t, vc)
 
@@ -705,7 +705,7 @@ func TestAnySumAggregation(t *testing.T) {
 
 		acc := inst.NewAccumulator(attribute.NewSet())
 		acc.(Updater[float64]).Update(1)
-		acc.SnapshotAndProcess()
+		acc.SnapshotAndProcess(false)
 	}
 
 	output := testCollect(t, vc)
@@ -758,7 +758,7 @@ func TestDuplicateAsyncMeasurementsIngored(t *testing.T) {
 		acc.(Updater[float64]).Update(1000)
 		acc.(Updater[float64]).Update(10000)
 		acc.(Updater[float64]).Update(100000)
-		acc.SnapshotAndProcess()
+		acc.SnapshotAndProcess(false)
 	}
 
 	output := testCollect(t, vc)
@@ -810,7 +810,7 @@ func TestCumulativeTemporality(t *testing.T) {
 			inst2.NewAccumulator(setB),
 		} {
 			acc.(Updater[float64]).Update(1)
-			acc.SnapshotAndProcess()
+			acc.SnapshotAndProcess(false)
 		}
 
 		test.RequireEqualMetrics(t, testCollect(t, vc),
@@ -865,7 +865,7 @@ func TestDeltaTemporalityCounter(t *testing.T) {
 			inst2.NewAccumulator(setB),
 		} {
 			acc.(Updater[float64]).Update(float64(rounds))
-			acc.SnapshotAndProcess()
+			acc.SnapshotAndProcess(false)
 		}
 
 		test.RequireEqualMetrics(t, testCollectSequence(t, vc, seq),
@@ -912,11 +912,11 @@ func TestDeltaTemporalityGauge(t *testing.T) {
 	observe := func(x int) {
 		accI := instI.NewAccumulator(set)
 		accI.(Updater[int64]).Update(int64(x))
-		accI.SnapshotAndProcess()
+		accI.SnapshotAndProcess(false)
 
 		accF := instF.NewAccumulator(set)
 		accF.(Updater[float64]).Update(float64(x))
-		accF.SnapshotAndProcess()
+		accF.SnapshotAndProcess(false)
 	}
 
 	expectValues := func(x int, seq data.Sequence) {
@@ -976,7 +976,7 @@ func TestDeltaTemporalityGauge(t *testing.T) {
 }
 
 // TestSyncDeltaTemporalityCounter ensures that counter and updowncounter
-// are skip points with delta temporality and no change.
+// skip points with delta temporality and no change.
 func TestSyncDeltaTemporalityCounter(t *testing.T) {
 	views := view.New(
 		"test",
@@ -1007,19 +1007,19 @@ func TestSyncDeltaTemporalityCounter(t *testing.T) {
 	observe := func(mono, nonMono int) {
 		accCI := instCI.NewAccumulator(set)
 		accCI.(Updater[int64]).Update(int64(mono))
-		accCI.SnapshotAndProcess()
+		accCI.SnapshotAndProcess(false)
 
 		accCF := instCF.NewAccumulator(set)
 		accCF.(Updater[float64]).Update(float64(mono))
-		accCF.SnapshotAndProcess()
+		accCF.SnapshotAndProcess(false)
 
 		accUI := instUI.NewAccumulator(set)
 		accUI.(Updater[int64]).Update(int64(nonMono))
-		accUI.SnapshotAndProcess()
+		accUI.SnapshotAndProcess(false)
 
 		accUF := instUF.NewAccumulator(set)
 		accUF.(Updater[float64]).Update(float64(nonMono))
-		accUF.SnapshotAndProcess()
+		accUF.SnapshotAndProcess(false)
 	}
 
 	expectValues := func(mono, nonMono int, seq data.Sequence) {
@@ -1079,4 +1079,58 @@ func TestSyncDeltaTemporalityCounter(t *testing.T) {
 	observe(100, 100)
 	expectValues(100, 100, seq)
 	tick()
+}
+
+func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
+	views := view.New(
+		"test",
+		view.WithDefaultAggregationTemporalitySelector(
+			func(ik sdkinstrument.Kind) aggregation.Temporality {
+				return aggregation.DeltaTemporality // Always delta
+			}),
+	)
+
+	vc := New(testLib, views)
+
+	inst, err := testCompile(vc, "counter", sdkinstrument.CounterKind, number.Float64Kind)
+	require.NoError(t, err)
+
+	attr := attribute.String("A", "1")
+	set := attribute.NewSet(attr)
+
+	acc1 := inst.NewAccumulator(set)
+	acc2 := inst.NewAccumulator(set)
+
+	acc1.(Updater[float64]).Update(1)
+	acc2.(Updater[float64]).Update(1)
+
+	// There are two references to one entry in the map.
+	require.Equal(t, 1, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+
+	acc1.SnapshotAndProcess(false)
+	acc2.SnapshotAndProcess(true)
+
+	var output data.Scope
+
+	test.RequireEqualMetrics(t,
+		testCollectSequenceReuse(t, vc, testSequence, &output),
+		test.Instrument(
+			test.Descriptor("counter", sdkinstrument.CounterKind, number.Float64Kind),
+			test.Point(middleTime, endTime, sum.NewMonotonicFloat64(2), delta, attr),
+		),
+	)
+
+	require.Equal(t, 1, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+
+	acc1.SnapshotAndProcess(true)
+
+	test.RequireEqualMetrics(t,
+		testCollectSequenceReuse(t, vc, testSequence, &output),
+		test.Instrument(
+			test.Descriptor("counter", sdkinstrument.CounterKind, number.Float64Kind),
+		),
+	)
+
+	require.Equal(t, 0, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+
 }

@@ -90,7 +90,7 @@ func CollectScopeReuse(t *testing.T, collectors []data.Collector, seq data.Seque
 func RequireEqualPoints(t *testing.T, output []data.Point, expected ...data.Point) {
 	t.Helper()
 
-	require.Equal(t, len(output), len(expected))
+	require.Equal(t, len(output), len(expected), "points have different length")
 
 	cpy := make([]data.Point, len(expected))
 	copy(cpy, expected)

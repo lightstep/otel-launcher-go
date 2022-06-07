@@ -60,7 +60,7 @@ type Compiler struct {
 	library instrumentation.Library
 
 	// lock protects collectors and names.
-	lock sync.Mutex
+	compilerLock sync.Mutex
 
 	// collectors is the de-duplicated list of metric outputs, which may
 	// contain conflicting identities.
@@ -110,7 +110,11 @@ type Accumulator interface {
 	// There is no return value from this method; the caller can
 	// safely forget an Accumulator after this method is called,
 	// provided Update is not used again.
-	SnapshotAndProcess()
+	//
+	// When `final` is true, this is the last time the Accumulator
+	// will be snapshot and processed (according to the caller's
+	// reference counting).
+	SnapshotAndProcess(final bool)
 }
 
 // leafInstrument is one of the (synchronous or asynchronous),
@@ -170,8 +174,8 @@ func New(library instrumentation.Library, views *view.Views) *Compiler {
 }
 
 func (v *Compiler) Collectors() []data.Collector {
-	v.lock.Lock()
-	defer v.lock.Unlock()
+	v.compilerLock.Lock()
+	defer v.compilerLock.Unlock()
 	return v.collectors
 }
 
@@ -228,8 +232,8 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 		}
 	}
 
-	v.lock.Lock()
-	defer v.lock.Unlock()
+	v.compilerLock.Lock()
+	defer v.compilerLock.Unlock()
 
 	var conflicts ViewConflictsBuilder
 	var compiled []Instrument
@@ -294,7 +298,6 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 			v.collectors = append(v.collectors, leaf)
 			existingInsts = append(existingInsts, leaf)
 			v.names[behavior.desc.Name] = existingInsts
-
 		}
 		if len(existingInsts) > 1 || semanticErr != nil {
 			c := Conflict{
@@ -333,11 +336,11 @@ func newSyncView[
 	// is being copied before the new object is returned to the
 	// user, and the extra allocation cost here would be
 	// noticeable.
-	metric := instrumentBase[N, Storage, Methods]{
+	metric := instrumentBase[N, Storage, int64, Methods]{
 		fromName:   behavior.fromName,
 		desc:       behavior.desc,
 		acfg:       behavior.acfg,
-		data:       map[attribute.Set]*Storage{},
+		data:       map[attribute.Set]*storageHolder[Storage, int64]{},
 		keysSet:    behavior.keysSet,
 		keysFilter: behavior.keysFilter,
 	}
@@ -394,11 +397,11 @@ func newAsyncView[
 	// is being copied before the new object is returned to the
 	// user, and the extra allocation cost here would be
 	// noticeable.
-	metric := instrumentBase[N, Storage, Methods]{
+	metric := instrumentBase[N, Storage, notUsed, Methods]{
 		fromName:   behavior.fromName,
 		desc:       behavior.desc,
 		acfg:       behavior.acfg,
-		data:       map[attribute.Set]*Storage{},
+		data:       map[attribute.Set]*storageHolder[Storage, notUsed]{},
 		keysSet:    behavior.keysSet,
 		keysFilter: behavior.keysFilter,
 	}

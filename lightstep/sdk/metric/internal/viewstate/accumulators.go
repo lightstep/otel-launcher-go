@@ -16,17 +16,74 @@ package viewstate // import "github.com/lightstep/otel-launcher-go/lightstep/sdk
 
 import (
 	"sync"
+	"sync/atomic"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
+	"go.opentelemetry.io/otel/attribute"
 )
+
+// compiledSyncBase is any synchronous instrument view.
+type compiledSyncBase[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
+	instrumentBase[N, Storage, int64, Methods]
+}
+
+// NewAccumulator returns a Accumulator for a synchronous instrument view.
+func (csv *compiledSyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set) Accumulator {
+	sc := &syncAccumulator[N, Storage, Methods]{}
+	csv.initStorage(&sc.current)
+	csv.initStorage(&sc.snapshot)
+
+	sc.holder = csv.findStorage(kvs)
+	return sc
+}
+
+// findStorage locates the output Storage and adds to the auxiliary
+// reference count for synchronous instruments.
+func (csv *compiledSyncBase[N, Storage, Methods]) findStorage(
+	kvs attribute.Set,
+) *storageHolder[Storage, int64] {
+	kvs = csv.applyKeysFilter(kvs)
+
+	csv.instLock.Lock()
+	defer csv.instLock.Unlock()
+
+	entry := csv.getOrCreateEntry(kvs)
+	atomic.AddInt64(&entry.auxiliary, 1)
+	return entry
+}
+
+// compiledAsyncBase is any asynchronous instrument view.
+type compiledAsyncBase[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
+	instrumentBase[N, Storage, notUsed, Methods]
+}
+
+// NewAccumulator returns a Accumulator for an asynchronous instrument view.
+func (cav *compiledAsyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set) Accumulator {
+	ac := &asyncAccumulator[N, Storage, Methods]{}
+
+	ac.holder = cav.findStorage(kvs)
+	return ac
+}
+
+// findStorage locates the output Storage for asynchronous instruments.
+func (cav *compiledAsyncBase[N, Storage, Methods]) findStorage(
+	kvs attribute.Set,
+) *storageHolder[Storage, notUsed] {
+	kvs = cav.applyKeysFilter(kvs)
+
+	cav.instLock.Lock()
+	defer cav.instLock.Unlock()
+
+	return cav.getOrCreateEntry(kvs)
+}
 
 // multiAccumulator
 type multiAccumulator[N number.Any] []Accumulator
 
-func (acc multiAccumulator[N]) SnapshotAndProcess() {
+func (acc multiAccumulator[N]) SnapshotAndProcess(final bool) {
 	for _, coll := range acc {
-		coll.SnapshotAndProcess()
+		coll.SnapshotAndProcess(final)
 	}
 }
 
@@ -38,9 +95,12 @@ func (acc multiAccumulator[N]) Update(value N) {
 
 // syncAccumulator
 type syncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
-	current     Storage
-	snapshot    Storage
-	findStorage func() *Storage
+	// syncLock prevents two readers from calling
+	// SnapshotAndProcess at the same moment.
+	syncLock sync.Mutex
+	current  Storage
+	snapshot Storage
+	holder   *storageHolder[Storage, int64]
 }
 
 func (acc *syncAccumulator[N, Storage, Methods]) Update(number N) {
@@ -48,29 +108,35 @@ func (acc *syncAccumulator[N, Storage, Methods]) Update(number N) {
 	methods.Update(&acc.current, number)
 }
 
-func (acc *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess() {
+func (acc *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess(final bool) {
 	var methods Methods
-	methods.SynchronizedMove(&acc.current, &acc.snapshot)
-	methods.Merge(acc.findStorage(), &acc.snapshot)
+	acc.syncLock.Lock()
+	defer acc.syncLock.Unlock()
+	methods.Move(&acc.current, &acc.snapshot)
+	methods.Merge(&acc.snapshot, &acc.holder.storage)
+	if final {
+		// On the final snapshot-and-process, decrement the auxiliary reference count.
+		atomic.AddInt64(&acc.holder.auxiliary, -1)
+	}
 }
 
 // asyncAccumulator
 type asyncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
-	lock        sync.Mutex
-	current     N
-	findStorage func() *Storage
+	asyncLock sync.Mutex
+	current   N
+	holder    *storageHolder[Storage, notUsed]
 }
 
 func (acc *asyncAccumulator[N, Storage, Methods]) Update(number N) {
-	acc.lock.Lock()
-	defer acc.lock.Unlock()
+	acc.asyncLock.Lock()
+	defer acc.asyncLock.Unlock()
 	acc.current = number
 }
 
-func (acc *asyncAccumulator[N, Storage, Methods]) SnapshotAndProcess() {
-	acc.lock.Lock()
-	defer acc.lock.Unlock()
+func (acc *asyncAccumulator[N, Storage, Methods]) SnapshotAndProcess(_ bool) {
+	acc.asyncLock.Lock()
+	defer acc.asyncLock.Unlock()
 
 	var methods Methods
-	methods.Update(acc.findStorage(), acc.current)
+	methods.Update(&acc.holder.storage, acc.current)
 }
