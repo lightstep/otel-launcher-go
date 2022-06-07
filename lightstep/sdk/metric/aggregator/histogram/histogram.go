@@ -57,7 +57,7 @@ type (
 		zeroCount uint64
 		// positive holds the positive values
 		positive buckets
-		// positive holds the negative values in these buckets
+		// negative holds the negative values in these buckets
 		// by their absolute value.
 		negative buckets
 		// mapping corresponds to the current scale, is shared
@@ -83,13 +83,13 @@ type (
 // histogram boundaries (spanning 0.005 to 10) yields 320 base-10
 // 90-per-decade log-linear buckets.   NrSketch used 320.
 //
-// OTel settled on 160, which yields a maxiumum relative error of less
+// OTel settled on 160, which yields a maximum relative error of less
 // than 5% for data with contrast 10^5 (e.g., latencies in the range
 // 1ms to 100s).  See the derivation here: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/sdk.md#exponential-histogram-aggregation
 const DefaultMaxSize = 160
 
 // MinSize is the smallest reasonable configuration, which is small
-// enough to contains the entire normal flowing point range at
+// enough to contain the entire normal floating point range at
 // MinScale.
 const MinSize = 2
 

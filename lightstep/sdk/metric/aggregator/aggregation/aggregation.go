@@ -51,7 +51,7 @@ type (
 		Gauge() number.Number
 	}
 
-	// ExponentialHistogram returns the count of events in
+	// Histogram returns the count of events in
 	// exponential-scale buckets defined as a function of a
 	// scale parameter.  See a detailed explanation in the
 	// OpenTelemetry metrics data model:
@@ -66,7 +66,7 @@ type (
 		Negative() Buckets
 	}
 
-	// ExponentialBuckets describes a range of consecutive
+	// Buckets describes a range of consecutive
 	// buckets, starting at Offset().  This type is used to encode
 	// either the positive or negative ranges of an ExponentialHistogram.
 	Buckets interface {

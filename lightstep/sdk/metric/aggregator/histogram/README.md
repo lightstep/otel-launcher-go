@@ -73,7 +73,7 @@ maximum bucket indices for the current scale.
 TODO: Apply Go 1.18 generics treatment to this `interface{}`.
 
 The backing array is circular.  When the first observation is added to
-a set of (positive or negative) buckets, the initial conditition is
+a set of (positive or negative) buckets, the initial condition is
 `indexBase == indexStart == indexEnd`.  When new observations are
 added at indices lower than `indexStart` and while capacity is greater
 than `indexEnd - indexBase`, new values are filled in by adjusting
@@ -146,7 +146,7 @@ The `Scale` function returns the current scale of the histogram.
 
 If the scale is variable and there are no non-zero values in the
 histogram, the scale is zero by definition; when there is only a
-single value in this case, it's scale is MinScale (20) by definition.
+single value in this case, its scale is MinScale (20) by definition.
 
 If the scale is fixed because of range limits, the fixed scale will be
 returned even for any size histogram.
