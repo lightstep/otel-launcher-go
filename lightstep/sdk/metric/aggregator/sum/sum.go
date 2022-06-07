@@ -40,6 +40,12 @@ type (
 
 	MonotonicFloat64    = State[float64, number.Float64Traits, Monotonic]
 	NonMonotonicFloat64 = State[float64, number.Float64Traits, NonMonotonic]
+
+	MonotonicInt64Methods   = Methods[int64, number.Int64Traits, Monotonic, MonotonicInt64]
+	MonotonicFloat64Methods = Methods[float64, number.Float64Traits, Monotonic, MonotonicFloat64]
+
+	NonMonotonicInt64Methods   = Methods[int64, number.Int64Traits, NonMonotonic, NonMonotonicInt64]
+	NonMonotonicFloat64Methods = Methods[float64, number.Float64Traits, NonMonotonic, NonMonotonicFloat64]
 )
 
 func NewMonotonicInt64(x int64) *MonotonicInt64 {
@@ -110,13 +116,9 @@ func (Methods[N, Traits, M, Storage]) Init(state *State[N, Traits, M], _ aggrega
 	// Note: storage is zero to start
 }
 
-func (Methods[N, Traits, M, Storage]) SynchronizedMove(resetSrc, dest *State[N, Traits, M]) {
+func (Methods[N, Traits, M, Storage]) Move(src, dest *State[N, Traits, M]) {
 	var t Traits
-	dest.value = t.SwapAtomic(&resetSrc.value, 0)
-}
-
-func (Methods[N, Traits, M, Storage]) Reset(ptr *State[N, Traits, M]) {
-	ptr.value = 0
+	dest.value = t.SwapAtomic(&src.value, 0)
 }
 
 func (Methods[N, Traits, M, Storage]) HasChange(ptr *State[N, Traits, M]) bool {
@@ -124,17 +126,18 @@ func (Methods[N, Traits, M, Storage]) HasChange(ptr *State[N, Traits, M]) bool {
 }
 
 func (Methods[N, Traits, M, Storage]) Update(state *State[N, Traits, M], value N) {
-	var m M
-	if !aggregator.RangeTest[N, Traits](value, m.category()) {
-		return
-	}
-
 	var t Traits
 	t.AddAtomic(&state.value, value)
 }
 
-func (Methods[N, Traits, M, Storage]) Merge(to, from *State[N, Traits, M]) {
-	to.value += from.value
+func (Methods[N, Traits, M, Storage]) Copy(from, to *State[N, Traits, M]) {
+	var t Traits
+	to.value = t.GetAtomic(&from.value)
+}
+
+func (Methods[N, Traits, M, Storage]) Merge(from, to *State[N, Traits, M]) {
+	var t Traits
+	t.AddAtomic(&to.value, from.value)
 }
 
 func (Methods[N, Traits, M, Storage]) ToAggregation(state *State[N, Traits, M]) aggregation.Aggregation {

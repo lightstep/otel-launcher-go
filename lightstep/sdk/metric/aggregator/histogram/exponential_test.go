@@ -25,10 +25,10 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/mapping"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/mapping/exponent"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/mapping/logarithm"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
+	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping"
+	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/exponent"
+	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/logarithm"
 )
 
 const (
@@ -549,8 +549,8 @@ func TestIntegerAggregation(t *testing.T) {
 	require.Equal(t, 2*expect, agg.Sum().AsInt64())
 
 	// Reset!  Repeat with negative.
-	agg.SynchronizedMove(nil)
-	alt.SynchronizedMove(nil)
+	agg.Move(nil)
+	alt.Move(nil)
 
 	expect = int64(0)
 	for i := int64(1); i < 256; i++ {
@@ -590,7 +590,7 @@ func TestReset(t *testing.T) {
 		0x200000000,
 	} {
 		t.Run(fmt.Sprint(incr), func(t *testing.T) {
-			agg.SynchronizedMove(nil)
+			agg.Move(nil)
 
 			// Note that scale is zero b/c no values
 			require.Equal(t, int32(0), agg.Scale())
@@ -633,7 +633,7 @@ func TestMove(t *testing.T) {
 		agg.Update(0)
 	}
 
-	agg.SynchronizedMove(cpy)
+	agg.Move(cpy)
 
 	// agg was reset
 	require.Equal(t, 0.0, agg.Sum().AsFloat64())
@@ -722,6 +722,48 @@ func TestFullRange(t *testing.T) {
 	require.Equal(t, pos.At(1), uint64(2))
 }
 
+func TestAggregatorToFrom(t *testing.T) {
+	var mi Int64Methods
+	var mf Float64Methods
+	var hi Int64
+
+	hs, ok := mi.ToStorage(mi.ToAggregation(&hi))
+	require.Equal(t, &hi, hs)
+	require.True(t, ok)
+
+	_, ok = mf.ToStorage(mi.ToAggregation(&hi))
+	require.False(t, ok)
+}
+
+func requireEqualValues[N number.Any, Traits number.Traits[N]](t *testing.T, a, b *State[N, Traits]) {
+	require.Equal(t, a.Scale(), b.Scale())
+	require.Equal(t, a.Count(), b.Count())
+	require.Equal(t, a.Sum(), b.Sum())
+	requireEqualBuckets(t, a.Positive(), b.Positive())
+	requireEqualBuckets(t, a.Negative(), b.Negative())
+}
+
+func requireEqualBuckets(t *testing.T, a, b aggregation.Buckets) {
+	require.Equal(t, a.Len(), b.Len())
+	require.Equal(t, a.Offset(), b.Offset())
+	for i := uint32(0); i < a.Len(); i++ {
+		require.Equal(t, a.At(i), b.At(i))
+	}
+}
+
+func TestAggregatorCopyMove(t *testing.T) {
+	var mf Float64Methods
+
+	h1 := NewFloat64(aggregator.HistogramConfig{}, 1, 3, 5, 7, 9)
+	h2 := NewFloat64(aggregator.HistogramConfig{})
+	h3 := NewFloat64(aggregator.HistogramConfig{})
+
+	mf.Move(h1, h2)
+	mf.Copy(h2, h3)
+
+	requireEqualValues(t, h2, h3)
+}
+
 // Benchmarks the Update() function for values in the range [1,2)
 func BenchmarkLinear(b *testing.B) {
 	src := rand.NewSource(77777677777)
@@ -786,4 +828,36 @@ func BenchmarkReverseMapping(b *testing.B) {
 	lm, _ := logarithm.NewMapping(1)
 	benchmarkBoundary(b, "exponent", em)
 	benchmarkBoundary(b, "logarithm", lm)
+}
+
+// Statistical test: how biased are the exact power-of-two boundaries?
+func TestBoundaryStatistics(t *testing.T) {
+	for scale := logarithm.MinScale; scale <= logarithm.MaxScale; scale++ {
+
+		m, _ := logarithm.NewMapping(scale)
+
+		var above, below, equal int
+
+		for exp := exponent.MinNormalExponent; exp <= exponent.MaxNormalExponent; exp++ {
+			value := math.Ldexp(1, int(exp))
+
+			index := m.MapToIndex(value)
+
+			bound, err := m.LowerBoundary(index)
+			require.NoError(t, err)
+
+			if bound == value {
+				//fmt.Println("scale", scale, "exp", exp, "agree")
+				equal++
+			} else if bound < value {
+				//fmt.Println("scale", scale, "exp", exp, "above")
+				above++
+			} else {
+				//fmt.Println("scale", scale, "exp", exp, "below")
+				below++
+			}
+		}
+
+		fmt.Println("scale", scale, "below", below, "equal", equal, "above", above)
+	}
 }

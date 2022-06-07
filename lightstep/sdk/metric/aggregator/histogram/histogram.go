@@ -69,6 +69,9 @@ type (
 
 	Int64   = State[int64, number.Int64Traits]
 	Float64 = State[float64, number.Float64Traits]
+
+	Int64Methods   = Methods[int64, number.Int64Traits, Int64]
+	Float64Methods = Methods[float64, number.Float64Traits, Float64]
 )
 
 // DefaultMaxSize is the default number of buckets.
@@ -90,39 +93,9 @@ const DefaultMaxSize = 160
 // MinScale.
 const MinSize = 2
 
-type (
-	// buckets stores counts for measurement values in the range
-	// (0, +Inf).
-	buckets struct {
-		// backing is a slice of nil, []uint8, []uint16, []uint32, or []uint64
-		backing interface{}
-
-		// indexBase is index of the 0th position in the
-		// backing array, i.e., backing[0] is the count associated with
-		// indexBase which is in [indexStart, indexEnd]
-		indexBase int32
-
-		// indexStart is the smallest index value represented
-		// in the backing array.
-		indexStart int32
-
-		// indexEnd is the largest index value represented in
-		// the backing array.
-		indexEnd int32
-	}
-
-	// highLow is used to establish the maximum range of bucket
-	// indices needed, in order to establish the best value of the
-	// scale parameter.
-	highLow struct {
-		low  int32
-		high int32
-	}
-)
-
 var (
-	_ aggregator.Methods[int64, Int64]     = Methods[int64, number.Int64Traits, Int64]{}
-	_ aggregator.Methods[float64, Float64] = Methods[float64, number.Float64Traits, Float64]{}
+	_ aggregator.Methods[int64, Int64]     = Int64Methods{}
+	_ aggregator.Methods[float64, Float64] = Float64Methods{}
 
 	_ aggregation.Histogram = &Int64{}
 	_ aggregation.Histogram = &Float64{}
@@ -226,22 +199,11 @@ func (b *buckets) At(pos0 uint32) uint64 {
 	bias := uint32(b.indexBase - b.indexStart)
 
 	if pos < bias {
-		pos += uint32(b.size())
+		pos += uint32(b.backing.size())
 	}
 	pos -= bias
 
-	switch counts := b.backing.(type) {
-	case []uint8:
-		return uint64(counts[pos])
-	case []uint16:
-		return uint64(counts[pos])
-	case []uint32:
-		return uint64(counts[pos])
-	case []uint64:
-		return counts[pos]
-	default:
-		panic("At() with size() == 0")
-	}
+	return b.backing.countAt(pos)
 }
 
 // clearState resets a histogram to the empty state without changing
@@ -260,23 +222,8 @@ func (b *buckets) clearState() {
 	b.indexStart = 0
 	b.indexEnd = 0
 	b.indexBase = 0
-	switch counts := b.backing.(type) {
-	case []uint8:
-		for i := range counts {
-			counts[i] = 0
-		}
-	case []uint16:
-		for i := range counts {
-			counts[i] = 0
-		}
-	case []uint32:
-		for i := range counts {
-			counts[i] = 0
-		}
-	case []uint64:
-		for i := range counts {
-			counts[i] = 0
-		}
+	if b.backing != nil {
+		b.backing.reset()
 	}
 }
 
@@ -309,30 +256,29 @@ func (Methods[N, Traits, Storage]) Init(state *State[N, Traits], cfg aggregator.
 	state.mapping = mapping
 }
 
-func (Methods[N, Traits, Storage]) Reset(ptr *State[N, Traits]) {
-	ptr.clearState()
-}
-
 func (Methods[N, Traits, Storage]) HasChange(ptr *State[N, Traits]) bool {
 	return ptr.count != 0
 }
 
-func (Methods[N, Traits, Storage]) SynchronizedMove(resetSrc, dest *State[N, Traits]) {
-	resetSrc.SynchronizedMove(dest)
+func (Methods[N, Traits, Storage]) Move(src, dest *State[N, Traits]) {
+	src.Move(dest)
+}
+
+func (Methods[N, Traits, Storage]) Copy(src, dest *State[N, Traits]) {
+	src.lock.Lock()
+	defer src.lock.Unlock()
+
+	dest.clearState()
+	dest.Merge(src)
 }
 
 // Update adds the recorded measurement to the current data set.
 func (Methods[N, Traits, Storage]) Update(state *State[N, Traits], number N) {
-	// @@@ TODO! Move these back to the sync/async update
-	// if !aggregator.RangeTest[N, Traits](number, aggregation.HistogramCategory) {
-	// 	return
-	// }
-
 	state.Update(number)
 }
 
 // Merge combines two histograms that have the same buckets into a single one.
-func (Methods[N, Traits, Storage]) Merge(to, from *State[N, Traits]) {
+func (Methods[N, Traits, Storage]) Merge(from, to *State[N, Traits]) {
 	to.Merge(from)
 }
 

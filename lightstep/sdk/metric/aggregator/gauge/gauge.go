@@ -64,29 +64,26 @@ func (Methods[N, Traits, Storage]) Init(state *State[N, Traits], _ aggregator.Co
 	// Note: storage is zero to start
 }
 
-func (Methods[N, Traits, Storage]) Reset(ptr *State[N, Traits]) {
-	var t Traits
-	t.SetAtomic(&ptr.value, 0)
-}
-
 func (Methods[N, Traits, Storage]) HasChange(ptr *State[N, Traits]) bool {
 	return ptr.value != 0
 }
 
-func (Methods[N, Traits, Storage]) SynchronizedMove(resetSrc, dest *State[N, Traits]) {
+func (Methods[N, Traits, Storage]) Move(src, dest *State[N, Traits]) {
 	var t Traits
-	dest.value = t.SwapAtomic(&resetSrc.value, 0)
+	dest.value = t.SwapAtomic(&src.value, 0)
+}
+
+func (Methods[N, Traits, Storage]) Copy(src, dest *State[N, Traits]) {
+	var t Traits
+	dest.value = t.GetAtomic(&src.value)
 }
 
 func (Methods[N, Traits, Storage]) Update(state *State[N, Traits], number N) {
-	if !aggregator.RangeTest[N, Traits](number, aggregation.GaugeCategory) {
-		return
-	}
 	var t Traits
 	t.SetAtomic(&state.value, number)
 }
 
-func (Methods[N, Traits, Storage]) Merge(to, from *State[N, Traits]) {
+func (Methods[N, Traits, Storage]) Merge(from, to *State[N, Traits]) {
 	to.value = from.value
 }
 

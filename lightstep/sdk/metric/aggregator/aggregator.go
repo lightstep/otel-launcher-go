@@ -34,7 +34,7 @@ var (
 // This rejects NaN and Inf values.  This rejects negative values when the
 // aggregation does not support negative values, including
 // monotonic counter metrics and Histogram metrics.
-func RangeTest[N number.Any, Traits number.Traits[N]](num N, kind aggregation.Category) bool {
+func RangeTest[N number.Any, Traits number.Traits[N]](num N, kind sdkinstrument.Kind) bool {
 	var traits Traits
 
 	if traits.IsInf(num) {
@@ -49,8 +49,8 @@ func RangeTest[N number.Any, Traits number.Traits[N]](num N, kind aggregation.Ca
 
 	// Check for negative values
 	switch kind {
-	case aggregation.MonotonicSumCategory,
-		aggregation.HistogramCategory:
+	case sdkinstrument.CounterKind,
+		sdkinstrument.HistogramKind:
 		if num < 0 {
 			otel.Handle(ErrNegativeInput)
 			return false
@@ -68,29 +68,37 @@ type Config struct {
 }
 
 // Methods implements a specific aggregation behavior.  Methods
-// are parameterized by the type of the number (int64, flot64),
-// the Storage (generally an `Storage` struct in the same package),
-// and the Config (generally a `Config` struct in the same package).
+// are parameterized by the type of the number (int64, float64),
+// the Storage (generally an `Storage` struct in the same package).
 type Methods[N number.Any, Storage any] interface {
-	// Init initializes the storage with its configuration.
+	// Init initializes the storage.
 	Init(ptr *Storage, cfg Config)
 
 	// Update modifies the aggregator concurrently with respect to
-	// SynchronizedMove() for single new measurement.
+	// Move() or Copy()
 	Update(ptr *Storage, number N)
 
-	// SynchronizedMove concurrently copies and resets the
-	// `inputIsReset` aggregator.
-	SynchronizedMove(inputIsReset, output *Storage)
+	// Move atomically copies `input` to `output` and resets the
+	// `input` to the zero state.  The change to `input` is
+	// synchronized with `Update()`.  The change to `output` is
+	// synchronized with the accessor methods in ./aggregation.
+	Move(input, output *Storage)
 
-	// Simply reset the storage.
-	Reset(ptr *Storage)
+	// Merge adds the contents of `input` to `output`.  The read
+	// of `input` is unsynchronized.  The write to `output` is
+	// synchronized with concurrent `Merge()` calls (writing) and
+	// concurrent `Copy()` calls (reading).
+	Merge(input, output *Storage)
 
-	// Merge adds the contents of `input` to `output`.
-	Merge(output, input *Storage)
+	// Copy replaces the contents of `output` with `input`.  The
+	// read from `input` is synchronized with `Merge()` calls.
+	Copy(input, output *Storage)
 
-	// SubtractSwap removes the contents of `operand` from `valueToModify`
-	SubtractSwap(valueToModify, operandToModify *Storage)
+	// SubtractSwap performs `*operand = *value - *operand`
+	// without synchronization.  We are not concerned with
+	// synchronization because this is only used for asynchronous
+	// instruments.
+	SubtractSwap(value, operand *Storage)
 
 	// ToAggregation returns an exporter-ready value.
 	ToAggregation(ptr *Storage) aggregation.Aggregation
@@ -105,7 +113,7 @@ type Methods[N number.Any, Storage any] interface {
 	// Updates.  This tests whether an aggregation has zero sum,
 	// zero count, or zero difference, depending on the
 	// aggregation.  If the instrument is asynchronous, this will
-	// be used after subtraction.
+	// be called after subtraction.
 	HasChange(ptr *Storage) bool
 }
 
