@@ -58,32 +58,47 @@ maximum size.  The structure of a single range of buckets is:
 
 ```golang
 type buckets struct {
-	backing    interface{}
+	backing    bucketsVarwidth[T]  // for T = uint8 | uint16 | uint32 | uint64
 	indexBase  int32
 	indexStart int32
 	indexEnd   int32
 }
 ```
 
-The `backing` field is a slice of variable width unsigned integer
-(i.e., `[]uint8`, `[]uint16`, `[]uint32`, or `[]uint64`.  The
-`indexStart` and `indexEnd` fields store the current minimum and
-maximum bucket indices for the current scale.
-
-TODO: Apply Go 1.18 generics treatment to this `interface{}`.
-
-The backing array is circular.  When the first observation is added to
-a set of (positive or negative) buckets, the initial condition is
-`indexBase == indexStart == indexEnd`.  When new observations are
-added at indices lower than `indexStart` and while capacity is greater
-than `indexEnd - indexBase`, new values are filled in by adjusting
-`indexStart` to be less than `indexBase`. This mechanism allows the
-backing array to grow in either direction without moving values, up
-until rescaling is necessary.
+The `backing` field is a generic slice of `[]uint8`, `[]uint16`,
+`[]uint32`, or `[]uint64`.
 
 The positive and negative backing arrays are independent, so the
 maximum space used for `buckets` by one `Aggregator` is twice the
 configured maximum size.
+
+### Backing array
+
+The backing array is circular.  The first observation is counted in
+the 0th index of the backing array and the initial bucket number is
+stored in `indexBase`.  After the initial observation, the backing
+array grows in either direction (i.e., larger or smaller bucket
+numbers), until rescaling is necessary.  This mechanism allows the
+histogram to maintain the ideal scale without shifting values inside
+the array.
+
+The `indexStart` and `indexEnd` fields store the current minimum and
+maximum bucket number.  The initial conditition is `indexBase ==
+indexStart == indexEnd`, representing a single bucket.
+
+Following the first observation, new observations may fall into a
+bucket up to `size-1` in either direction.  Growth is possible by
+adjusting either `indexEnd` or `indexStart` as long as the constraint
+`indexEnd-indexStart < size` remains true.
+
+Bucket numbers in the range `[indexBase, indexEnd]` are stored in the
+interval `[0, indexEnd-indexBase+1]` of the backing array.  Buckets in
+the range `[indexStart, indexBase-1]` are stored in the interval
+`[size+indexStart-indexBase, size-1]` of the backing array.
+
+Considering the `aggregation.Buckets` interface, `Offset()` returns
+`indexStart`, `Len()` returns `indexEnd-indexStart+1`, and `At()`
+locates the correct bucket in the circular array.
 
 ### Mapping function
 
@@ -124,8 +139,7 @@ func changeScale(minIndex, maxIndex, scale, maxSize int32) int32 {
 ```
 
 The `changeScale` function is also used to determine how many bits to
-shift during `Merge` and to fix the initial scale when range limits
-are configured.
+shift during `Merge`.
 
 ### Downscale function
 
