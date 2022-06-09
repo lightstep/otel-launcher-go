@@ -91,7 +91,7 @@ func (e *Exporter) ShutdownMetrics(ctx context.Context, metrics data.Metrics) er
 		if stopErr := e.client.Stop(ctx); stopErr != nil && err == nil {
 			err = stopErr
 		} else if stopErr != nil {
-			err = fmt.Errorf("shutdown flush: %w, stop: %w", err, stopErr)
+			err = fmt.Errorf("shutdown flush: %w, stop: %v", err, stopErr)
 		}
 		e.mu.Lock()
 		e.started = false

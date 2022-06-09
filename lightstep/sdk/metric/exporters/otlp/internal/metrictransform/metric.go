@@ -131,11 +131,11 @@ func NumberPoints(desc *sdkinstrument.Descriptor, points []data.Point, p2v func(
 		value := p2v(pt)
 		if desc.NumberKind == number.Float64Kind {
 			results[i].Value = &metricspb.NumberDataPoint_AsDouble{
-				AsDouble: value.AsFloat64(),
+				AsDouble: number.ToFloat64(value),
 			}
 		} else {
 			results[i].Value = &metricspb.NumberDataPoint_AsInt{
-				AsInt: value.AsInt64(),
+				AsInt: number.ToInt64(value),
 			}
 		}
 	}
