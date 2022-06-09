@@ -129,7 +129,7 @@ func newScale(minIndex, maxIndex, scale, maxSize int32) int32 {
 
 func changeScale(minIndex, maxIndex, scale, maxSize int32) int32 {
     var change int32
-    for maxIndex - lowIndex >= maxSize {
+    for maxIndex - minIndex >= maxSize {
 	   maxIndex >>= 1
 	   minIndex >>= 1
 	   change++
