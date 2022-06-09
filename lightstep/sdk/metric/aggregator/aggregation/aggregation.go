@@ -31,7 +31,7 @@ type (
 		Kind() Kind
 	}
 
-	// HasASum
+	// HasASum includes Sum and Histogram aggregators.
 	HasASum interface {
 		Sum() number.Number
 	}

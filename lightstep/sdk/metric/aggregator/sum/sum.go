@@ -23,7 +23,6 @@ import (
 type (
 	Monotonicity interface {
 		kind() aggregation.Kind
-		category() aggregation.Category
 	}
 
 	Monotonic    struct{}
@@ -72,14 +71,6 @@ func (NonMonotonic) kind() aggregation.Kind {
 	return aggregation.NonMonotonicSumKind
 }
 
-func (Monotonic) category() aggregation.Category {
-	return aggregation.MonotonicSumCategory
-}
-
-func (NonMonotonic) category() aggregation.Category {
-	return aggregation.NonMonotonicSumCategory
-}
-
 var (
 	_ aggregator.Methods[int64, MonotonicInt64]        = Methods[int64, number.Int64Traits, Monotonic, MonotonicInt64]{}
 	_ aggregator.Methods[float64, MonotonicFloat64]    = Methods[float64, number.Float64Traits, Monotonic, MonotonicFloat64]{}
@@ -116,9 +107,9 @@ func (Methods[N, Traits, M, Storage]) Init(state *State[N, Traits, M], _ aggrega
 	// Note: storage is zero to start
 }
 
-func (Methods[N, Traits, M, Storage]) Move(src, dest *State[N, Traits, M]) {
+func (Methods[N, Traits, M, Storage]) Move(from, to *State[N, Traits, M]) {
 	var t Traits
-	dest.value = t.SwapAtomic(&src.value, 0)
+	to.value = t.SwapAtomic(&from.value, 0)
 }
 
 func (Methods[N, Traits, M, Storage]) HasChange(ptr *State[N, Traits, M]) bool {
@@ -149,6 +140,6 @@ func (Methods[N, Traits, M, Storage]) ToStorage(aggr aggregation.Aggregation) (*
 	return r, ok
 }
 
-func (Methods[N, Traits, M, Storage]) SubtractSwap(newvalue, oldvalueModified *State[N, Traits, M]) {
-	oldvalueModified.value = newvalue.value - oldvalueModified.value
+func (Methods[N, Traits, M, Storage]) SubtractSwap(operand, argument *State[N, Traits, M]) {
+	operand.value = argument.value - operand.value
 }

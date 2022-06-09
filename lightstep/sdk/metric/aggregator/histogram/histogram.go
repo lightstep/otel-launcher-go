@@ -260,16 +260,16 @@ func (Methods[N, Traits, Storage]) HasChange(ptr *State[N, Traits]) bool {
 	return ptr.count != 0
 }
 
-func (Methods[N, Traits, Storage]) Move(src, dest *State[N, Traits]) {
-	src.Move(dest)
+func (Methods[N, Traits, Storage]) Move(from, to *State[N, Traits]) {
+	from.Move(to)
 }
 
-func (Methods[N, Traits, Storage]) Copy(src, dest *State[N, Traits]) {
-	src.lock.Lock()
-	defer src.lock.Unlock()
+func (Methods[N, Traits, Storage]) Copy(from, to *State[N, Traits]) {
+	from.lock.Lock()
+	defer from.lock.Unlock()
 
-	dest.clearState()
-	dest.Merge(src)
+	to.clearState()
+	to.Merge(from)
 }
 
 // Update adds the recorded measurement to the current data set.
@@ -291,7 +291,7 @@ func (Methods[N, Traits, Storage]) ToStorage(aggr aggregation.Aggregation) (*Sta
 	return r, ok
 }
 
-func (Methods[N, Traits, Storage]) SubtractSwap(value, operandToModify *State[N, Traits]) {
+func (Methods[N, Traits, Storage]) SubtractSwap(operand, argument *State[N, Traits]) {
 	// This can't be called b/c histogram's are only used with synchronous instruments,
 	// which start as delta temporality and thus never subtract.
 	panic("impossible call")

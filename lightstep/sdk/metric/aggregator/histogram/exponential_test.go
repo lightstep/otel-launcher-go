@@ -25,6 +25,7 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/test"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/exponent"
@@ -70,8 +71,8 @@ func (s printableBucket) String() string {
 // the two may are expected to have different underlying
 // representations.
 func requireEqual(t *testing.T, a, b *State[float64, number.Float64Traits]) {
-	aSum := a.Sum().AsFloat64()
-	bSum := b.Sum().AsFloat64()
+	aSum := number.ToFloat64(a.Sum())
+	bSum := number.ToFloat64(b.Sum())
 	if aSum == 0 || bSum == 0 {
 		require.InDelta(t, aSum, bSum, 1e-6)
 	} else {
@@ -283,7 +284,7 @@ func testAscendingSequence(t *testing.T, maxSize, offset, initScale int32) {
 		require.GreaterOrEqual(t, uint64(maxSize+1), totalCount)
 		require.GreaterOrEqual(t, uint64(maxSize+1), agg.Count())
 		// Sum is correct
-		require.GreaterOrEqual(t, sum, agg.Sum().AsFloat64())
+		require.GreaterOrEqual(t, sum, number.ToFloat64(agg.Sum()))
 
 		// The offset is correct at the computed scale.
 		mapper, err = newMapping(agg.Scale())
@@ -482,7 +483,7 @@ func TestOverflowBits(t *testing.T) {
 			cHist.UpdateByIncr(minusOne, limit)
 
 			require.Equal(t, 2*limit, aHist.Count())
-			require.Equal(t, float64(0), aHist.Sum().AsFloat64())
+			require.Equal(t, float64(0), number.ToFloat64(aHist.Sum()))
 
 			aPos := aHist.Positive()
 			require.Equal(t, uint32(1), aPos.Len())
@@ -512,7 +513,7 @@ func TestIntegerAggregation(t *testing.T) {
 		alt.Update(i)
 	}
 
-	require.Equal(t, expect, agg.Sum().AsInt64())
+	require.Equal(t, expect, number.ToInt64(agg.Sum()))
 	require.Equal(t, uint64(255), agg.Count())
 
 	// Scale should be 5.  Here's why.  The upper power-of-two is
@@ -546,7 +547,7 @@ func TestIntegerAggregation(t *testing.T) {
 
 	expect256(agg.Positive(), 2)
 
-	require.Equal(t, 2*expect, agg.Sum().AsInt64())
+	require.Equal(t, 2*expect, number.ToInt64(agg.Sum()))
 
 	// Reset!  Repeat with negative.
 	agg.Move(nil)
@@ -559,7 +560,7 @@ func TestIntegerAggregation(t *testing.T) {
 		alt.Update(-i)
 	}
 
-	require.Equal(t, expect, agg.Sum().AsInt64())
+	require.Equal(t, expect, number.ToInt64(agg.Sum()))
 	require.Equal(t, uint64(255), agg.Count())
 
 	expect256(agg.Negative(), 1)
@@ -570,7 +571,7 @@ func TestIntegerAggregation(t *testing.T) {
 
 	expect256(agg.Negative(), 2)
 
-	require.Equal(t, 2*expect, agg.Sum().AsInt64())
+	require.Equal(t, 2*expect, number.ToInt64(agg.Sum()))
 
 	// Scale should not change after filling in the negative range.
 	require.Equal(t, int32(5), agg.Scale())
@@ -601,7 +602,7 @@ func TestReset(t *testing.T) {
 				agg.UpdateByIncr(float64(i), incr)
 			}
 
-			require.Equal(t, expect, agg.Sum().AsFloat64())
+			require.Equal(t, expect, number.ToFloat64(agg.Sum()))
 			require.Equal(t, uint64(255)*incr, agg.Count())
 
 			// See TestIntegerAggregation about why scale is 5.
@@ -636,13 +637,13 @@ func TestMove(t *testing.T) {
 	agg.Move(cpy)
 
 	// agg was reset
-	require.Equal(t, 0.0, agg.Sum().AsFloat64())
+	require.Equal(t, 0.0, number.ToFloat64(agg.Sum()))
 	require.Equal(t, uint64(0), agg.Count())
 	require.Equal(t, uint64(0), agg.ZeroCount())
 	require.Equal(t, int32(0), agg.Scale())
 
 	// cpy is as expected
-	require.Equal(t, expect, cpy.Sum().AsFloat64())
+	require.Equal(t, expect, number.ToFloat64(cpy.Sum()))
 	require.Equal(t, uint64(255*2), cpy.Count())
 	require.Equal(t, uint64(255), cpy.ZeroCount())
 
@@ -675,7 +676,7 @@ func TestVeryLargeNumbers(t *testing.T) {
 	agg.Update(0x1p-100)
 	agg.Update(0x1p+100)
 
-	require.InEpsilon(t, 0x1p100, agg.Sum().AsFloat64(), 1e-5)
+	require.InEpsilon(t, 0x1p100, number.ToFloat64(agg.Sum()), 1e-5)
 	require.Equal(t, uint64(2), agg.Count())
 	require.Equal(t, int32(-7), agg.Scale())
 
@@ -684,7 +685,7 @@ func TestVeryLargeNumbers(t *testing.T) {
 	agg.Update(0x1p-128)
 	agg.Update(0x1p+127)
 
-	require.InEpsilon(t, 0x1p127, agg.Sum().AsFloat64(), 1e-5)
+	require.InEpsilon(t, 0x1p127, number.ToFloat64(agg.Sum()), 1e-5)
 	require.Equal(t, uint64(4), agg.Count())
 	require.Equal(t, int32(-7), agg.Scale())
 
@@ -693,7 +694,7 @@ func TestVeryLargeNumbers(t *testing.T) {
 	agg.Update(0x1p-129)
 	agg.Update(0x1p+255)
 
-	require.InEpsilon(t, 0x1p255, agg.Sum().AsFloat64(), 1e-5)
+	require.InEpsilon(t, 0x1p255, number.ToFloat64(agg.Sum()), 1e-5)
 	require.Equal(t, uint64(6), agg.Count())
 	require.Equal(t, int32(-8), agg.Scale())
 
@@ -709,7 +710,7 @@ func TestFullRange(t *testing.T) {
 	agg.Update(1)
 	agg.Update(math.SmallestNonzeroFloat64)
 
-	require.Equal(t, logarithm.MaxValue, agg.Sum().AsFloat64())
+	require.Equal(t, logarithm.MaxValue, number.ToFloat64(agg.Sum()))
 	require.Equal(t, uint64(3), agg.Count())
 
 	require.Equal(t, exponent.MinScale, agg.Scale())
@@ -836,8 +837,9 @@ func TestBoundaryStatistics(t *testing.T) {
 
 		m, _ := logarithm.NewMapping(scale)
 
-		var above, below, equal int
+		var above, below int
 
+		total := exponent.MaxNormalExponent - exponent.MinNormalExponent + 1
 		for exp := exponent.MinNormalExponent; exp <= exponent.MaxNormalExponent; exp++ {
 			value := math.Ldexp(1, int(exp))
 
@@ -847,17 +849,24 @@ func TestBoundaryStatistics(t *testing.T) {
 			require.NoError(t, err)
 
 			if bound == value {
-				//fmt.Println("scale", scale, "exp", exp, "agree")
-				equal++
 			} else if bound < value {
-				//fmt.Println("scale", scale, "exp", exp, "above")
 				above++
 			} else {
-				//fmt.Println("scale", scale, "exp", exp, "below")
 				below++
 			}
 		}
 
-		fmt.Println("scale", scale, "below", below, "equal", equal, "above", above)
+		// The sample results here not guaranteed.  Test that this is approximately unbiased.
+		// (Results on dev machine: 1059 above, 963 below, 24 equal, total = 2046.)
+		require.InEpsilon(t, 0.5, float64(above)/float64(total), 0.05)
+		require.InEpsilon(t, 0.5, float64(below)/float64(total), 0.06)
 	}
+}
+
+func TestInt64Histogram(t *testing.T) {
+	test.GenericAggregatorTest[int64, Int64, Int64Methods](t, number.ToInt64)
+}
+
+func TestFloat64Histogram(t *testing.T) {
+	test.GenericAggregatorTest[float64, Float64, Float64Methods](t, number.ToFloat64)
 }

@@ -121,7 +121,7 @@ func (p *statefulAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 		pval, has := p.prior[set]
 		if has {
 			// This does `*pval := *storage - *pval`
-			methods.SubtractSwap(&entry.storage, &pval.storage)
+			methods.SubtractSwap(&pval.storage, &entry.storage)
 
 			// Skip the series if it has not changed.
 			if !methods.HasChange(&pval.storage) {

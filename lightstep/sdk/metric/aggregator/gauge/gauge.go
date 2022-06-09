@@ -29,11 +29,14 @@ type (
 
 	Int64   = State[int64, number.Int64Traits]
 	Float64 = State[float64, number.Float64Traits]
+
+	Int64Methods   = Methods[int64, number.Int64Traits, Int64]
+	Float64Methods = Methods[float64, number.Float64Traits, Float64]
 )
 
 var (
-	_ aggregator.Methods[int64, Int64]     = Methods[int64, number.Int64Traits, Int64]{}
-	_ aggregator.Methods[float64, Float64] = Methods[float64, number.Float64Traits, Float64]{}
+	_ aggregator.Methods[int64, Int64]     = Int64Methods{}
+	_ aggregator.Methods[float64, Float64] = Float64Methods{}
 
 	_ aggregation.Gauge = &Int64{}
 	_ aggregation.Gauge = &Float64{}
@@ -68,14 +71,14 @@ func (Methods[N, Traits, Storage]) HasChange(ptr *State[N, Traits]) bool {
 	return ptr.value != 0
 }
 
-func (Methods[N, Traits, Storage]) Move(src, dest *State[N, Traits]) {
+func (Methods[N, Traits, Storage]) Move(from, to *State[N, Traits]) {
 	var t Traits
-	dest.value = t.SwapAtomic(&src.value, 0)
+	to.value = t.SwapAtomic(&from.value, 0)
 }
 
-func (Methods[N, Traits, Storage]) Copy(src, dest *State[N, Traits]) {
+func (Methods[N, Traits, Storage]) Copy(from, to *State[N, Traits]) {
 	var t Traits
-	dest.value = t.GetAtomic(&src.value)
+	to.value = t.GetAtomic(&from.value)
 }
 
 func (Methods[N, Traits, Storage]) Update(state *State[N, Traits], number N) {
@@ -84,7 +87,8 @@ func (Methods[N, Traits, Storage]) Update(state *State[N, Traits], number N) {
 }
 
 func (Methods[N, Traits, Storage]) Merge(from, to *State[N, Traits]) {
-	to.value = from.value
+	var t Traits
+	t.SetAtomic(&to.value, from.value)
 }
 
 func (Methods[N, Traits, Storage]) ToAggregation(state *State[N, Traits]) aggregation.Aggregation {
@@ -96,6 +100,6 @@ func (Methods[N, Traits, Storage]) ToStorage(aggr aggregation.Aggregation) (*Sta
 	return r, ok
 }
 
-func (Methods[N, Traits, Storage]) SubtractSwap(valueUnmodified, operandToModify *State[N, Traits]) {
-	operandToModify.value = valueUnmodified.value - operandToModify.value
+func (Methods[N, Traits, Storage]) SubtractSwap(operand, argument *State[N, Traits]) {
+	operand.value = argument.value - operand.value
 }

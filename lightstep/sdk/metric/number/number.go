@@ -37,6 +37,7 @@ type Any interface {
 	int64 | float64
 }
 
+// CoerceToFloat64 converts Number to float64 according to Kind.
 func (n Number) CoerceToFloat64(k Kind) float64 {
 	if k == Int64Kind {
 		return float64(n)
@@ -44,10 +45,12 @@ func (n Number) CoerceToFloat64(k Kind) float64 {
 	return math.Float64frombits(uint64(n))
 }
 
-func (n Number) AsFloat64() float64 {
+// ToFloat64 converts Number to float64.
+func ToFloat64(n Number) float64 {
 	return math.Float64frombits(uint64(n))
 }
 
-func (n Number) AsInt64() int64 {
+// ToInt64 converts Number to int64.
+func ToInt64(n Number) int64 {
 	return int64(n)
 }
