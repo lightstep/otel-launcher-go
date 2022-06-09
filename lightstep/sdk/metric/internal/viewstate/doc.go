@@ -1,4 +1,4 @@
-// Copyright Lightstep Authors
+// Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,22 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package pipelines
-
-import (
-	"go.opentelemetry.io/otel/sdk/resource"
-)
-
-type PipelineConfig struct {
-	Endpoint        string
-	Insecure        bool
-	Headers         map[string]string
-	Resource        *resource.Resource
-	ReportingPeriod string
-	Propagators     []string
-
-	// TemporalityPreference is one of "cumulative", "delta", or "stateless"
-	TemporalityPreference string
-}
-
-type PipelineSetupFunc func(PipelineConfig) (func() error, error)
+// package viewstate implements a View compiler, which combines
+// information about the instrument kind (especially synchronous
+// vs. asynchronous), the configured view(s) and reader defaults, and
+// conflicting instruments in the same namespace.
+package viewstate // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"

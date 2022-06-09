@@ -17,16 +17,19 @@ package pipelines
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	hostMetrics "go.opentelemetry.io/contrib/instrumentation/host"
 	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	metricglobal "go.opentelemetry.io/otel/metric/global"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
-	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
+
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding/gzip"
 )
@@ -37,52 +40,48 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 		return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 	}
 
-	period := controller.DefaultPeriod
+	period := 30 * time.Second
 	if c.ReportingPeriod != "" {
 		period, err = time.ParseDuration(c.ReportingPeriod)
 		if err != nil {
 			return nil, fmt.Errorf("invalid metric reporting period: %v", err)
 		}
 		if period <= 0 {
-
 			return nil, fmt.Errorf("invalid metric reporting period: %v", c.ReportingPeriod)
 		}
 	}
-	pusher := controller.New(
-		processor.NewFactory(
-			selector.NewWithInexpensiveDistribution(),
-			metricExporter,
+	vopts, err := viewOptions(c)
+	if err != nil {
+		return nil, fmt.Errorf("invalid metric view configuration: %v", err)
+	}
+	provider := metric.NewMeterProvider(
+		metric.WithResource(c.Resource),
+		metric.WithReader(
+			metric.NewPeriodicReader(metricExporter, period),
+			vopts...,
 		),
-		controller.WithExporter(metricExporter),
-		controller.WithResource(c.Resource),
-		controller.WithCollectPeriod(period),
 	)
 
-	if err = pusher.Start(context.Background()); err != nil {
-		return nil, fmt.Errorf("failed to start controller: %v", err)
-	}
-
-	if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(pusher)); err != nil {
+	if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(provider)); err != nil {
 		return nil, fmt.Errorf("failed to start runtime metrics: %v", err)
 	}
 
-	if err = hostMetrics.Start(hostMetrics.WithMeterProvider(pusher)); err != nil {
+	if err = hostMetrics.Start(hostMetrics.WithMeterProvider(provider)); err != nil {
 		return nil, fmt.Errorf("failed to start host metrics: %v", err)
 	}
 
-	metricglobal.SetMeterProvider(pusher)
+	metricglobal.SetMeterProvider(provider)
 	return func() error {
-		_ = pusher.Stop(context.Background())
-		return metricExporter.Shutdown(context.Background())
+		return provider.Shutdown(context.Background())
 	}, nil
 }
 
-func newMetricsExporter(endpoint string, insecure bool, headers map[string]string) (*otlpmetric.Exporter, error) {
+func newMetricsExporter(endpoint string, insecure bool, headers map[string]string) (metric.PushExporter, error) {
 	secureOption := otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
 	if insecure {
 		secureOption = otlpmetricgrpc.WithInsecure()
 	}
-	return otlpmetric.New(
+	return otlp.New(
 		context.Background(),
 		otlpmetricgrpc.NewClient(
 			secureOption,
@@ -91,4 +90,38 @@ func newMetricsExporter(endpoint string, insecure bool, headers map[string]strin
 			otlpmetricgrpc.WithCompressor(gzip.Name),
 		),
 	)
+}
+
+func viewOptions(c PipelineConfig) ([]view.Option, error) {
+	syncPref := aggregation.CumulativeTemporality
+	asyncPref := aggregation.CumulativeTemporality
+
+	switch lower := strings.ToLower(c.TemporalityPreference); lower {
+	case "delta":
+		// Delta means exercising the cumulative-to-delta
+		// export path.  This is an unusual setting for
+		// Lightstep users to choose, but could be
+		syncPref = aggregation.DeltaTemporality
+		asyncPref = aggregation.DeltaTemporality
+	case "stateless":
+		syncPref = aggregation.DeltaTemporality
+	case "cumulative":
+		// Defaults set above.
+	default:
+		return nil, fmt.Errorf("invalid temporality preference: %v", c.TemporalityPreference)
+	}
+	return []view.Option{
+		view.WithDefaultAggregationTemporalitySelector(
+			func(k sdkinstrument.Kind) aggregation.Temporality {
+				switch k {
+				case sdkinstrument.UpDownCounterKind, sdkinstrument.UpDownCounterObserverKind:
+					return aggregation.CumulativeTemporality
+				case sdkinstrument.CounterKind, sdkinstrument.HistogramKind:
+					return syncPref
+				default:
+					return asyncPref
+				}
+			},
+		),
+	}, nil
 }
