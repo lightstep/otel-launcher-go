@@ -39,7 +39,7 @@ func Library(lib instrumentation.Library) *commonpb.InstrumentationScope {
 	}
 }
 
-// Temporality transforms a Temporality value into an OTLP AggrgationTemporality.
+// Temporality transforms a Temporality value into an OTLP AggregationTemporality.
 func Temporality(tempo aggregation.Temporality) metricspb.AggregationTemporality {
 	switch tempo {
 	case aggregation.CumulativeTemporality:

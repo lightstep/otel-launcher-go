@@ -40,7 +40,7 @@ type Exporter struct {
 	stopOnce  sync.Once
 }
 
-// Export exports a batch of metrics.
+// ExportMetrics exports a batch of metrics.
 func (e *Exporter) ExportMetrics(ctx context.Context, metrics data.Metrics) error {
 	rm, err := metrictransform.Metrics(metrics)
 	if err != nil {
@@ -70,11 +70,12 @@ func (e *Exporter) String() string {
 	return "otlp-lightstep"
 }
 
+// ForceFlushMetrics calls ExportMetrics for an immediate export.
 func (e *Exporter) ForceFlushMetrics(ctx context.Context, metrics data.Metrics) error {
 	return e.ExportMetrics(ctx, metrics)
 }
 
-// Shutdown flushes all exports and closes all connections to the receiving endpoint.
+// ShutdownMetrics flushes all exports and closes all connections to the receiving endpoint.
 func (e *Exporter) ShutdownMetrics(ctx context.Context, metrics data.Metrics) error {
 	e.mu.RLock()
 	started := e.started

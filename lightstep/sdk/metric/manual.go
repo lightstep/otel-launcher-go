@@ -51,6 +51,7 @@ func (mr *ManualReader) String() string {
 func (mr *ManualReader) Register(p Producer) {
 	if mr.Producer != nil {
 		otel.Handle(fmt.Errorf("%v: %w", mr.Name, ErrMultipleReaderRegistration))
+		return
 	}
 	mr.Producer = p
 }

@@ -71,6 +71,13 @@ func Scope(library instrumentation.Library, insts ...data.Instrument) data.Scope
 	}
 }
 
+func Metrics(res *resource.Resource, scopes ...data.Scope) data.Metrics {
+	return data.Metrics{
+		Resource: res,
+		Scopes:   scopes,
+	}
+}
+
 func CollectScope(t *testing.T, collectors []data.Collector, seq data.Sequence) []data.Instrument {
 	t.Helper()
 	var output data.Scope

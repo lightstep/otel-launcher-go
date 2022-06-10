@@ -20,23 +20,20 @@ package sdkinstrument
 type Kind int8
 
 const (
-	// CounterKind indicates a Counter instrument.
-	CounterKind Kind = iota
-	// UpDownCounterKind indicates a UpDownCounter instrument.
-	UpDownCounterKind
-	// HistogramKind indicates a Histogram instrument.
-	HistogramKind
+	// SyncCounter indicates a Counter instrument.
+	SyncCounter Kind = iota
+	// SyncUpDownCounter indicates a UpDownCounter instrument.
+	SyncUpDownCounter
+	// SyncHistogram indicates a Histogram instrument.
+	SyncHistogram
 
-	// TODO: replace "Observer" with "Asynchronous" or "Observable",
-	// both of which are recommended in the API spec.
-
-	// CounterObserverKind indicates a CounterObserver instrument.
-	CounterObserverKind
-	// UpDownCounterObserverKind indicates a UpDownCounterObserver
+	// AsyncCounter indicates an asynchronous Counter instrument.
+	AsyncCounter
+	// AsyncUpDownCounter indicates a UpDownCounterObserver
 	// instrument.
-	UpDownCounterObserverKind
-	// GaugeObserverKind indicates an GaugeObserver instrument.
-	GaugeObserverKind
+	AsyncUpDownCounter
+	// AsyncGauge indicates an GaugeObserver instrument.
+	AsyncGauge
 
 	// NumKinds is the size of an array, useful for indexing by instrument kind.
 	NumKinds
@@ -45,7 +42,7 @@ const (
 // Synchronous returns whether this is a synchronous kind of instrument.
 func (k Kind) Synchronous() bool {
 	switch k {
-	case CounterKind, UpDownCounterKind, HistogramKind:
+	case SyncCounter, SyncUpDownCounter, SyncHistogram:
 		return true
 	}
 	return false
@@ -53,5 +50,5 @@ func (k Kind) Synchronous() bool {
 
 // HasTemporality
 func (k Kind) HasTemporality() bool {
-	return k != GaugeObserverKind
+	return k != AsyncGauge
 }

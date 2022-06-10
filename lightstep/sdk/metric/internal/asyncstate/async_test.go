@@ -107,7 +107,7 @@ func TestNewCallbackError(t *testing.T) {
 	require.Nil(t, cb)
 
 	// nil callback error
-	cntr := testObserver[int64, number.Int64Traits](tsdk, "counter", sdkinstrument.CounterObserverKind)
+	cntr := testObserver[int64, number.Int64Traits](tsdk, "counter", sdkinstrument.AsyncCounter)
 	cb, err = NewCallback([]instrument.Asynchronous{cntr}, tsdk, nil)
 	require.Error(t, err)
 	require.Nil(t, cb)
@@ -117,8 +117,8 @@ func TestNewCallbackProviderMismatch(t *testing.T) {
 	test0 := testAsync("test0")
 	test1 := testAsync("test1")
 
-	instA0 := testObserver[int64, number.Int64Traits](test0, "A", sdkinstrument.CounterObserverKind)
-	instB1 := testObserver[float64, number.Float64Traits](test1, "A", sdkinstrument.CounterObserverKind)
+	instA0 := testObserver[int64, number.Int64Traits](test0, "A", sdkinstrument.AsyncCounter)
+	instB1 := testObserver[float64, number.Float64Traits](test1, "A", sdkinstrument.AsyncCounter)
 
 	cb, err := NewCallback([]instrument.Asynchronous{instA0, instB1}, test0, func(context.Context) {})
 	require.Error(t, err)
@@ -163,7 +163,7 @@ func TestCallbackInvalidation(t *testing.T) {
 	var called int64
 	var saveCtx context.Context
 
-	cntr := testObserver[int64, number.Int64Traits](tsdk, "counter", sdkinstrument.CounterObserverKind)
+	cntr := testObserver[int64, number.Int64Traits](tsdk, "counter", sdkinstrument.AsyncCounter)
 	cb, err := NewCallback([]instrument.Asynchronous{cntr}, tsdk, func(ctx context.Context) {
 		cntr.Observe(ctx, called)
 		saveCtx = ctx
@@ -206,8 +206,8 @@ func TestCallbackInstrumentUndeclaredForCalback(t *testing.T) {
 
 	var called int64
 
-	cntr1 := testObserver[int64, number.Int64Traits](tt, "counter1", sdkinstrument.CounterObserverKind)
-	cntr2 := testObserver[int64, number.Int64Traits](tt, "counter2", sdkinstrument.CounterObserverKind)
+	cntr1 := testObserver[int64, number.Int64Traits](tt, "counter1", sdkinstrument.AsyncCounter)
+	cntr2 := testObserver[int64, number.Int64Traits](tt, "counter2", sdkinstrument.AsyncCounter)
 
 	cb, err := NewCallback([]instrument.Asynchronous{cntr1}, tt, func(ctx context.Context) {
 		cntr2.Observe(ctx, called)
@@ -248,7 +248,7 @@ func TestInstrumentUseOutsideCallback(t *testing.T) {
 
 	tt := testAsync("test")
 
-	cntr := testObserver[float64, number.Float64Traits](tt, "cntr", sdkinstrument.CounterObserverKind)
+	cntr := testObserver[float64, number.Float64Traits](tt, "cntr", sdkinstrument.AsyncCounter)
 
 	cntr.Observe(context.Background(), 1000)
 
@@ -293,9 +293,9 @@ func TestCallbackDisabledInstrument(t *testing.T) {
 		},
 	)
 
-	cntrDrop1 := testObserver[float64, number.Float64Traits](tt, "drop1", sdkinstrument.CounterObserverKind)
-	cntrDrop2 := testObserver[float64, number.Float64Traits](tt, "drop2", sdkinstrument.CounterObserverKind)
-	cntrKeep := testObserver[float64, number.Float64Traits](tt, "keep", sdkinstrument.CounterObserverKind)
+	cntrDrop1 := testObserver[float64, number.Float64Traits](tt, "drop1", sdkinstrument.AsyncCounter)
+	cntrDrop2 := testObserver[float64, number.Float64Traits](tt, "drop2", sdkinstrument.AsyncCounter)
+	cntrKeep := testObserver[float64, number.Float64Traits](tt, "keep", sdkinstrument.AsyncCounter)
 
 	cb, _ := NewCallback([]instrument.Asynchronous{cntrDrop1, cntrDrop2, cntrKeep}, tt, func(ctx context.Context) {
 		cntrKeep.Observe(ctx, 1000)
@@ -351,9 +351,9 @@ func TestOutOfRangeValues(t *testing.T) {
 
 	tt := testAsync("test")
 
-	c := testObserver[float64, number.Float64Traits](tt, "c", sdkinstrument.CounterObserverKind)
-	u := testObserver[float64, number.Float64Traits](tt, "u", sdkinstrument.UpDownCounterObserverKind)
-	g := testObserver[float64, number.Float64Traits](tt, "g", sdkinstrument.GaugeObserverKind)
+	c := testObserver[float64, number.Float64Traits](tt, "c", sdkinstrument.AsyncCounter)
+	u := testObserver[float64, number.Float64Traits](tt, "u", sdkinstrument.AsyncUpDownCounter)
+	g := testObserver[float64, number.Float64Traits](tt, "g", sdkinstrument.AsyncGauge)
 
 	cb, _ := NewCallback([]instrument.Asynchronous{
 		c, u, g,

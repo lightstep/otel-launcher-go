@@ -64,27 +64,27 @@ func TestAsyncInsts(t *testing.T) {
 		test.Scope(
 			test.Library("test"),
 			test.Instrument(
-				test.Descriptor("icount", sdkinstrument.CounterObserverKind, number.Int64Kind),
+				test.Descriptor("icount", sdkinstrument.AsyncCounter, number.Int64Kind),
 				test.Point(notime, notime, sum.NewMonotonicInt64(2), cumulative, attr),
 			),
 			test.Instrument(
-				test.Descriptor("fcount", sdkinstrument.CounterObserverKind, number.Float64Kind),
+				test.Descriptor("fcount", sdkinstrument.AsyncCounter, number.Float64Kind),
 				test.Point(notime, notime, sum.NewMonotonicFloat64(3), cumulative, attr),
 			),
 			test.Instrument(
-				test.Descriptor("iupcount", sdkinstrument.UpDownCounterObserverKind, number.Int64Kind),
+				test.Descriptor("iupcount", sdkinstrument.AsyncUpDownCounter, number.Int64Kind),
 				test.Point(notime, notime, sum.NewNonMonotonicInt64(4), cumulative, attr),
 			),
 			test.Instrument(
-				test.Descriptor("fupcount", sdkinstrument.UpDownCounterObserverKind, number.Float64Kind),
+				test.Descriptor("fupcount", sdkinstrument.AsyncUpDownCounter, number.Float64Kind),
 				test.Point(notime, notime, sum.NewNonMonotonicFloat64(5), cumulative, attr),
 			),
 			test.Instrument(
-				test.Descriptor("igauge", sdkinstrument.GaugeObserverKind, number.Int64Kind),
+				test.Descriptor("igauge", sdkinstrument.AsyncGauge, number.Int64Kind),
 				test.Point(notime, notime, gauge.NewInt64(6), cumulative, attr),
 			),
 			test.Instrument(
-				test.Descriptor("fgauge", sdkinstrument.GaugeObserverKind, number.Float64Kind),
+				test.Descriptor("fgauge", sdkinstrument.AsyncGauge, number.Float64Kind),
 				test.Point(notime, notime, gauge.NewFloat64(7), cumulative, attr),
 			),
 		),

@@ -17,13 +17,31 @@ package view // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metr
 import (
 	"regexp"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
+
+// ClauseConfig contains each of the configurable aspects of a
+// single Views clause.
+type ClauseConfig struct {
+	// Matchers for the instrument
+	instrumentName       string
+	instrumentNameRegexp *regexp.Regexp
+	instrumentKind       sdkinstrument.Kind
+	numberKind           number.Kind
+	library              instrumentation.Library
+
+	// Properties of the view
+	keys        []attribute.Key // nil implies all keys, []attribute.Key{} implies none
+	name        string
+	description string
+	aggregation aggregation.Kind
+	acfg        aggregator.Config
+}
 
 const (
 	unsetInstrumentKind = sdkinstrument.Kind(-1)
@@ -111,13 +129,6 @@ func WithAggregation(kind aggregation.Kind) ClauseOption {
 	})
 }
 
-func WithTemporality(tempo aggregation.Temporality) ClauseOption {
-	return clauseOptionFunction(func(clause ClauseConfig) ClauseConfig {
-		clause.temporality = tempo
-		return clause
-	})
-}
-
 func WithAggregatorConfig(acfg aggregator.Config) ClauseOption {
 	return clauseOptionFunction(func(clause ClauseConfig) ClauseConfig {
 		clause.acfg = acfg
@@ -151,10 +162,6 @@ func (c *ClauseConfig) Aggregation() aggregation.Kind {
 	return c.aggregation
 }
 
-func (c *ClauseConfig) Temporality() aggregation.Temporality {
-	return c.temporality
-}
-
 func (c *ClauseConfig) AggregatorConfig() aggregator.Config {
 	return c.acfg
 }
@@ -172,15 +179,27 @@ func nkindMismatch(test, value number.Kind) bool {
 }
 
 func regexpMismatch(test *regexp.Regexp, value string) bool {
-	return test != nil && test.MatchString(value)
+	return test != nil && !test.MatchString(value)
+}
+
+func (c *ClauseConfig) libraryMismatch(lib instrumentation.Library) bool {
+	hasName := c.library.Name != ""
+	hasVersion := c.library.Version != ""
+	hasSchema := c.library.SchemaURL != ""
+
+	if !hasName && !hasVersion && !hasSchema {
+		return false
+	}
+	return stringMismatch(c.library.Name, lib.Name) ||
+		stringMismatch(c.library.Version, lib.Version) ||
+		stringMismatch(c.library.SchemaURL, lib.SchemaURL)
 }
 
 func (c *ClauseConfig) Matches(lib instrumentation.Library, desc sdkinstrument.Descriptor) bool {
-	return !stringMismatch(c.library.Name, lib.Name) &&
-		!stringMismatch(c.library.Version, lib.Version) &&
-		!stringMismatch(c.library.SchemaURL, lib.SchemaURL) &&
-		!stringMismatch(c.instrumentName, desc.Name) &&
-		!ikindMismatch(c.instrumentKind, desc.Kind) &&
-		!nkindMismatch(c.numberKind, desc.NumberKind) &&
-		!regexpMismatch(c.instrumentNameRegexp, desc.Name)
+	mismatch := c.libraryMismatch(lib) ||
+		stringMismatch(c.instrumentName, desc.Name) ||
+		ikindMismatch(c.instrumentKind, desc.Kind) ||
+		nkindMismatch(c.numberKind, desc.NumberKind) ||
+		regexpMismatch(c.instrumentNameRegexp, desc.Name)
+	return !mismatch
 }

@@ -50,7 +50,6 @@ func GenericAggregatorTest[N number.Any, Storage any, Methods aggregator.Methods
 
 		// Tests Counter and Histogram; excludes Gauge.
 		if _, ok := methods.ToAggregation(&intermediate).(aggregation.HasASum); !ok {
-			t.Skip()
 			return
 		}
 

@@ -51,6 +51,7 @@ func toNanos(t time.Time) uint64 {
 func Metrics(metrics data.Metrics) (*metricspb.ResourceMetrics, error) {
 	rm := &metricspb.ResourceMetrics{
 		Resource:     Resource(metrics.Resource),
+		SchemaUrl:    metrics.Resource.SchemaURL(),
 		ScopeMetrics: make([]*metricspb.ScopeMetrics, 0, len(metrics.Scopes)),
 	}
 	for _, scope := range metrics.Scopes {
@@ -169,6 +170,9 @@ func HistogramPoints(desc *sdkinstrument.Descriptor, points []data.Point) []*met
 }
 
 func HistogramBuckets(b aggregation.Buckets) *metricspb.ExponentialHistogramDataPoint_Buckets {
+	if b.Len() == 0 {
+		return nil
+	}
 	result := &metricspb.ExponentialHistogramDataPoint_Buckets{
 		Offset:       b.Offset(),
 		BucketCounts: make([]uint64, b.Len()),
@@ -176,6 +180,5 @@ func HistogramBuckets(b aggregation.Buckets) *metricspb.ExponentialHistogramData
 	for i := range result.BucketCounts {
 		result.BucketCounts[i] = b.At(uint32(i))
 	}
-
 	return result
 }

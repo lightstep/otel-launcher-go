@@ -82,27 +82,27 @@ func TestSyncInsts(t *testing.T) {
 		test.Scope(
 			test.Library("test"),
 			test.Instrument(
-				test.Descriptor("icount", sdkinstrument.CounterKind, number.Int64Kind),
+				test.Descriptor("icount", sdkinstrument.SyncCounter, number.Int64Kind),
 				test.Point(notime, notime, sum.NewMonotonicInt64(2), cumulative, attr),
 			),
 			test.Instrument(
-				test.Descriptor("fcount", sdkinstrument.CounterKind, number.Float64Kind),
+				test.Descriptor("fcount", sdkinstrument.SyncCounter, number.Float64Kind),
 				test.Point(notime, notime, sum.NewMonotonicFloat64(3), cumulative, attr),
 			),
 			test.Instrument(
-				test.Descriptor("iupcount", sdkinstrument.UpDownCounterKind, number.Int64Kind),
+				test.Descriptor("iupcount", sdkinstrument.SyncUpDownCounter, number.Int64Kind),
 				test.Point(notime, notime, sum.NewNonMonotonicInt64(4), cumulative, attr),
 			),
 			test.Instrument(
-				test.Descriptor("fupcount", sdkinstrument.UpDownCounterKind, number.Float64Kind),
+				test.Descriptor("fupcount", sdkinstrument.SyncUpDownCounter, number.Float64Kind),
 				test.Point(notime, notime, sum.NewNonMonotonicFloat64(5), cumulative, attr),
 			),
 			test.Instrument(
-				test.Descriptor("ihistogram", sdkinstrument.HistogramKind, number.Int64Kind),
+				test.Descriptor("ihistogram", sdkinstrument.SyncHistogram, number.Int64Kind),
 				test.Point(notime, notime, histogram.NewInt64(cfg.Histogram, 2, 4, 8), cumulative, attr),
 			),
 			test.Instrument(
-				test.Descriptor("fhistogram", sdkinstrument.HistogramKind, number.Float64Kind),
+				test.Descriptor("fhistogram", sdkinstrument.SyncHistogram, number.Float64Kind),
 				test.Point(notime, notime, histogram.NewFloat64(cfg.Histogram, 8, 16, 32), cumulative, attr),
 			),
 		),

@@ -523,9 +523,6 @@ func viewAggConfig(r *view.DefaultConfig, ak aggregation.Kind, ik sdkinstrument.
 
 // checkSemanticCompatibility checks whether an instrument /
 // aggregator pairing is well defined.
-//
-// TODO(jmacd): There are a couple of specification questions about
-// this worth raising.
 func checkSemanticCompatibility(ik sdkinstrument.Kind, aggPtr *aggregation.Kind) error {
 	agg := *aggPtr
 	cat := agg.Category(ik)
@@ -543,25 +540,25 @@ func checkSemanticCompatibility(ik sdkinstrument.Kind, aggPtr *aggregation.Kind)
 	}
 
 	switch ik {
-	case sdkinstrument.CounterKind, sdkinstrument.HistogramKind:
+	case sdkinstrument.SyncCounter, sdkinstrument.SyncHistogram:
 		switch cat {
 		case aggregation.MonotonicSumCategory, aggregation.NonMonotonicSumCategory, aggregation.HistogramCategory:
 			return nil
 		}
 
-	case sdkinstrument.UpDownCounterKind, sdkinstrument.UpDownCounterObserverKind:
+	case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
 		switch cat {
 		case aggregation.NonMonotonicSumCategory:
 			return nil
 		}
 
-	case sdkinstrument.CounterObserverKind:
+	case sdkinstrument.AsyncCounter:
 		switch cat {
 		case aggregation.NonMonotonicSumCategory, aggregation.MonotonicSumCategory:
 			return nil
 		}
 
-	case sdkinstrument.GaugeObserverKind:
+	case sdkinstrument.AsyncGauge:
 		switch cat {
 		case aggregation.GaugeCategory:
 			return nil

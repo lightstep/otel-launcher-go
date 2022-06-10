@@ -20,12 +20,12 @@ import (
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 )
 
-// Attributes transforms a slice of attribute KeyValues into OTLP key-values.
+// Attributes transforms an attribute.Set into OTLP key-values.
 func Attributes(attrs attribute.Set) []*commonpb.KeyValue {
 	return Iterator(attrs.Iter())
 }
 
-// Iterator transforms an attribute iterator into OTLP key-values.
+// Iterator transforms an attribute.Set iterator into OTLP key-values.
 func Iterator(iter attribute.Iterator) []*commonpb.KeyValue {
 	l := iter.Len()
 	if l == 0 {

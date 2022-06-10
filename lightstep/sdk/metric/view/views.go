@@ -14,7 +14,16 @@
 
 package view // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 
-// Views is a configured set of view clauses with an associated Name
+import (
+	"fmt"
+
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation" // Views is a configured set of view clauses with an associated Name
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"go.uber.org/multierr"
+)
+
 // that is used for debugging.
 type Views struct {
 	// Name of these views, used in error reporting.
@@ -32,11 +41,92 @@ func New(name string, opts ...Option) *Views {
 	}
 }
 
-// TODO: call views.Validate() to check for:
-// - empty (?)
-// - duplicate name
-// - invalid inst/number/aggregation kind
-// - both instrument name and regexp
-// - schemaURL or Version without library name
-// - empty attribute keys
-// - Name w/o SingleInst
+func checkAggregation(err error, agg *aggregation.Kind, def aggregation.Kind) error {
+	switch *agg {
+	case aggregation.UndefinedKind,
+		aggregation.DropKind,
+		aggregation.AnySumKind,
+		aggregation.MonotonicSumKind,
+		aggregation.NonMonotonicSumKind,
+		aggregation.GaugeKind,
+		aggregation.HistogramKind:
+	default:
+		err = multierr.Append(err, fmt.Errorf("invalid aggregation: %v", *agg))
+		*agg = def
+	}
+	return err
+}
+
+func checkTemporality(err error, tempo *aggregation.Temporality, def aggregation.Temporality) error {
+	switch *tempo {
+	case aggregation.UndefinedTemporality,
+		aggregation.DeltaTemporality,
+		aggregation.CumulativeTemporality:
+	default:
+		err = multierr.Append(err, fmt.Errorf("invalid temporality: %v", *tempo))
+		*tempo = def
+	}
+	return err
+}
+
+func checkAggConfig(err error, acfg *aggregator.Config) error {
+	if acfg.Histogram.MaxSize != 0 && acfg.Histogram.MaxSize < 2 {
+		err = multierr.Append(err, fmt.Errorf("invalid histogram size: %v", acfg.Histogram.MaxSize))
+		acfg.Histogram.MaxSize = histogram.DefaultMaxSize
+	}
+	return err
+}
+
+// Validate checks for inconsistent view settings and returns any
+// errors with the nearest consistent configuration for use.
+func Validate(v *Views) (*Views, error) {
+	var err error
+
+	// Make a deep copy
+	valid := &Views{
+		Name: v.Name,
+	}
+
+	valid.Clauses = make([]ClauseConfig, len(v.Clauses))
+	valid.Defaults = v.Defaults
+
+	for i := range valid.Clauses {
+		valid.Clauses[i] = v.Clauses[i]
+	}
+
+	// Validate default settings
+	for i := range valid.Defaults.ByInstrumentKind {
+		kind := sdkinstrument.Kind(i)
+
+		err = checkAggregation(err, &valid.Defaults.ByInstrumentKind[i].Aggregation, StandardAggregationKind(kind))
+		err = checkTemporality(err, &valid.Defaults.ByInstrumentKind[i].Temporality, StandardTemporality(kind))
+		err = checkAggConfig(err, &valid.Defaults.ByInstrumentKind[i].Int64)
+		err = checkAggConfig(err, &valid.Defaults.ByInstrumentKind[i].Float64)
+	}
+
+	for i := range valid.Clauses {
+		clause := &valid.Clauses[i]
+
+		if !clause.IsSingleInstrument() && clause.HasName() {
+			// Note: no correction, this condition creates conflicts.
+			err = multierr.Append(err, fmt.Errorf("multi-instrument view specifies a single name"))
+		}
+
+		err = checkAggregation(err, &clause.aggregation, aggregation.UndefinedKind)
+		err = checkAggConfig(err, &clause.acfg)
+
+		if clause.instrumentName != "" && clause.instrumentNameRegexp != nil {
+			err = multierr.Append(err, fmt.Errorf("view has instrument name and regexp matches"))
+			// Note: prefer the name over the regexp.
+			clause.instrumentNameRegexp = nil
+		}
+
+		for i := range clause.keys {
+			if clause.keys[i] == "" {
+				err = multierr.Append(err, fmt.Errorf("view has empty string in keys"))
+			}
+		}
+	}
+
+	return valid, err
+}
