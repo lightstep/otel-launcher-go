@@ -29,31 +29,31 @@ type (
 )
 
 func (i syncint64Instruments) Counter(name string, opts ...instrument.Option) (syncint64.Counter, error) {
-	inst, err := i.synchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.CounterKind)
+	inst, err := i.synchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.SyncCounter)
 	return syncstate.NewCounter[int64, number.Int64Traits](inst), err
 }
 
 func (i syncint64Instruments) UpDownCounter(name string, opts ...instrument.Option) (syncint64.UpDownCounter, error) {
-	inst, err := i.synchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.UpDownCounterKind)
+	inst, err := i.synchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.SyncUpDownCounter)
 	return syncstate.NewCounter[int64, number.Int64Traits](inst), err
 }
 
 func (i syncint64Instruments) Histogram(name string, opts ...instrument.Option) (syncint64.Histogram, error) {
-	inst, err := i.synchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.HistogramKind)
+	inst, err := i.synchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.SyncHistogram)
 	return syncstate.NewHistogram[int64, number.Int64Traits](inst), err
 }
 
 func (f syncfloat64Instruments) Counter(name string, opts ...instrument.Option) (syncfloat64.Counter, error) {
-	inst, err := f.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.CounterKind)
+	inst, err := f.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.SyncCounter)
 	return syncstate.NewCounter[float64, number.Float64Traits](inst), err
 }
 
 func (f syncfloat64Instruments) UpDownCounter(name string, opts ...instrument.Option) (syncfloat64.UpDownCounter, error) {
-	inst, err := f.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.UpDownCounterKind)
+	inst, err := f.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.SyncUpDownCounter)
 	return syncstate.NewCounter[float64, number.Float64Traits](inst), err
 }
 
 func (f syncfloat64Instruments) Histogram(name string, opts ...instrument.Option) (syncfloat64.Histogram, error) {
-	inst, err := f.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.HistogramKind)
+	inst, err := f.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.SyncHistogram)
 	return syncstate.NewHistogram[float64, number.Float64Traits](inst), err
 }

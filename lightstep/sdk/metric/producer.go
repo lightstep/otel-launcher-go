@@ -73,7 +73,6 @@ func (pp *providerProducer) Produce(inout *data.Metrics) data.Metrics {
 		Now:   nowTime,
 	}
 
-	// TODO: Add a timeout to the context.
 	ctx := context.Background()
 
 	for _, meter := range ordered {

@@ -24,11 +24,11 @@ import (
 // specified default aggregation Kind for each instrument Kind.
 func StandardAggregationKind(ik sdkinstrument.Kind) aggregation.Kind {
 	switch ik {
-	case sdkinstrument.HistogramKind:
+	case sdkinstrument.SyncHistogram:
 		return aggregation.HistogramKind
-	case sdkinstrument.GaugeObserverKind:
+	case sdkinstrument.AsyncGauge:
 		return aggregation.GaugeKind
-	case sdkinstrument.UpDownCounterKind, sdkinstrument.UpDownCounterObserverKind:
+	case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
 		return aggregation.NonMonotonicSumKind
 	default:
 		return aggregation.MonotonicSumKind
@@ -46,7 +46,7 @@ func StandardTemporality(ik sdkinstrument.Kind) aggregation.Temporality {
 // UpDownCounter, which remain Cumulative.
 func DeltaPreferredTemporality(ik sdkinstrument.Kind) aggregation.Temporality {
 	switch ik {
-	case sdkinstrument.UpDownCounterKind, sdkinstrument.UpDownCounterObserverKind:
+	case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
 		return aggregation.CumulativeTemporality
 	default:
 		return aggregation.DeltaTemporality

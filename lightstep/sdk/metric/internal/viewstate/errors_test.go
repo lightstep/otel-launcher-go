@@ -30,7 +30,7 @@ import (
 
 var oneConflict = Conflict{
 	Semantic: SemanticError{
-		Instrument:  sdkinstrument.CounterKind,
+		Instrument:  sdkinstrument.SyncCounter,
 		Aggregation: aggregation.GaugeKind,
 	},
 }
@@ -128,17 +128,17 @@ func TestConflictError(t *testing.T) {
 	vc := New(testLib, views)
 
 	// Sync counter named bar becomes histogram
-	inst2, conf2 := vc.Compile(test.Descriptor("bar", sdkinstrument.CounterKind, number.Int64Kind))
+	inst2, conf2 := vc.Compile(test.Descriptor("bar", sdkinstrument.SyncCounter, number.Int64Kind))
 	require.NoError(t, conf2.AsError())
 	require.NotNil(t, inst2)
 
 	// Async counter named foo becomes gauge
-	inst1, conf1 := vc.Compile(test.Descriptor("foo", sdkinstrument.CounterObserverKind, number.Int64Kind))
+	inst1, conf1 := vc.Compile(test.Descriptor("foo", sdkinstrument.AsyncCounter, number.Int64Kind))
 	require.Error(t, conf1.AsError())
 	require.NotNil(t, inst1)
 	require.Equal(t,
-		"problem: CounterObserver instrument incompatible with Gauge aggregation; "+
-			"name \"foo\" (original \"bar\") conflicts Counter-Int64-Histogram, CounterObserver-Int64-MonotonicSum",
+		"problem: AsyncCounter instrument incompatible with Gauge aggregation; "+
+			"name \"foo\" (original \"bar\") conflicts SyncCounter-Int64-Histogram, AsyncCounter-Int64-MonotonicSum",
 		conf1.AsError().Error(),
 	)
 

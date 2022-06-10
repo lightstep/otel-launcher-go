@@ -105,9 +105,9 @@ func (k Kind) Category(ik sdkinstrument.Kind) Category {
 	switch k {
 	case AnySumKind:
 		switch ik {
-		case sdkinstrument.HistogramKind, sdkinstrument.CounterKind, sdkinstrument.CounterObserverKind:
+		case sdkinstrument.SyncHistogram, sdkinstrument.SyncCounter, sdkinstrument.AsyncCounter:
 			return MonotonicSumCategory
-		case sdkinstrument.UpDownCounterKind, sdkinstrument.UpDownCounterObserverKind:
+		case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
 			return NonMonotonicSumCategory
 		}
 		return UndefinedCategory

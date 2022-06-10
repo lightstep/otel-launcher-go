@@ -15,10 +15,6 @@
 package view // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 
 import (
-	"regexp"
-
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
@@ -36,25 +32,6 @@ import (
 type Config struct {
 	Clauses  []ClauseConfig
 	Defaults DefaultConfig
-}
-
-// ClauseConfig contains each of the configurable aspects of a
-// single Views clause.
-type ClauseConfig struct {
-	// Matchers for the instrument
-	instrumentName       string
-	instrumentNameRegexp *regexp.Regexp
-	instrumentKind       sdkinstrument.Kind
-	numberKind           number.Kind
-	library              instrumentation.Library
-
-	// Properties of the view
-	keys        []attribute.Key // nil implies all keys, []attribute.Key{} implies none
-	name        string
-	description string
-	aggregation aggregation.Kind
-	temporality aggregation.Temporality
-	acfg        aggregator.Config
 }
 
 // DefaultConfig contains configurable aspects that apply to all

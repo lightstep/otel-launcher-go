@@ -24,11 +24,24 @@ import (
 	"go.opentelemetry.io/otel"
 )
 
+const DefaultInterval = 30 * time.Second
+const DefaultTimeout = DefaultInterval
+
 // PushExporter is an interface for push-based exporters.
 type PushExporter interface {
+	// String is the name used in errors related to this exporter/reader.
 	String() string
+
+	// ExportMetrics is called periodically with data collected
+	// from the Producer.
 	ExportMetrics(context.Context, data.Metrics) error
+
+	// ShutdownMetrics is called when the user calls Shutdown with
+	// final data collected from the Producer.
 	ShutdownMetrics(context.Context, data.Metrics) error
+
+	// ForceFlushMetrics is called when the user calls ForceFlush
+	// with data collected from the Producer.
 	ForceFlushMetrics(context.Context, data.Metrics) error
 }
 
@@ -39,19 +52,39 @@ type PeriodicReader struct {
 	lock     sync.Mutex
 	data     data.Metrics
 	interval time.Duration
+	timeout  time.Duration
 	exporter PushExporter
 	producer Producer
 	stop     context.CancelFunc
 	wait     sync.WaitGroup
 }
 
+type PeriodicReaderOption func(*PeriodicReader)
+
+func WithTimeout(d time.Duration) PeriodicReaderOption {
+	return func(pr *PeriodicReader) {
+		pr.timeout = d
+	}
+}
+
 // NewPeriodicReader constructs a PeriodicReader from a push-based
-// exporter given an interval (TODO: and options).
-func NewPeriodicReader(exporter PushExporter, interval time.Duration /* opts ...Option*/) Reader {
-	return &PeriodicReader{
+// exporter given an interval.
+func NewPeriodicReader(exporter PushExporter, interval time.Duration, opts ...PeriodicReaderOption) *PeriodicReader {
+	pr := &PeriodicReader{
 		interval: interval,
+		timeout:  interval,
 		exporter: exporter,
 	}
+	for _, opt := range opts {
+		opt(pr)
+	}
+	if pr.interval <= 0 {
+		pr.interval = DefaultInterval
+	}
+	if pr.timeout <= 0 {
+		pr.timeout = DefaultTimeout
+	}
+	return pr
 }
 
 // String returns the exporter name and the configured interval.
@@ -61,6 +94,11 @@ func (pr *PeriodicReader) String() string {
 
 // Register starts the periodic export loop.
 func (pr *PeriodicReader) Register(producer Producer) {
+	if pr.producer != nil {
+		otel.Handle(fmt.Errorf("%v: %w", pr, ErrMultipleReaderRegistration))
+		return
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 
 	pr.producer = producer
@@ -75,30 +113,38 @@ func (pr *PeriodicReader) start(ctx context.Context) {
 	defer pr.wait.Done()
 	ticker := time.NewTicker(pr.interval)
 	for {
+
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := pr.collect(ctx, pr.exporter.ExportMetrics); err != nil {
+			if err := pr.collectWithTimeout(ctx, pr.exporter.ExportMetrics); err != nil {
 				otel.Handle(err)
 			}
 		}
 	}
 }
 
+func (pr *PeriodicReader) collectWithTimeout(ctx context.Context, method func(context.Context, data.Metrics) error) error {
+	ctx, cancel := context.WithTimeout(ctx, pr.timeout)
+	defer cancel()
+	return pr.collect(ctx, method)
+}
+
 // Shutdown stops the export loop, canceling its Context, and waits
 // for it to return.  Then it issues a ShutdownMetrics with final
-// data.
+// data.  There is no automatic timeout; to apply one, use
+// context.WithTimeout.
 func (pr *PeriodicReader) Shutdown(ctx context.Context) error {
 	pr.stop()
 	pr.wait.Wait()
-
 	return pr.collect(ctx, pr.exporter.ShutdownMetrics)
 }
 
 // ForceFlush immediately waits for an existing collection, otherwise
 // immediately begins collection without regards to timing and calls
-// ForceFlush with current data.
+// ForceFlush with current data.  There is no automatic timeout; to
+// apply one, use context.WithTimeout.
 func (pr *PeriodicReader) ForceFlush(ctx context.Context) error {
 	return pr.collect(ctx, pr.exporter.ForceFlushMetrics)
 }

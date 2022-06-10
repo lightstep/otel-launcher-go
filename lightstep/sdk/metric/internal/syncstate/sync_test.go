@@ -125,7 +125,7 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 		attrs[i] = testAttr.Int(i)
 	}
 
-	desc := test.Descriptor("tester", sdkinstrument.CounterKind, traits.Kind())
+	desc := test.Descriptor("tester", sdkinstrument.SyncCounter, traits.Kind())
 
 	pipes := make(pipeline.Register[viewstate.Instrument], numReaders)
 	for vci := range vcs {
@@ -225,7 +225,7 @@ func TestSyncStatePartialNoopInstrument(t *testing.T) {
 	vcs[0] = viewstate.New(lib, view.New("dropper", vopts...))
 	vcs[1] = viewstate.New(lib, view.New("keeper"))
 
-	desc := test.Descriptor("dropme", sdkinstrument.HistogramKind, number.Float64Kind)
+	desc := test.Descriptor("dropme", sdkinstrument.SyncHistogram, number.Float64Kind)
 
 	pipes := make(pipeline.Register[viewstate.Instrument], 2)
 	pipes[0], _ = vcs[0].Compile(desc)
@@ -295,7 +295,7 @@ func TestSyncStateFullNoopInstrument(t *testing.T) {
 	vcs[0] = viewstate.New(lib, view.New("dropper", vopts...))
 	vcs[1] = viewstate.New(lib, view.New("keeper", vopts...))
 
-	desc := test.Descriptor("dropme", sdkinstrument.HistogramKind, number.Float64Kind)
+	desc := test.Descriptor("dropme", sdkinstrument.SyncHistogram, number.Float64Kind)
 
 	pipes := make(pipeline.Register[viewstate.Instrument], 2)
 	pipes[0], _ = vcs[0].Compile(desc)
@@ -321,12 +321,12 @@ func TestSyncStateFullNoopInstrument(t *testing.T) {
 
 func TestOutOfRangeValues(t *testing.T) {
 	for _, desc := range []sdkinstrument.Descriptor{
-		test.Descriptor("cf", sdkinstrument.CounterKind, number.Float64Kind),
-		test.Descriptor("uf", sdkinstrument.UpDownCounterKind, number.Float64Kind),
-		test.Descriptor("hf", sdkinstrument.HistogramKind, number.Float64Kind),
-		test.Descriptor("ci", sdkinstrument.CounterKind, number.Int64Kind),
-		test.Descriptor("ui", sdkinstrument.UpDownCounterKind, number.Int64Kind),
-		test.Descriptor("hi", sdkinstrument.HistogramKind, number.Int64Kind),
+		test.Descriptor("cf", sdkinstrument.SyncCounter, number.Float64Kind),
+		test.Descriptor("uf", sdkinstrument.SyncUpDownCounter, number.Float64Kind),
+		test.Descriptor("hf", sdkinstrument.SyncHistogram, number.Float64Kind),
+		test.Descriptor("ci", sdkinstrument.SyncCounter, number.Int64Kind),
+		test.Descriptor("ui", sdkinstrument.SyncUpDownCounter, number.Int64Kind),
+		test.Descriptor("hi", sdkinstrument.SyncHistogram, number.Int64Kind),
 	} {
 		ctx := context.Background()
 		lib := instrumentation.Library{
@@ -362,7 +362,7 @@ func TestOutOfRangeValues(t *testing.T) {
 
 		var expectPoints []data.Point
 
-		if desc.Kind == sdkinstrument.UpDownCounterKind {
+		if desc.Kind == sdkinstrument.SyncUpDownCounter {
 			expectPoints = append(expectPoints, test.Point(
 				startTime, endTime,
 				negOne,

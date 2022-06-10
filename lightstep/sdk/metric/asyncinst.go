@@ -29,31 +29,31 @@ type (
 )
 
 func (i asyncint64Instruments) Counter(name string, opts ...instrument.Option) (asyncint64.Counter, error) {
-	inst, err := i.asynchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.CounterObserverKind)
+	inst, err := i.asynchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.AsyncCounter)
 	return asyncstate.NewObserver[int64, number.Int64Traits](inst), err
 }
 
 func (i asyncint64Instruments) UpDownCounter(name string, opts ...instrument.Option) (asyncint64.UpDownCounter, error) {
-	inst, err := i.asynchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.UpDownCounterObserverKind)
+	inst, err := i.asynchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.AsyncUpDownCounter)
 	return asyncstate.NewObserver[int64, number.Int64Traits](inst), err
 }
 
 func (i asyncint64Instruments) Gauge(name string, opts ...instrument.Option) (asyncint64.Gauge, error) {
-	inst, err := i.asynchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.GaugeObserverKind)
+	inst, err := i.asynchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.AsyncGauge)
 	return asyncstate.NewObserver[int64, number.Int64Traits](inst), err
 }
 
 func (f asyncfloat64Instruments) Counter(name string, opts ...instrument.Option) (asyncfloat64.Counter, error) {
-	inst, err := f.asynchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.CounterObserverKind)
+	inst, err := f.asynchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.AsyncCounter)
 	return asyncstate.NewObserver[float64, number.Float64Traits](inst), err
 }
 
 func (f asyncfloat64Instruments) UpDownCounter(name string, opts ...instrument.Option) (asyncfloat64.UpDownCounter, error) {
-	inst, err := f.asynchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.UpDownCounterObserverKind)
+	inst, err := f.asynchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.AsyncUpDownCounter)
 	return asyncstate.NewObserver[float64, number.Float64Traits](inst), err
 }
 
 func (f asyncfloat64Instruments) Gauge(name string, opts ...instrument.Option) (asyncfloat64.Gauge, error) {
-	inst, err := f.asynchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.GaugeObserverKind)
+	inst, err := f.asynchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.AsyncGauge)
 	return asyncstate.NewObserver[float64, number.Float64Traits](inst), err
 }

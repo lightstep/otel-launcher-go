@@ -66,7 +66,7 @@ func TestOutputReuse(t *testing.T) {
 		test.Scope(
 			test.Library("test"),
 			test.Instrument(
-				test.Descriptor("hello", sdkinstrument.CounterKind, number.Int64Kind),
+				test.Descriptor("hello", sdkinstrument.SyncCounter, number.Int64Kind),
 				test.Point(notime, notime, sum.NewMonotonicInt64(1), cumulative, attr),
 			),
 		),
@@ -85,7 +85,7 @@ func TestOutputReuse(t *testing.T) {
 		test.Scope(
 			test.Library("test"),
 			test.Instrument(
-				test.Descriptor("hello", sdkinstrument.CounterKind, number.Int64Kind),
+				test.Descriptor("hello", sdkinstrument.SyncCounter, number.Int64Kind),
 				test.Point(notime, notime, sum.NewMonotonicInt64(2), cumulative, attr),
 			),
 		),
@@ -109,7 +109,7 @@ func TestOutputReuse(t *testing.T) {
 		test.Scope(
 			test.Library("test"),
 			test.Instrument(
-				test.Descriptor("hello", sdkinstrument.CounterKind, number.Int64Kind),
+				test.Descriptor("hello", sdkinstrument.SyncCounter, number.Int64Kind),
 				test.Point(notime, notime, sum.NewMonotonicInt64(2), cumulative, attr),
 				test.Point(notime, notime, sum.NewMonotonicInt64(1), cumulative, attr2),
 			),
@@ -286,7 +286,7 @@ func TestDuplicateInstrumentConflict(t *testing.T) {
 	require.NotEqual(t, icntr, fcntr)
 	require.Error(t, err)
 
-	expected := "Counter-Int64-MonotonicSum, Counter-Float64-MonotonicSum"
+	expected := "SyncCounter-Int64-MonotonicSum, SyncCounter-Float64-MonotonicSum"
 
 	require.Contains(t, err.Error(), expected)
 

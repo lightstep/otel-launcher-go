@@ -17,6 +17,7 @@ package viewstate // import "github.com/lightstep/otel-launcher-go/lightstep/sdk
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"testing"
 	"time"
 
@@ -86,17 +87,17 @@ var (
 	}
 
 	dropHistInstView = view.WithClause(
-		view.MatchInstrumentKind(sdkinstrument.HistogramKind),
+		view.MatchInstrumentKind(sdkinstrument.SyncHistogram),
 		view.WithAggregation(aggregation.DropKind),
 	)
 
 	instrumentKinds = []sdkinstrument.Kind{
-		sdkinstrument.HistogramKind,
-		sdkinstrument.GaugeObserverKind,
-		sdkinstrument.CounterKind,
-		sdkinstrument.UpDownCounterKind,
-		sdkinstrument.CounterObserverKind,
-		sdkinstrument.UpDownCounterObserverKind,
+		sdkinstrument.SyncHistogram,
+		sdkinstrument.AsyncGauge,
+		sdkinstrument.SyncCounter,
+		sdkinstrument.SyncUpDownCounter,
+		sdkinstrument.AsyncCounter,
+		sdkinstrument.AsyncUpDownCounter,
 	}
 
 	numberKinds = []number.Kind{
@@ -142,11 +143,11 @@ func testCollectSequenceReuse(t *testing.T, vc *Compiler, seq data.Sequence, out
 func TestDeduplicateNoConflict(t *testing.T) {
 	vc := New(testLib, view.New("test"))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind)
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
-	inst2, err2 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind)
+	inst2, err2 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err2)
 	require.NotNil(t, inst2)
 
@@ -158,11 +159,11 @@ func TestDeduplicateNoConflict(t *testing.T) {
 func TestDeduplicateRenameNoConflict(t *testing.T) {
 	vc := New(testLib, view.New("test", fooToBarView))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind)
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
-	inst2, err2 := testCompile(vc, "bar", sdkinstrument.CounterKind, number.Int64Kind)
+	inst2, err2 := testCompile(vc, "bar", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err2)
 	require.NotNil(t, inst2)
 
@@ -174,11 +175,11 @@ func TestDeduplicateRenameNoConflict(t *testing.T) {
 func TestNoRenameNoConflict(t *testing.T) {
 	vc := New(testLib, view.New("test"))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind)
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
-	inst2, err2 := testCompile(vc, "bar", sdkinstrument.CounterKind, number.Int64Kind)
+	inst2, err2 := testCompile(vc, "bar", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err2)
 	require.NotNil(t, inst2)
 
@@ -190,11 +191,11 @@ func TestNoRenameNoConflict(t *testing.T) {
 func TestDuplicateNumberConflict(t *testing.T) {
 	vc := New(testLib, view.New("test"))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind)
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
-	inst2, err2 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Float64Kind)
+	inst2, err2 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.Error(t, err2)
 	require.NotNil(t, inst2)
 	require.True(t, errors.Is(err2, ViewConflictsError{}))
@@ -210,11 +211,11 @@ func TestDuplicateNumberConflict(t *testing.T) {
 func TestDuplicateSyncAsyncConflict(t *testing.T) {
 	vc := New(testLib, view.New("test"))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Float64Kind)
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
-	inst2, err2 := testCompile(vc, "foo", sdkinstrument.CounterObserverKind, number.Float64Kind)
+	inst2, err2 := testCompile(vc, "foo", sdkinstrument.AsyncCounter, number.Float64Kind)
 	require.Error(t, err2)
 	require.NotNil(t, inst2)
 	require.True(t, errors.Is(err2, ViewConflictsError{}))
@@ -227,15 +228,15 @@ func TestDuplicateSyncAsyncConflict(t *testing.T) {
 func TestDuplicateUnitConflict(t *testing.T) {
 	vc := New(testLib, view.New("test"))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Float64Kind, instrument.WithUnit("gal_us"))
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind, instrument.WithUnit("gal_us"))
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
-	inst2, err2 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Float64Kind, instrument.WithUnit("cft_i"))
+	inst2, err2 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind, instrument.WithUnit("cft_i"))
 	require.Error(t, err2)
 	require.NotNil(t, inst2)
 	require.True(t, errors.Is(err2, ViewConflictsError{}))
-	require.Contains(t, err2.Error(), "test: name \"foo\" conflicts Counter-Float64-MonotonicSum-gal_us")
+	require.Contains(t, err2.Error(), "test: name \"foo\" conflicts SyncCounter-Float64-MonotonicSum-gal_us")
 
 	require.NotEqual(t, inst1, inst2)
 }
@@ -245,11 +246,11 @@ func TestDuplicateUnitConflict(t *testing.T) {
 func TestDuplicateMonotonicConflict(t *testing.T) {
 	vc := New(testLib, view.New("test"))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Float64Kind)
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
-	inst2, err2 := testCompile(vc, "foo", sdkinstrument.UpDownCounterKind, number.Float64Kind)
+	inst2, err2 := testCompile(vc, "foo", sdkinstrument.SyncUpDownCounter, number.Float64Kind)
 	require.Error(t, err2)
 	require.NotNil(t, inst2)
 	require.True(t, errors.Is(err2, ViewConflictsError{}))
@@ -263,11 +264,11 @@ func TestDuplicateMonotonicConflict(t *testing.T) {
 func TestDuplicateAggregatorConfigConflict(t *testing.T) {
 	vc := New(testLib, view.New("test", fooToBarAltHistView))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.HistogramKind, number.Float64Kind)
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncHistogram, number.Float64Kind)
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
-	inst2, err2 := testCompile(vc, "bar", sdkinstrument.HistogramKind, number.Float64Kind)
+	inst2, err2 := testCompile(vc, "bar", sdkinstrument.SyncHistogram, number.Float64Kind)
 	require.Error(t, err2)
 	require.NotNil(t, inst2)
 	require.True(t, errors.Is(err2, ViewConflictsError{}))
@@ -296,11 +297,11 @@ func TestDuplicateAggregatorConfigNoConflict(t *testing.T) {
 
 			vc := New(testLib, views)
 
-			inst1, err1 := testCompile(vc, "foo", sdkinstrument.HistogramKind, nk)
+			inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncHistogram, nk)
 			require.NoError(t, err1)
 			require.NotNil(t, inst1)
 
-			inst2, err2 := testCompile(vc, "bar", sdkinstrument.HistogramKind, nk)
+			inst2, err2 := testCompile(vc, "bar", sdkinstrument.SyncHistogram, nk)
 			require.NoError(t, err2)
 			require.NotNil(t, inst2)
 
@@ -314,15 +315,15 @@ func TestDuplicateAggregatorConfigNoConflict(t *testing.T) {
 func TestDuplicateAggregationKindConflict(t *testing.T) {
 	vc := New(testLib, view.New("test", fooToBarView))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.HistogramKind, number.Int64Kind)
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncHistogram, number.Int64Kind)
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
-	inst2, err2 := testCompile(vc, "bar", sdkinstrument.CounterKind, number.Int64Kind)
+	inst2, err2 := testCompile(vc, "bar", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.Error(t, err2)
 	require.NotNil(t, inst2)
 	require.True(t, errors.Is(err2, ViewConflictsError{}))
-	require.Contains(t, err2.Error(), "name \"bar\" (original \"foo\") conflicts Histogram-Int64-Histogram, Counter-Int64-MonotonicSum")
+	require.Contains(t, err2.Error(), "name \"bar\" (original \"foo\") conflicts SyncHistogram-Int64-Histogram, SyncCounter-Int64-MonotonicSum")
 
 	require.NotEqual(t, inst1, inst2)
 }
@@ -333,11 +334,11 @@ func TestDuplicateAggregationKindConflict(t *testing.T) {
 func TestDuplicateAggregationKindNoConflict(t *testing.T) {
 	vc := New(testLib, view.New("test", dropHistInstView))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.HistogramKind, number.Int64Kind)
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncHistogram, number.Int64Kind)
 	require.NoError(t, err1)
 	require.Nil(t, inst1) // The viewstate.Instrument is nil, instruments become no-ops.
 
-	inst2, err2 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind)
+	inst2, err2 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err2)
 	require.NotNil(t, inst2)
 }
@@ -378,11 +379,11 @@ func TestDuplicateFilterConflicts(t *testing.T) {
 		t.Run(fmt.Sprint(idx), func(t *testing.T) {
 			vc := New(testLib, view.New("test", vws...))
 
-			inst1, err1 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind)
+			inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 			require.NoError(t, err1)
 			require.NotNil(t, inst1)
 
-			inst2, err2 := testCompile(vc, "bar", sdkinstrument.CounterKind, number.Int64Kind)
+			inst2, err2 := testCompile(vc, "bar", sdkinstrument.SyncCounter, number.Int64Kind)
 			require.Error(t, err2)
 			require.NotNil(t, inst2)
 
@@ -398,11 +399,11 @@ func TestDuplicateFilterConflicts(t *testing.T) {
 func TestDeduplicateSameFilters(t *testing.T) {
 	vc := New(testLib, view.New("test", fooToBarSameFiltersViews...))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind)
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
-	inst2, err2 := testCompile(vc, "bar", sdkinstrument.CounterKind, number.Int64Kind)
+	inst2, err2 := testCompile(vc, "bar", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err2)
 	require.NotNil(t, inst2)
 
@@ -413,16 +414,16 @@ func TestDeduplicateSameFilters(t *testing.T) {
 func TestDuplicatesMergeDescriptor(t *testing.T) {
 	vc := New(testLib, view.New("test", fooToBarSameFiltersViews...))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind)
+	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
 	// This is the winning description:
-	inst2, err2 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind, instrument.WithDescription("very long"))
+	inst2, err2 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind, instrument.WithDescription("very long"))
 	require.NoError(t, err2)
 	require.NotNil(t, inst2)
 
-	inst3, err3 := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind, instrument.WithDescription("shorter"))
+	inst3, err3 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind, instrument.WithDescription("shorter"))
 	require.NoError(t, err3)
 	require.NotNil(t, inst3)
 
@@ -438,7 +439,7 @@ func TestDuplicatesMergeDescriptor(t *testing.T) {
 
 	require.Equal(t, 1, len(output))
 	require.Equal(t, test.Instrument(
-		test.Descriptor("bar", sdkinstrument.CounterKind, number.Int64Kind, instrument.WithDescription("very long")),
+		test.Descriptor("bar", sdkinstrument.SyncCounter, number.Int64Kind, instrument.WithDescription("very long")),
 		test.Point(startTime, endTime, sum.NewMonotonicInt64(1), cumulative)), output[0],
 	)
 }
@@ -456,7 +457,7 @@ func TestViewDescription(t *testing.T) {
 	vc := New(testLib, views)
 
 	inst1, err1 := testCompile(vc,
-		"foo", sdkinstrument.CounterKind, number.Int64Kind,
+		"foo", sdkinstrument.SyncCounter, number.Int64Kind,
 		instrument.WithDescription("other description"),
 	)
 	require.NoError(t, err1)
@@ -476,7 +477,7 @@ func TestViewDescription(t *testing.T) {
 	require.Equal(t,
 		test.Instrument(
 			test.Descriptor(
-				"foo", sdkinstrument.CounterKind, number.Int64Kind,
+				"foo", sdkinstrument.SyncCounter, number.Int64Kind,
 				instrument.WithDescription("something helpful"),
 			),
 			test.Point(startTime, endTime, sum.NewMonotonicInt64(1), cumulative, attribute.String("K", "V")),
@@ -494,7 +495,7 @@ func TestKeyFilters(t *testing.T) {
 
 	vc := New(testLib, views)
 
-	inst, err := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind)
+	inst, err := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err)
 	require.NotNil(t, inst)
 
@@ -514,7 +515,7 @@ func TestKeyFilters(t *testing.T) {
 
 	require.Equal(t, 1, len(output))
 	require.Equal(t, test.Instrument(
-		test.Descriptor("foo", sdkinstrument.CounterKind, number.Int64Kind),
+		test.Descriptor("foo", sdkinstrument.SyncCounter, number.Int64Kind),
 		test.Point(
 			startTime, endTime, sum.NewMonotonicInt64(2), cumulative,
 			attribute.String("a", "1"), attribute.String("b", "2"),
@@ -547,7 +548,7 @@ func TestTwoViewsOneInt64Instrument(t *testing.T) {
 
 	vc := New(testLib, views)
 
-	inst, err := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Int64Kind)
+	inst, err := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err)
 
 	for _, acc := range []Accumulator{
@@ -565,7 +566,7 @@ func TestTwoViewsOneInt64Instrument(t *testing.T) {
 	test.RequireEqualMetrics(t,
 		output,
 		test.Instrument(
-			test.Descriptor("foo_a", sdkinstrument.CounterKind, number.Int64Kind),
+			test.Descriptor("foo_a", sdkinstrument.SyncCounter, number.Int64Kind),
 			test.Point(
 				startTime, endTime, sum.NewMonotonicInt64(2), cumulative, attribute.String("a", "1"),
 			),
@@ -574,7 +575,7 @@ func TestTwoViewsOneInt64Instrument(t *testing.T) {
 			),
 		),
 		test.Instrument(
-			test.Descriptor("foo_b", sdkinstrument.CounterKind, number.Int64Kind),
+			test.Descriptor("foo_b", sdkinstrument.SyncCounter, number.Int64Kind),
 			test.Point(
 				startTime, endTime, sum.NewMonotonicInt64(2), cumulative, attribute.String("b", "1"),
 			),
@@ -583,7 +584,7 @@ func TestTwoViewsOneInt64Instrument(t *testing.T) {
 			),
 		),
 		test.Instrument(
-			test.Descriptor("foo_c", sdkinstrument.CounterKind, number.Int64Kind),
+			test.Descriptor("foo_c", sdkinstrument.SyncCounter, number.Int64Kind),
 			test.Point(
 				startTime, endTime, sum.NewMonotonicInt64(4), cumulative,
 			),
@@ -611,7 +612,7 @@ func TestHistogramTwoAggregations(t *testing.T) {
 
 	vc := New(testLib, views)
 
-	inst, err := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Float64Kind)
+	inst, err := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
 	acc := inst.NewAccumulator(attribute.NewSet())
@@ -625,13 +626,13 @@ func TestHistogramTwoAggregations(t *testing.T) {
 
 	test.RequireEqualMetrics(t, output,
 		test.Instrument(
-			test.Descriptor("foo_sum", sdkinstrument.CounterKind, number.Float64Kind),
+			test.Descriptor("foo_sum", sdkinstrument.SyncCounter, number.Float64Kind),
 			test.Point(
 				startTime, endTime, sum.NewMonotonicFloat64(10), cumulative,
 			),
 		),
 		test.Instrument(
-			test.Descriptor("foo_hist", sdkinstrument.CounterKind, number.Float64Kind),
+			test.Descriptor("foo_hist", sdkinstrument.SyncCounter, number.Float64Kind),
 			test.Point(
 				startTime, endTime, histogram.NewFloat64(defaultAggregatorConfig.Histogram, 1, 2, 3, 4), cumulative,
 			),
@@ -649,7 +650,7 @@ func TestAllKeysFilter(t *testing.T) {
 
 	vc := New(testLib, views)
 
-	inst, err := testCompile(vc, "foo", sdkinstrument.CounterKind, number.Float64Kind)
+	inst, err := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
 	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("a", "1")))
@@ -664,7 +665,7 @@ func TestAllKeysFilter(t *testing.T) {
 
 	test.RequireEqualMetrics(t, output,
 		test.Instrument(
-			test.Descriptor("foo", sdkinstrument.CounterKind, number.Float64Kind),
+			test.Descriptor("foo", sdkinstrument.SyncCounter, number.Float64Kind),
 			test.Point(
 				startTime, endTime, sum.NewMonotonicFloat64(2), cumulative,
 			),
@@ -684,20 +685,20 @@ func TestAnySumAggregation(t *testing.T) {
 	vc := New(testLib, views)
 
 	for _, ik := range []sdkinstrument.Kind{
-		sdkinstrument.CounterKind,
-		sdkinstrument.CounterObserverKind,
-		sdkinstrument.UpDownCounterKind,
-		sdkinstrument.UpDownCounterObserverKind,
-		sdkinstrument.HistogramKind,
-		sdkinstrument.GaugeObserverKind,
+		sdkinstrument.SyncCounter,
+		sdkinstrument.AsyncCounter,
+		sdkinstrument.SyncUpDownCounter,
+		sdkinstrument.AsyncUpDownCounter,
+		sdkinstrument.SyncHistogram,
+		sdkinstrument.AsyncGauge,
 	} {
 		inst, err := testCompile(vc, ik.String(), ik, number.Float64Kind)
-		if ik == sdkinstrument.GaugeObserverKind {
+		if ik == sdkinstrument.AsyncGauge {
 			// semantic conflict, Gauge can't handle AnySum aggregation!
 			require.Error(t, err)
 			require.Contains(t,
 				err.Error(),
-				"GaugeObserver instrument incompatible with Undefined aggregation",
+				"AsyncGauge instrument incompatible with Undefined aggregation",
 			)
 		} else {
 			require.NoError(t, err)
@@ -712,27 +713,27 @@ func TestAnySumAggregation(t *testing.T) {
 
 	test.RequireEqualMetrics(t, output,
 		test.Instrument(
-			test.Descriptor("CounterKind", sdkinstrument.CounterKind, number.Float64Kind),
+			test.Descriptor("SyncCounter", sdkinstrument.SyncCounter, number.Float64Kind),
 			test.Point(startTime, endTime, sum.NewMonotonicFloat64(1), cumulative), // AnySum -> Monotonic
 		),
 		test.Instrument(
-			test.Descriptor("CounterObserverKind", sdkinstrument.CounterObserverKind, number.Float64Kind),
+			test.Descriptor("AsyncCounter", sdkinstrument.AsyncCounter, number.Float64Kind),
 			test.Point(startTime, endTime, sum.NewMonotonicFloat64(1), cumulative), // AnySum -> Monotonic
 		),
 		test.Instrument(
-			test.Descriptor("UpDownCounterKind", sdkinstrument.UpDownCounterKind, number.Float64Kind),
+			test.Descriptor("SyncUpDownCounter", sdkinstrument.SyncUpDownCounter, number.Float64Kind),
 			test.Point(startTime, endTime, sum.NewNonMonotonicFloat64(1), cumulative), // AnySum -> Non-Monotonic
 		),
 		test.Instrument(
-			test.Descriptor("UpDownCounterObserverKind", sdkinstrument.UpDownCounterObserverKind, number.Float64Kind),
+			test.Descriptor("AsyncUpDownCounter", sdkinstrument.AsyncUpDownCounter, number.Float64Kind),
 			test.Point(startTime, endTime, sum.NewNonMonotonicFloat64(1), cumulative), // AnySum -> Non-Monotonic
 		),
 		test.Instrument(
-			test.Descriptor("HistogramKind", sdkinstrument.HistogramKind, number.Float64Kind),
+			test.Descriptor("SyncHistogram", sdkinstrument.SyncHistogram, number.Float64Kind),
 			test.Point(startTime, endTime, sum.NewMonotonicFloat64(1), cumulative), // Histogram to Monotonic Sum
 		),
 		test.Instrument(
-			test.Descriptor("GaugeObserverKind", sdkinstrument.GaugeObserverKind, number.Float64Kind),
+			test.Descriptor("AsyncGauge", sdkinstrument.AsyncGauge, number.Float64Kind),
 			test.Point(startTime, endTime, gauge.NewFloat64(1), cumulative), // This stays a Gauge!
 		),
 	)
@@ -744,10 +745,10 @@ func TestAnySumAggregation(t *testing.T) {
 func TestDuplicateAsyncMeasurementsIngored(t *testing.T) {
 	vc := New(testLib, view.New("test"))
 
-	inst1, err := testCompile(vc, "async", sdkinstrument.CounterObserverKind, number.Float64Kind)
+	inst1, err := testCompile(vc, "async", sdkinstrument.AsyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
-	inst2, err := testCompile(vc, "sync", sdkinstrument.CounterKind, number.Float64Kind)
+	inst2, err := testCompile(vc, "sync", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
 	for _, inst := range []Instrument{inst1, inst2} {
@@ -765,13 +766,13 @@ func TestDuplicateAsyncMeasurementsIngored(t *testing.T) {
 
 	test.RequireEqualMetrics(t, output,
 		test.Instrument(
-			test.Descriptor("async", sdkinstrument.CounterObserverKind, number.Float64Kind),
+			test.Descriptor("async", sdkinstrument.AsyncCounter, number.Float64Kind),
 			test.Point(
 				startTime, endTime, sum.NewMonotonicFloat64(100000), cumulative,
 			),
 		),
 		test.Instrument(
-			test.Descriptor("sync", sdkinstrument.CounterKind, number.Float64Kind),
+			test.Descriptor("sync", sdkinstrument.SyncCounter, number.Float64Kind),
 			test.Point(
 				startTime, endTime, sum.NewMonotonicFloat64(111111), cumulative,
 			),
@@ -793,10 +794,10 @@ func TestCumulativeTemporality(t *testing.T) {
 
 	vc := New(testLib, views)
 
-	inst1, err := testCompile(vc, "sync", sdkinstrument.CounterKind, number.Float64Kind)
+	inst1, err := testCompile(vc, "sync", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
-	inst2, err := testCompile(vc, "async", sdkinstrument.CounterObserverKind, number.Float64Kind)
+	inst2, err := testCompile(vc, "async", sdkinstrument.AsyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
 	setA := attribute.NewSet(attribute.String("A", "1"))
@@ -815,7 +816,7 @@ func TestCumulativeTemporality(t *testing.T) {
 
 		test.RequireEqualMetrics(t, testCollect(t, vc),
 			test.Instrument(
-				test.Descriptor("sync", sdkinstrument.CounterKind, number.Float64Kind),
+				test.Descriptor("sync", sdkinstrument.SyncCounter, number.Float64Kind),
 				test.Point(
 					// Because synchronous instruments snapshotAndProcess, the
 					// rounds multiplier is used here but not in the case below.
@@ -823,7 +824,7 @@ func TestCumulativeTemporality(t *testing.T) {
 				),
 			),
 			test.Instrument(
-				test.Descriptor("async", sdkinstrument.CounterObserverKind, number.Float64Kind),
+				test.Descriptor("async", sdkinstrument.AsyncCounter, number.Float64Kind),
 				test.Point(
 					startTime, endTime, sum.NewMonotonicFloat64(2), cumulative,
 				),
@@ -846,10 +847,10 @@ func TestDeltaTemporalityCounter(t *testing.T) {
 
 	vc := New(testLib, views)
 
-	inst1, err := testCompile(vc, "sync", sdkinstrument.CounterKind, number.Float64Kind)
+	inst1, err := testCompile(vc, "sync", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
-	inst2, err := testCompile(vc, "async", sdkinstrument.CounterObserverKind, number.Float64Kind)
+	inst2, err := testCompile(vc, "async", sdkinstrument.AsyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
 	setA := attribute.NewSet(attribute.String("A", "1"))
@@ -870,14 +871,14 @@ func TestDeltaTemporalityCounter(t *testing.T) {
 
 		test.RequireEqualMetrics(t, testCollectSequence(t, vc, seq),
 			test.Instrument(
-				test.Descriptor("sync", sdkinstrument.CounterKind, number.Float64Kind),
+				test.Descriptor("sync", sdkinstrument.SyncCounter, number.Float64Kind),
 				test.Point(
 					// By construction, the change is rounds per attribute set == 2*rounds
 					seq.Last, seq.Now, sum.NewMonotonicFloat64(2*float64(rounds)), delta,
 				),
 			),
 			test.Instrument(
-				test.Descriptor("async", sdkinstrument.CounterObserverKind, number.Float64Kind),
+				test.Descriptor("async", sdkinstrument.AsyncCounter, number.Float64Kind),
 				test.Point(
 					// By construction, the change is 1 per attribute set == 2
 					seq.Last, seq.Now, sum.NewMonotonicFloat64(2), delta,
@@ -901,10 +902,10 @@ func TestDeltaTemporalityGauge(t *testing.T) {
 
 	vc := New(testLib, views)
 
-	instF, err := testCompile(vc, "gaugeF", sdkinstrument.GaugeObserverKind, number.Float64Kind)
+	instF, err := testCompile(vc, "gaugeF", sdkinstrument.AsyncGauge, number.Float64Kind)
 	require.NoError(t, err)
 
-	instI, err := testCompile(vc, "gaugeI", sdkinstrument.GaugeObserverKind, number.Int64Kind)
+	instI, err := testCompile(vc, "gaugeI", sdkinstrument.AsyncGauge, number.Int64Kind)
 	require.NoError(t, err)
 
 	set := attribute.NewSet()
@@ -923,11 +924,11 @@ func TestDeltaTemporalityGauge(t *testing.T) {
 		test.RequireEqualMetrics(t,
 			testCollectSequence(t, vc, seq),
 			test.Instrument(
-				test.Descriptor("gaugeF", sdkinstrument.GaugeObserverKind, number.Float64Kind),
+				test.Descriptor("gaugeF", sdkinstrument.AsyncGauge, number.Float64Kind),
 				test.Point(seq.Last, seq.Now, gauge.NewFloat64(float64(x)), delta),
 			),
 			test.Instrument(
-				test.Descriptor("gaugeI", sdkinstrument.GaugeObserverKind, number.Int64Kind),
+				test.Descriptor("gaugeI", sdkinstrument.AsyncGauge, number.Int64Kind),
 				test.Point(seq.Last, seq.Now, gauge.NewInt64(int64(x)), delta),
 			),
 		)
@@ -936,10 +937,10 @@ func TestDeltaTemporalityGauge(t *testing.T) {
 		test.RequireEqualMetrics(t,
 			testCollectSequence(t, vc, seq),
 			test.Instrument(
-				test.Descriptor("gaugeF", sdkinstrument.GaugeObserverKind, number.Float64Kind),
+				test.Descriptor("gaugeF", sdkinstrument.AsyncGauge, number.Float64Kind),
 			),
 			test.Instrument(
-				test.Descriptor("gaugeI", sdkinstrument.GaugeObserverKind, number.Int64Kind),
+				test.Descriptor("gaugeI", sdkinstrument.AsyncGauge, number.Int64Kind),
 			),
 		)
 	}
@@ -988,16 +989,16 @@ func TestSyncDeltaTemporalityCounter(t *testing.T) {
 
 	vc := New(testLib, views)
 
-	instCF, err := testCompile(vc, "counterF", sdkinstrument.CounterKind, number.Float64Kind)
+	instCF, err := testCompile(vc, "counterF", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
-	instCI, err := testCompile(vc, "counterI", sdkinstrument.CounterKind, number.Int64Kind)
+	instCI, err := testCompile(vc, "counterI", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err)
 
-	instUF, err := testCompile(vc, "updowncounterF", sdkinstrument.UpDownCounterKind, number.Float64Kind)
+	instUF, err := testCompile(vc, "updowncounterF", sdkinstrument.SyncUpDownCounter, number.Float64Kind)
 	require.NoError(t, err)
 
-	instUI, err := testCompile(vc, "updowncounterI", sdkinstrument.UpDownCounterKind, number.Int64Kind)
+	instUI, err := testCompile(vc, "updowncounterI", sdkinstrument.SyncUpDownCounter, number.Int64Kind)
 	require.NoError(t, err)
 
 	set := attribute.NewSet()
@@ -1026,19 +1027,19 @@ func TestSyncDeltaTemporalityCounter(t *testing.T) {
 		test.RequireEqualMetrics(t,
 			testCollectSequenceReuse(t, vc, seq, &output),
 			test.Instrument(
-				test.Descriptor("counterF", sdkinstrument.CounterKind, number.Float64Kind),
+				test.Descriptor("counterF", sdkinstrument.SyncCounter, number.Float64Kind),
 				test.Point(seq.Last, seq.Now, sum.NewMonotonicFloat64(float64(mono)), delta),
 			),
 			test.Instrument(
-				test.Descriptor("counterI", sdkinstrument.CounterKind, number.Int64Kind),
+				test.Descriptor("counterI", sdkinstrument.SyncCounter, number.Int64Kind),
 				test.Point(seq.Last, seq.Now, sum.NewMonotonicInt64(int64(mono)), delta),
 			),
 			test.Instrument(
-				test.Descriptor("updowncounterF", sdkinstrument.UpDownCounterKind, number.Float64Kind),
+				test.Descriptor("updowncounterF", sdkinstrument.SyncUpDownCounter, number.Float64Kind),
 				test.Point(seq.Last, seq.Now, sum.NewNonMonotonicFloat64(float64(nonMono)), delta),
 			),
 			test.Instrument(
-				test.Descriptor("updowncounterI", sdkinstrument.UpDownCounterKind, number.Int64Kind),
+				test.Descriptor("updowncounterI", sdkinstrument.SyncUpDownCounter, number.Int64Kind),
 				test.Point(seq.Last, seq.Now, sum.NewNonMonotonicInt64(int64(nonMono)), delta),
 			),
 		)
@@ -1047,16 +1048,16 @@ func TestSyncDeltaTemporalityCounter(t *testing.T) {
 		test.RequireEqualMetrics(t,
 			testCollectSequenceReuse(t, vc, seq, &output),
 			test.Instrument(
-				test.Descriptor("counterF", sdkinstrument.CounterKind, number.Float64Kind),
+				test.Descriptor("counterF", sdkinstrument.SyncCounter, number.Float64Kind),
 			),
 			test.Instrument(
-				test.Descriptor("counterI", sdkinstrument.CounterKind, number.Int64Kind),
+				test.Descriptor("counterI", sdkinstrument.SyncCounter, number.Int64Kind),
 			),
 			test.Instrument(
-				test.Descriptor("updowncounterF", sdkinstrument.UpDownCounterKind, number.Float64Kind),
+				test.Descriptor("updowncounterF", sdkinstrument.SyncUpDownCounter, number.Float64Kind),
 			),
 			test.Instrument(
-				test.Descriptor("updowncounterI", sdkinstrument.UpDownCounterKind, number.Int64Kind),
+				test.Descriptor("updowncounterI", sdkinstrument.SyncUpDownCounter, number.Int64Kind),
 			),
 		)
 	}
@@ -1092,7 +1093,7 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 
 	vc := New(testLib, views)
 
-	inst, err := testCompile(vc, "counter", sdkinstrument.CounterKind, number.Float64Kind)
+	inst, err := testCompile(vc, "counter", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
 	attr := attribute.String("A", "1")
@@ -1115,7 +1116,7 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 	test.RequireEqualMetrics(t,
 		testCollectSequenceReuse(t, vc, testSequence, &output),
 		test.Instrument(
-			test.Descriptor("counter", sdkinstrument.CounterKind, number.Float64Kind),
+			test.Descriptor("counter", sdkinstrument.SyncCounter, number.Float64Kind),
 			test.Point(middleTime, endTime, sum.NewMonotonicFloat64(2), delta, attr),
 		),
 	)
@@ -1127,10 +1128,47 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 	test.RequireEqualMetrics(t,
 		testCollectSequenceReuse(t, vc, testSequence, &output),
 		test.Instrument(
-			test.Descriptor("counter", sdkinstrument.CounterKind, number.Float64Kind),
+			test.Descriptor("counter", sdkinstrument.SyncCounter, number.Float64Kind),
 		),
 	)
 
 	require.Equal(t, 0, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
 
+}
+
+func TestRegexpMatch(t *testing.T) {
+	views := view.New(
+		"test",
+		view.WithClause(
+			view.MatchInstrumentNameRegexp(regexp.MustCompile(".*_rate")),
+			view.WithAggregation(aggregation.DropKind),
+		),
+	)
+
+	vc := New(testLib, views)
+
+	inst0, err := testCompile(vc, "foo_rate", sdkinstrument.AsyncGauge, number.Float64Kind)
+	require.NoError(t, err)
+	inst1, err := testCompile(vc, "bar_rate", sdkinstrument.AsyncGauge, number.Float64Kind)
+	require.NoError(t, err)
+	inst2, err := testCompile(vc, "notarate", sdkinstrument.AsyncGauge, number.Float64Kind)
+	require.NoError(t, err)
+
+	require.Nil(t, inst0)
+	require.Nil(t, inst1)
+	require.NotNil(t, inst2)
+}
+
+func TestSingleInstrumentWarning(t *testing.T) {
+	views := view.New(
+		"test",
+		view.WithClause(
+			view.MatchInstrumentNameRegexp(regexp.MustCompile(".*_rate")),
+			view.WithName("fixed"),
+		),
+	)
+
+	_, err := view.Validate(views)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "multi-instrument view specifies a single name")
 }

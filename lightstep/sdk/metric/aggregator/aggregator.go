@@ -49,8 +49,8 @@ func RangeTest[N number.Any, Traits number.Traits[N]](num N, kind sdkinstrument.
 
 	// Check for negative values
 	switch kind {
-	case sdkinstrument.CounterKind,
-		sdkinstrument.HistogramKind:
+	case sdkinstrument.SyncCounter,
+		sdkinstrument.SyncHistogram:
 		if num < 0 {
 			otel.Handle(ErrNegativeInput)
 			return false

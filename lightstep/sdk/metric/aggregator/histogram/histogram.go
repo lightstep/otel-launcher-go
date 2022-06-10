@@ -86,7 +86,7 @@ type (
 // OTel settled on 160, which yields a maximum relative error of less
 // than 5% for data with contrast 10^5 (e.g., latencies in the range
 // 1ms to 100s).  See the derivation here: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/sdk.md#exponential-histogram-aggregation
-const DefaultMaxSize = 160
+const DefaultMaxSize int32 = 160
 
 // MinSize is the smallest reasonable configuration, which is small
 // enough to contain the entire normal floating point range at
