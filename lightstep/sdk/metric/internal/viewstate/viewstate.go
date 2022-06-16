@@ -552,14 +552,6 @@ func checkSemanticCompatibility(ik sdkinstrument.Kind, aggPtr *aggregation.Kind)
 			return nil
 		}
 
-		// Whoa! This is some hacky stuff here.
-		if cat == aggregation.GaugeCategory {
-			// Yes, we allowed a Gauge aggregator to
-			// attach to a sync UpDownCounter; it's like a
-			// synchronous Gauge, for now.
-			return nil
-		}
-
 	case sdkinstrument.AsyncCounter:
 		switch cat {
 		case aggregation.NonMonotonicSumCategory, aggregation.MonotonicSumCategory:
