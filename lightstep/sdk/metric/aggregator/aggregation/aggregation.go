@@ -74,6 +74,15 @@ type (
 		Len() uint32
 		At(uint32) uint64
 	}
+
+	// MinMaxSumCount is a low cost histogram.
+	MinMaxSumCount interface {
+		Aggregation
+		Count() uint64
+		HasASum
+		Min() number.Number
+		Max() number.Number
+	}
 )
 
 // Category constants describe semantic kind.  For the histogram
@@ -99,6 +108,7 @@ const (
 	NonMonotonicSumKind
 	GaugeKind
 	HistogramKind
+	MinMaxSumCountKind
 )
 
 func (k Kind) Category(ik sdkinstrument.Kind) Category {
@@ -117,7 +127,7 @@ func (k Kind) Category(ik sdkinstrument.Kind) Category {
 		return NonMonotonicSumCategory
 	case GaugeKind:
 		return GaugeCategory
-	case HistogramKind:
+	case HistogramKind, MinMaxSumCountKind:
 		return HistogramCategory
 	default:
 		return UndefinedCategory
