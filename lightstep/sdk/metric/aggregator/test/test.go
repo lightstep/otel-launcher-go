@@ -26,6 +26,11 @@ func GenericAggregatorTest[N number.Any, Storage any, Methods aggregator.Methods
 			require.Equal(t, N(0), nf(h.Sum()))
 		} else if s, ok := agg.(aggregation.Sum); ok {
 			require.Equal(t, N(0), nf(s.Sum()))
+		} else if mmsc, ok := agg.(aggregation.MinMaxSumCount); ok {
+			require.Equal(t, N(0), nf(mmsc.Sum()))
+			require.Equal(t, N(0), nf(mmsc.Min()))
+			require.Equal(t, N(0), nf(mmsc.Max()))
+			require.Equal(t, uint64(0), mmsc.Count())
 		} else {
 			t.Fail()
 		}

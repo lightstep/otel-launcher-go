@@ -176,3 +176,32 @@ func Histogram(name, desc, unit string, tempo metricspb.AggregationTemporality, 
 		},
 	}
 }
+
+func MinMaxSumCountDataPoint(attributes []*commonpb.KeyValue, start, end time.Time, sum float64, count uint64, min, max float64) *metricspb.HistogramDataPoint {
+	dp := &metricspb.HistogramDataPoint{
+		Attributes:        attributes,
+		StartTimeUnixNano: toNanos(start),
+		TimeUnixNano:      toNanos(end),
+		Sum:               &sum,
+		Count:             count,
+	}
+	if count != 0 {
+		dp.Min = &min
+		dp.Max = &max
+	}
+	return dp
+}
+
+func MinMaxSumCount(name, desc, unit string, tempo metricspb.AggregationTemporality, idps ...*metricspb.HistogramDataPoint) *metricspb.Metric {
+	return &metricspb.Metric{
+		Name:        name,
+		Description: desc,
+		Unit:        unit,
+		Data: &metricspb.Metric_Histogram{
+			Histogram: &metricspb.Histogram{
+				AggregationTemporality: tempo,
+				DataPoints:             idps,
+			},
+		},
+	}
+}

@@ -21,6 +21,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/minmaxsumcount"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
@@ -368,13 +369,21 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 			histogram.State[N, Traits],
 			histogram.Methods[N, Traits, histogram.State[N, Traits]],
 		](behavior)
+	case aggregation.MinMaxSumCountKind:
+		return newSyncView[
+			N,
+			minmaxsumcount.State[N, Traits],
+			minmaxsumcount.Methods[N, Traits, minmaxsumcount.State[N, Traits]],
+		](behavior)
 	case aggregation.NonMonotonicSumKind:
 		return newSyncView[
 			N,
 			sum.State[N, Traits, sum.NonMonotonic],
 			sum.Methods[N, Traits, sum.NonMonotonic, sum.State[N, Traits, sum.NonMonotonic]],
 		](behavior)
-	default: // e.g., aggregation.MonotonicSumKind
+	default:
+		fallthrough
+	case aggregation.MonotonicSumKind:
 		return newSyncView[
 			N,
 			sum.State[N, Traits, sum.Monotonic],
@@ -435,7 +444,9 @@ func compileAsync[N number.Any, Traits number.Traits[N]](behavior singleBehavior
 			sum.State[N, Traits, sum.NonMonotonic],
 			sum.Methods[N, Traits, sum.NonMonotonic, sum.State[N, Traits, sum.NonMonotonic]],
 		](behavior)
-	default: // e.g., aggregation.GaugeKind
+	default:
+		fallthrough
+	case aggregation.GaugeKind:
 		return newAsyncView[
 			N,
 			gauge.State[N, Traits],
