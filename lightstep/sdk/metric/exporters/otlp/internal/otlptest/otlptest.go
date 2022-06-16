@@ -143,7 +143,7 @@ func HistogramDataPoint(attributes []*commonpb.KeyValue, start, end time.Time, s
 		Attributes:        attributes,
 		StartTimeUnixNano: toNanos(start),
 		TimeUnixNano:      toNanos(end),
-		Sum:               sum,
+		Sum:               &sum,
 		Count:             count,
 		ZeroCount:         zeroCount,
 		Scale:             scale,

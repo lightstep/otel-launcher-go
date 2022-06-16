@@ -96,13 +96,6 @@ func Metrics(metrics data.Metrics) (*metricspb.ResourceMetrics, error) {
 						DataPoints:             HistogramPoints(&inst.Descriptor, inst.Points),
 					},
 				}
-			case aggregation.MinMaxSumCountKind:
-				mm.Data = &metricspb.Metric_Histogram{
-					Histogram: &metricspb.Histogram{
-						AggregationTemporality: Temporality(point0.Temporality),
-						DataPoints:             MinMaxSumCountPoints(&inst.Descriptor, inst.Points, point0.Temporality),
-					},
-				}
 			case aggregation.GaugeKind:
 				mm.Data = &metricspb.Metric_Gauge{
 					Gauge: &metricspb.Gauge{
@@ -186,36 +179,4 @@ func HistogramBuckets(b aggregation.Buckets) *metricspb.ExponentialHistogramData
 		result.BucketCounts[i] = b.At(uint32(i))
 	}
 	return result
-}
-
-func float64Ptr(x float64) *float64 {
-	return &x
-}
-
-func MinMaxSumCountPoints(desc *sdkinstrument.Descriptor, points []data.Point, tempo aggregation.Temporality) []*metricspb.HistogramDataPoint {
-	results := make([]*metricspb.HistogramDataPoint, len(points))
-	for i, pt := range points {
-		mmsc := pt.Aggregation.(aggregation.MinMaxSumCount)
-
-		// See note about optional sum at top of minmaxsumcount.go
-		sum := mmsc.Sum().CoerceToFloat64(desc.NumberKind)
-
-		var min, max *float64
-
-		if mmsc.Count() != 0 {
-			min = float64Ptr(mmsc.Min().CoerceToFloat64(desc.NumberKind))
-			max = float64Ptr(mmsc.Max().CoerceToFloat64(desc.NumberKind))
-		}
-
-		results[i] = &metricspb.HistogramDataPoint{
-			Attributes:        Attributes(pt.Attributes),
-			StartTimeUnixNano: toNanos(pt.Start),
-			TimeUnixNano:      toNanos(pt.End),
-			Count:             mmsc.Count(),
-			Sum:               &sum,
-			Min:               min,
-			Max:               max,
-		}
-	}
-	return results
 }
