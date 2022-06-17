@@ -17,6 +17,7 @@ package viewstate // import "github.com/lightstep/otel-launcher-go/lightstep/sdk
 import (
 	"errors"
 	"fmt"
+	"math"
 	"regexp"
 	"testing"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/minmaxsumcount"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/test"
@@ -1171,4 +1173,61 @@ func TestSingleInstrumentWarning(t *testing.T) {
 	_, err := view.Validate(views)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "multi-instrument view specifies a single name")
+}
+
+func TestDeltaTemporalityMinMaxSumCount(t *testing.T) {
+	views := view.New(
+		"test",
+		view.WithClause(
+			view.MatchInstrumentKind(sdkinstrument.SyncHistogram),
+			view.WithAggregation(aggregation.MinMaxSumCountKind),
+		),
+		view.WithDefaultAggregationTemporalitySelector(view.DeltaPreferredTemporality),
+	)
+
+	vc := New(testLib, views)
+
+	inst1, err := testCompile(vc, "lowcost", sdkinstrument.SyncHistogram, number.Float64Kind)
+	require.NoError(t, err)
+
+	setA := attribute.NewSet(attribute.String("A", "1"))
+	setB := attribute.NewSet(attribute.String("B", "1"))
+
+	seq := testSequence
+
+	const rounds = 10
+	const expectCount uint64 = rounds
+	const expectMax = 1.0
+	const expectMin = 0x1p-9
+
+	expectSum := 0.0
+	expectMMSC := minmaxsumcount.NewFloat64()
+
+	for round := 0; round < rounds; round++ {
+		value := math.Exp2(float64(-round))
+		expectSum += value
+		minmaxsumcount.Float64Methods{}.Update(expectMMSC, value)
+	}
+	require.Equal(t, expectCount, expectMMSC.Count())
+	require.Equal(t, expectSum, expectMMSC.Sum().CoerceToFloat64(number.Float64Kind))
+	require.Equal(t, expectMin, expectMMSC.Min().CoerceToFloat64(number.Float64Kind))
+	require.Equal(t, expectMax, expectMMSC.Max().CoerceToFloat64(number.Float64Kind))
+
+	for _, acc := range []Accumulator{
+		inst1.NewAccumulator(setA),
+		inst1.NewAccumulator(setB),
+	} {
+		for round := 0; round < 10; round++ {
+			acc.(Updater[float64]).Update(math.Exp2(float64(-round)))
+			acc.SnapshotAndProcess(false)
+		}
+	}
+
+	test.RequireEqualMetrics(t, testCollectSequence(t, vc, seq),
+		test.Instrument(
+			test.Descriptor("lowcost", sdkinstrument.SyncHistogram, number.Float64Kind),
+			test.Point(seq.Last, seq.Now, expectMMSC, delta, setA.ToSlice()...),
+			test.Point(seq.Last, seq.Now, expectMMSC, delta, setB.ToSlice()...),
+		),
+	)
 }

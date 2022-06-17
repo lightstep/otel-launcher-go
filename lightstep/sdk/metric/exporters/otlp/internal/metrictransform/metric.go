@@ -102,6 +102,13 @@ func Metrics(metrics data.Metrics) (*metricspb.ResourceMetrics, error) {
 						DataPoints: NumberPoints(&inst.Descriptor, inst.Points, gaugeToValue),
 					},
 				}
+			case aggregation.MinMaxSumCountKind:
+				mm.Data = &metricspb.Metric_Histogram{
+					Histogram: &metricspb.Histogram{
+						AggregationTemporality: Temporality(point0.Temporality),
+						DataPoints:             MinMaxSumCountPoints(&inst.Descriptor, inst.Points, point0.Temporality),
+					},
+				}
 			default:
 				return nil, ErrUnimplementedAgg
 			}
@@ -147,23 +154,21 @@ func HistogramPoints(desc *sdkinstrument.Descriptor, points []data.Point) []*met
 	results := make([]*metricspb.ExponentialHistogramDataPoint, len(points))
 	for i, pt := range points {
 		hist := pt.Aggregation.(aggregation.Histogram)
+		// Note: We assume that inputs are non-negative by the
+		// OTel API contract; If inputs are negative, we're
+		// supposed to drop the sum.
+		sum := hist.Sum().CoerceToFloat64(desc.NumberKind)
+
 		results[i] = &metricspb.ExponentialHistogramDataPoint{
 			Attributes:        Attributes(pt.Attributes),
 			StartTimeUnixNano: toNanos(pt.Start),
 			TimeUnixNano:      toNanos(pt.End),
 			Count:             hist.Count(),
-			Sum:               hist.Sum().CoerceToFloat64(desc.NumberKind),
+			Sum:               &sum,
 			ZeroCount:         hist.ZeroCount(),
 			Scale:             hist.Scale(),
-
-			// Note: There's an obvious contradiction
-			// here: the OTel API specifies that negative
-			// values are not allowed, but the protocol
-			// has it and the aggregator implements
-			// it. We're waiting for histogram support to
-			// be extended to
-			Positive: HistogramBuckets(hist.Positive()),
-			Negative: HistogramBuckets(hist.Negative()),
+			Positive:          HistogramBuckets(hist.Positive()),
+			Negative:          HistogramBuckets(hist.Negative()),
 		}
 	}
 	return results
@@ -181,4 +186,36 @@ func HistogramBuckets(b aggregation.Buckets) *metricspb.ExponentialHistogramData
 		result.BucketCounts[i] = b.At(uint32(i))
 	}
 	return result
+}
+
+func float64Ptr(x float64) *float64 {
+	return &x
+}
+
+func MinMaxSumCountPoints(desc *sdkinstrument.Descriptor, points []data.Point, tempo aggregation.Temporality) []*metricspb.HistogramDataPoint {
+	results := make([]*metricspb.HistogramDataPoint, len(points))
+	for i, pt := range points {
+		mmsc := pt.Aggregation.(aggregation.MinMaxSumCount)
+
+		// See note about optional sum at top of minmaxsumcount.go
+		sum := mmsc.Sum().CoerceToFloat64(desc.NumberKind)
+
+		var min, max *float64
+
+		if mmsc.Count() != 0 {
+			min = float64Ptr(mmsc.Min().CoerceToFloat64(desc.NumberKind))
+			max = float64Ptr(mmsc.Max().CoerceToFloat64(desc.NumberKind))
+		}
+
+		results[i] = &metricspb.HistogramDataPoint{
+			Attributes:        Attributes(pt.Attributes),
+			StartTimeUnixNano: toNanos(pt.Start),
+			TimeUnixNano:      toNanos(pt.End),
+			Count:             mmsc.Count(),
+			Sum:               &sum,
+			Min:               min,
+			Max:               max,
+		}
+	}
+	return results
 }

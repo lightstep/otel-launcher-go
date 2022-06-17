@@ -23,6 +23,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/minmaxsumcount"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/otlptest"
@@ -274,6 +275,78 @@ func TestMetricTransform(t *testing.T) {
 				// Note: there is no attempt to avoid a scope w/ 0 instruments
 				otlptest.ScopeMetrics(
 					expectScope0,
+				),
+			),
+		},
+		// minmaxsumcount w/ ints
+		{
+			input: test.Metrics(
+				testResource1,
+				test.Scope(
+					testScope0,
+					test.Instrument(
+						testInt64(),
+						test.Point(
+							startTime,
+							endTime,
+							minmaxsumcount.NewInt64(3, 2, 4, 1, 5),
+							testCumulative,
+							testAttrs1...,
+						),
+					),
+				),
+			),
+			encoded: otlptest.ResourceMetrics(
+				expectResource1,
+				noSchema,
+				otlptest.ScopeMetrics(
+					expectScope0,
+					otlptest.MinMaxSumCount(
+						testName,
+						testDesc,
+						testUnit,
+						expectCumulative,
+						otlptest.MinMaxSumCountDataPoint(
+							expectAttrs1, startTime, endTime,
+							15, 5, 1, 5,
+						),
+					),
+				),
+			),
+		},
+		// minmaxsumcount empty with no min/max
+		{
+			input: test.Metrics(
+				testResource1,
+				test.Scope(
+					testScope0,
+					test.Instrument(
+						testInt64(),
+						test.Point(
+							startTime,
+							endTime,
+							minmaxsumcount.NewInt64(),
+							testDelta,
+							testAttrs1...,
+						),
+					),
+				),
+			),
+			encoded: otlptest.ResourceMetrics(
+				expectResource1,
+				noSchema,
+				otlptest.ScopeMetrics(
+					expectScope0,
+					otlptest.MinMaxSumCount(
+						testName,
+						testDesc,
+						testUnit,
+						expectDelta,
+						otlptest.MinMaxSumCountDataPoint(
+							expectAttrs1, startTime, endTime,
+							0, 0, 0, 0,
+						),
+					),
 				),
 			),
 		},
