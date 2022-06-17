@@ -15,6 +15,7 @@
 package otlptest
 
 import (
+	"math"
 	"time"
 
 	collectorpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
@@ -185,8 +186,10 @@ func MinMaxSumCountDataPoint(attributes []*commonpb.KeyValue, start, end time.Ti
 		Sum:               &sum,
 		Count:             count,
 	}
-	if count != 0 {
+	if !math.IsNaN(min) {
 		dp.Min = &min
+	}
+	if !math.IsNaN(max) {
 		dp.Max = &max
 	}
 	return dp

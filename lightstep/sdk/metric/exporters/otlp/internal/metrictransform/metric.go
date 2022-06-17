@@ -208,16 +208,18 @@ func MinMaxSumCountPoints(desc *sdkinstrument.Descriptor, points []data.Point, t
 			min = float64Ptr(mmsc.Min().CoerceToFloat64(desc.NumberKind))
 			max = float64Ptr(mmsc.Max().CoerceToFloat64(desc.NumberKind))
 		}
-
-		results[i] = &metricspb.HistogramDataPoint{
+		pt := &metricspb.HistogramDataPoint{
 			Attributes:        Attributes(pt.Attributes),
 			StartTimeUnixNano: toNanos(pt.Start),
 			TimeUnixNano:      toNanos(pt.End),
 			Count:             mmsc.Count(),
 			Sum:               &sum,
-			Min:               min,
-			Max:               max,
 		}
+		if tempo == aggregation.DeltaTemporality {
+			pt.Min = min
+			pt.Max = max
+		}
+		results[i] = pt
 	}
 	return results
 }
