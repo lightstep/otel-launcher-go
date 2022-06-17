@@ -17,6 +17,8 @@
 package aggregation // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 
 import (
+	"strings"
+
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 )
@@ -137,3 +139,37 @@ func (k Kind) Category(ik sdkinstrument.Kind) Category {
 
 // KindSelector is a per-instrument-kind Kind choice.
 type KindSelector func(sdkinstrument.Kind) Kind
+
+// Valid returns true when the value is one of the enumerated
+// constants.
+func (k Kind) Valid() bool {
+	switch k {
+	case UndefinedKind, DropKind, AnySumKind,
+		MonotonicSumKind, NonMonotonicSumKind,
+		GaugeKind, HistogramKind, MinMaxSumCountKind:
+		return true
+	}
+	return false
+}
+
+// ParseKind returns the enumerated constant and true if the string
+// corresponds with a known aggregation kind.
+func ParseKind(str string) (Kind, bool) {
+	switch strings.ToLower(str) {
+	case "drop":
+		return DropKind, true
+	case "sum":
+		return AnySumKind, true
+	case "monotonic_sum":
+		return MonotonicSumKind, true
+	case "nonmonotonic_sum":
+		return NonMonotonicSumKind, true
+	case "gauge":
+		return GaugeKind, true
+	case "histogram", "exponential_histogram":
+		return HistogramKind, true
+	case "minmaxsumcount":
+		return MinMaxSumCountKind, true
+	}
+	return UndefinedKind, false
+}

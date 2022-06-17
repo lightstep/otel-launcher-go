@@ -98,6 +98,8 @@ func Metrics(metrics data.Metrics) (*metricspb.ResourceMetrics, error) {
 				}
 			case aggregation.GaugeKind:
 				mm.Data = &metricspb.Metric_Gauge{
+					// Note: Should the StartTimeUnixNano field be stripped from these points?
+					// The data model says so, the SDK spec does not.
 					Gauge: &metricspb.Gauge{
 						DataPoints: NumberPoints(&inst.Descriptor, inst.Points, gaugeToValue),
 					},

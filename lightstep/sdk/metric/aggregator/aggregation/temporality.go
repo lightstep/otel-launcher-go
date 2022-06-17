@@ -49,3 +49,11 @@ func (DeltaTemporalityTrait) Temporality() Temporality {
 func (CumulativeTemporalityTrait) Temporality() Temporality {
 	return CumulativeTemporality
 }
+
+func (t Temporality) Valid() bool {
+	switch t {
+	case UndefinedTemporality, DeltaTemporality, CumulativeTemporality:
+		return true
+	}
+	return false
+}

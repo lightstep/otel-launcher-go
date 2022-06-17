@@ -1231,3 +1231,140 @@ func TestDeltaTemporalityMinMaxSumCount(t *testing.T) {
 		),
 	)
 }
+
+func TestViewHints(t *testing.T) {
+	views := view.New("test")
+	vc := New(testLib, views)
+	otelErrs := test.OTelErrors()
+
+	histo, err := testCompile(
+		vc,
+		"histo",
+		sdkinstrument.SyncCounter, // counter->small histogram
+		number.Float64Kind,
+		instrument.WithDescription(`{
+  "aggregation": "histogram",
+  "config": {
+    "histogram": {
+      "max_size": 3
+    }
+  }
+}`))
+	require.NoError(t, err)
+
+	mmsc, err := testCompile(
+		vc,
+		"mmsc",
+		sdkinstrument.SyncHistogram, // histogram->minmaxsumcount
+		number.Float64Kind,
+		instrument.WithDescription(`{
+  "description": "heyyy",
+  "aggregation": "minmaxsumcount"
+}`))
+	require.NoError(t, err)
+
+	gg, err := testCompile(
+		vc,
+		"gauge",
+		sdkinstrument.SyncUpDownCounter, // updowncounter->gauge
+		number.Float64Kind,
+		instrument.WithDescription(`{
+  "description": "check it",
+  "aggregation": "gauge"
+}`))
+	require.NoError(t, err)
+
+	set := attribute.NewSet(attribute.String("test", "attr"))
+	seq := testSequence
+	inputs := []float64{1, 2, 3, 4, 5, 6, 7, 8}
+	sum := 0.0
+	numInputs := len(inputs)
+	for _, inp := range inputs {
+		sum += inp
+	}
+
+	for _, acc := range []Accumulator{
+		histo.NewAccumulator(set),
+		mmsc.NewAccumulator(set),
+		gg.NewAccumulator(set),
+	} {
+		for _, inp := range inputs {
+			acc.(Updater[float64]).Update(inp)
+		}
+		acc.SnapshotAndProcess(false)
+	}
+
+	test.RequireEqualMetrics(t, testCollectSequence(t, vc, seq),
+		test.Instrument(
+			test.Descriptor("histo", sdkinstrument.SyncCounter, number.Float64Kind),
+			test.Point(seq.Start, seq.Now, histogram.NewFloat64(aggregator.HistogramConfig{
+				MaxSize: 3,
+			}, inputs...), cumulative, set.ToSlice()...),
+		),
+		test.Instrument(
+			test.Descriptor("mmsc", sdkinstrument.SyncHistogram, number.Float64Kind, instrument.WithDescription("heyyy")),
+			test.Point(seq.Start, seq.Now, minmaxsumcount.NewFloat64(inputs...), cumulative, set.ToSlice()...),
+		),
+		test.Instrument(
+			test.Descriptor("gauge", sdkinstrument.SyncUpDownCounter, number.Float64Kind, instrument.WithDescription("check it")),
+			test.Point(seq.Start, seq.Now, gauge.NewFloat64(inputs[numInputs-1]), cumulative, set.ToSlice()...),
+		),
+	)
+
+	require.Nil(t, *otelErrs)
+}
+
+func TestViewHintErrors(t *testing.T) {
+	views := view.New("test")
+	vc := New(testLib, views)
+	otelErrs := test.OTelErrors()
+
+	_, err := testCompile(
+		vc,
+		"extra_comma",
+		sdkinstrument.SyncCounter,
+		number.Float64Kind,
+		instrument.WithDescription(`{
+  "aggregation": "histogram",
+}`))
+	require.NoError(t, err)
+
+	_, err = testCompile(
+		vc,
+		"accidental_json_parse",
+		sdkinstrument.SyncHistogram,
+		number.Float64Kind,
+		instrument.WithDescription("accidental { parse"))
+	require.NoError(t, err)
+
+	_, err = testCompile(
+		vc,
+		"invalid_aggregation",
+		sdkinstrument.SyncUpDownCounter,
+		number.Float64Kind,
+		instrument.WithDescription(`{
+  "aggregation": "cardinality"
+}`))
+	require.NoError(t, err)
+
+	_, err = testCompile(
+		vc,
+		"bad_max_size",
+		sdkinstrument.SyncCounter,
+		number.Float64Kind,
+		instrument.WithDescription(`{
+  "aggregation": "histogram",
+  "config": {
+    "histogram": {
+      "max_size": -3
+    }
+  }
+}`))
+	require.NoError(t, err)
+
+	require.Equal(t, 4, len(*otelErrs))
+	require.Contains(t, (*otelErrs)[0].Error(), "invalid character")
+	require.Contains(t, (*otelErrs)[1].Error(), "looking for beginning")
+	require.Contains(t, (*otelErrs)[2].Error(), "invalid aggregation")
+	require.Contains(t, (*otelErrs)[3].Error(), "invalid aggregator config")
+}
