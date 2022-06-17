@@ -1368,3 +1368,59 @@ func TestViewHintErrors(t *testing.T) {
 	require.Contains(t, (*otelErrs)[2].Error(), "invalid aggregation")
 	require.Contains(t, (*otelErrs)[3].Error(), "invalid aggregator config")
 }
+
+func TestViewHintNoOverrideEmpty(t *testing.T) {
+	views := view.New("test",
+		view.WithDefaultAggregationConfigSelector(
+			func(_ sdkinstrument.Kind) (int64Config, float64Config aggregator.Config) {
+				cfg := aggregator.Config{
+					Histogram: aggregator.HistogramConfig{
+						MaxSize: 127,
+					},
+				}
+				return cfg, cfg
+			},
+		),
+	)
+	vc := New(testLib, views)
+	otelErrs := test.OTelErrors()
+
+	inst, err := testCompile(
+		vc,
+		"histo",
+		sdkinstrument.SyncCounter,
+		// sdkinstrument.SyncHistogram,
+		number.Float64Kind,
+		instrument.WithDescription(`{
+  "aggregation": "histogram"
+}`),
+	)
+	// note empty config
+	require.NoError(t, err)
+	require.Nil(t, *otelErrs, "see %v", *otelErrs)
+
+	seq := testSequence
+	set := attribute.NewSet(attribute.String("test", "attr"))
+	acc := inst.NewAccumulator(set)
+	acc.(Updater[float64]).Update(1)
+	acc.SnapshotAndProcess(false)
+
+	test.RequireEqualMetrics(t, testCollectSequence(t, vc, seq),
+		test.Instrument(
+			test.Descriptor(
+				"histo",
+				sdkinstrument.SyncCounter,
+				// sdkinstrument.SyncHistogram,
+				number.Float64Kind,
+			),
+			test.Point(
+				seq.Start,
+				seq.Now,
+				histogram.NewFloat64(aggregator.HistogramConfig{
+					MaxSize: 127,
+				}, 1),
+				cumulative,
+				set.ToSlice()...),
+		),
+	)
+}

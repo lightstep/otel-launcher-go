@@ -198,7 +198,6 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 	akind = v.views.Defaults.Aggregation(instrument.Kind)
 	acfg = viewAggConfig(
 		&v.views.Defaults,
-		akind,
 		instrument.Kind,
 		instrument.NumberKind,
 		aggregator.Config{},
@@ -232,10 +231,12 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 		}
 	}
 
-	if hint.Config.Valid() {
-		acfg = hint.Config
-	} else {
-		otel.Handle(fmt.Errorf("hint invalid aggregator config: %v", hint.Config))
+	if hint.Config != (aggregator.Config{}) {
+		if hint.Config.Valid() {
+			acfg = hint.Config
+		} else {
+			otel.Handle(fmt.Errorf("hint invalid aggregator config: %v", hint.Config))
+		}
 	}
 
 	return instrument, akind, acfg, hinted
@@ -268,7 +269,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 			fromName: instrument.Name,
 			desc:     viewDescriptor(instrument, view),
 			kind:     akind,
-			acfg:     viewAggConfig(&v.views.Defaults, akind, instrument.Kind, instrument.NumberKind, view.AggregatorConfig()),
+			acfg:     viewAggConfig(&v.views.Defaults, instrument.Kind, instrument.NumberKind, view.AggregatorConfig()),
 			tempo:    v.views.Defaults.Temporality(instrument.Kind),
 		}
 
@@ -593,10 +594,7 @@ func equalConfigs(a, b aggregator.Config) bool {
 }
 
 // viewAggConfig returns the aggregator configuration prescribed by a view clause.
-func viewAggConfig(r *view.DefaultConfig, ak aggregation.Kind, ik sdkinstrument.Kind, nk number.Kind, vcfg aggregator.Config) aggregator.Config {
-	if ak != aggregation.HistogramKind {
-		return aggregator.Config{}
-	}
+func viewAggConfig(r *view.DefaultConfig, ik sdkinstrument.Kind, nk number.Kind, vcfg aggregator.Config) aggregator.Config {
 	if vcfg != (aggregator.Config{}) {
 		return vcfg
 	}
