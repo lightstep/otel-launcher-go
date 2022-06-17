@@ -26,9 +26,11 @@ type Hint struct {
 	// this Hint from the Description.
 	Description string `json:"description"`
 
-	// Aggregation
+	// Aggregation determines the kind of aggregator used.  When
+	// this is set, semantic compatibility checking is bypassed.
 	Aggregation string `json:"aggregation"`
 
-	// Config
+	// Config configures the aggregator selected in the
+	// Aggregation field.
 	Config aggregator.Config `json:"config"`
 }
