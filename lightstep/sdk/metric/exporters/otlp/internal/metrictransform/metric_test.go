@@ -167,7 +167,7 @@ func TestMetricTransform(t *testing.T) {
 					testScope0,
 					test.Instrument(
 						testInt64(),
-						test.Point(noTime, endTime, gauge.NewInt64(5), testDontCare, testAttrs0...),
+						test.Point(startTime, endTime, gauge.NewInt64(5), testDontCare, testAttrs0...),
 					),
 				),
 			),

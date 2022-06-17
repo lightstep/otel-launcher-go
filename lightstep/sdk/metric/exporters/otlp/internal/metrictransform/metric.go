@@ -97,11 +97,14 @@ func Metrics(metrics data.Metrics) (*metricspb.ResourceMetrics, error) {
 					},
 				}
 			case aggregation.GaugeKind:
+				pts := NumberPoints(&inst.Descriptor, inst.Points, gaugeToValue)
+				// Note: Gauge start time documented as optional.  Leave it off.
+				for _, np := range pts {
+					np.StartTimeUnixNano = 0
+				}
 				mm.Data = &metricspb.Metric_Gauge{
-					// Note: Should the StartTimeUnixNano field be stripped from these points?
-					// The data model says so, the SDK spec does not.
 					Gauge: &metricspb.Gauge{
-						DataPoints: NumberPoints(&inst.Descriptor, inst.Points, gaugeToValue),
+						DataPoints: pts,
 					},
 				}
 			case aggregation.MinMaxSumCountKind:
