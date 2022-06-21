@@ -25,6 +25,7 @@ import (
 func StandardAggregationKind(ik sdkinstrument.Kind) aggregation.Kind {
 	switch ik {
 	case sdkinstrument.SyncHistogram:
+		// Note: the default is Exponential Histogram, not MinMaxSumCount.
 		return aggregation.HistogramKind
 	case sdkinstrument.AsyncGauge:
 		return aggregation.GaugeKind

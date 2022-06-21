@@ -97,9 +97,14 @@ func Metrics(metrics data.Metrics) (*metricspb.ResourceMetrics, error) {
 					},
 				}
 			case aggregation.GaugeKind:
+				pts := NumberPoints(&inst.Descriptor, inst.Points, gaugeToValue)
+				// Note: Gauge start time documented as optional.  Leave it off.
+				for _, np := range pts {
+					np.StartTimeUnixNano = 0
+				}
 				mm.Data = &metricspb.Metric_Gauge{
 					Gauge: &metricspb.Gauge{
-						DataPoints: NumberPoints(&inst.Descriptor, inst.Points, gaugeToValue),
+						DataPoints: pts,
 					},
 				}
 			case aggregation.MinMaxSumCountKind:
@@ -206,16 +211,18 @@ func MinMaxSumCountPoints(desc *sdkinstrument.Descriptor, points []data.Point, t
 			min = float64Ptr(mmsc.Min().CoerceToFloat64(desc.NumberKind))
 			max = float64Ptr(mmsc.Max().CoerceToFloat64(desc.NumberKind))
 		}
-
-		results[i] = &metricspb.HistogramDataPoint{
+		pt := &metricspb.HistogramDataPoint{
 			Attributes:        Attributes(pt.Attributes),
 			StartTimeUnixNano: toNanos(pt.Start),
 			TimeUnixNano:      toNanos(pt.End),
 			Count:             mmsc.Count(),
 			Sum:               &sum,
-			Min:               min,
-			Max:               max,
 		}
+		if tempo == aggregation.DeltaTemporality {
+			pt.Min = min
+			pt.Max = max
+		}
+		results[i] = pt
 	}
 	return results
 }

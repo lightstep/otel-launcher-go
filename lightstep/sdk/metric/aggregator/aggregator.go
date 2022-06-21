@@ -59,12 +59,19 @@ func RangeTest[N number.Any, Traits number.Traits[N]](num N, kind sdkinstrument.
 	return true
 }
 
+// HistogramConfig configures the exponential histogram.
 type HistogramConfig struct {
-	MaxSize int32
+	MaxSize int32 `json:"max_size"`
 }
 
+// Config supports the configuration for all aggregators in a single struct.
 type Config struct {
-	Histogram HistogramConfig
+	Histogram HistogramConfig `json:"histogram"`
+}
+
+// Valid returns true for valid configurations.
+func (c Config) Valid() bool {
+	return c.Histogram.MaxSize == 0 || c.Histogram.MaxSize >= 2
 }
 
 // Methods implements a specific aggregation behavior for a specific

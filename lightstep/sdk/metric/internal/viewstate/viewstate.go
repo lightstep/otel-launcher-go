@@ -15,6 +15,9 @@
 package viewstate // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 
 import (
+	"encoding/json"
+	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
@@ -27,6 +30,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
@@ -163,6 +167,12 @@ type singleBehavior struct {
 
 	// keysFilter (if non-nil) is the constructed keys filter.
 	keysFilter *attribute.Filter
+
+	// hinted is true when the aggregation was set
+	// programmatically via a hint. this bypasses semantic
+	// compatibility checking and allows hints to create a
+	// synchronous gauge instrument, for example.
+	hinted bool
 }
 
 // New returns a compiler for library given configured views.
@@ -178,6 +188,58 @@ func (v *Compiler) Collectors() []data.Collector {
 	v.compilerLock.Lock()
 	defer v.compilerLock.Unlock()
 	return v.collectors
+}
+
+// tryToApplyHint looks for a Lightstep-specified hint structure
+// encoded as JSON in the description.  If valid, returns the modified
+// configuration, otherwise returns the default for the instrument.
+func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkinstrument.Descriptor, akind aggregation.Kind, acfg aggregator.Config, hinted bool) {
+	// These are the default behaviors, we'll use them unless there's a valid hint.
+	akind = v.views.Defaults.Aggregation(instrument.Kind)
+	acfg = viewAggConfig(
+		&v.views.Defaults,
+		instrument.Kind,
+		instrument.NumberKind,
+		aggregator.Config{},
+	)
+
+	// Check for required JSON symbols, empty strings, ...
+	if strings.Index(instrument.Description, "{") < 0 {
+		return instrument, akind, acfg, hinted
+	}
+
+	var hint view.Hint
+	if err := json.Unmarshal([]byte(instrument.Description), &hint); err != nil {
+		// This could be noisy if valid descriptions contain spurious '{' chars.
+		otel.Handle(fmt.Errorf("hint parse error: %w", err))
+		return instrument, akind, acfg, hinted
+	}
+
+	// Replace the hint input with its embedded description.
+	instrument.Description = hint.Description
+
+	// Bypass semantic compatibility check.
+	hinted = true
+
+	// Potentially set the aggregation kind and aggregator config.
+	if hint.Aggregation != "" {
+		parseKind, ok := aggregation.ParseKind(hint.Aggregation)
+		if !ok {
+			otel.Handle(fmt.Errorf("hint invalid aggregation: %v", hint.Aggregation))
+		} else if parseKind != aggregation.UndefinedKind {
+			akind = parseKind
+		}
+	}
+
+	if hint.Config != (aggregator.Config{}) {
+		if hint.Config.Valid() {
+			acfg = hint.Config
+		} else {
+			otel.Handle(fmt.Errorf("hint invalid aggregator config: %v", hint.Config))
+		}
+	}
+
+	return instrument, akind, acfg, hinted
 }
 
 // Compile is called during NewInstrument by the Meter
@@ -207,7 +269,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 			fromName: instrument.Name,
 			desc:     viewDescriptor(instrument, view),
 			kind:     akind,
-			acfg:     viewAggConfig(&v.views.Defaults, akind, instrument.Kind, instrument.NumberKind, view.AggregatorConfig()),
+			acfg:     viewAggConfig(&v.views.Defaults, instrument.Kind, instrument.NumberKind, view.AggregatorConfig()),
 			tempo:    v.views.Defaults.Temporality(instrument.Kind),
 		}
 
@@ -221,14 +283,17 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 
 	// If there were no matching views, set the default aggregation.
 	if len(matches) == 0 {
-		akind := v.views.Defaults.Aggregation(instrument.Kind)
+		modified, akind, acfg, hinted := v.tryToApplyHint(instrument)
+		instrument = modified // the hint erases itself from the description
+
 		if akind != aggregation.DropKind {
 			behaviors = append(behaviors, singleBehavior{
 				fromName: instrument.Name,
 				desc:     instrument,
 				kind:     akind,
-				acfg:     viewAggConfig(&v.views.Defaults, akind, instrument.Kind, instrument.NumberKind, aggregator.Config{}),
+				acfg:     acfg,
 				tempo:    v.views.Defaults.Temporality(instrument.Kind),
+				hinted:   hinted,
 			})
 		}
 	}
@@ -243,7 +308,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 		// the following checks semantic compatibility
 		// and if necessary fixes the aggregation kind
 		// to the default, via in place update.
-		semanticErr := checkSemanticCompatibility(instrument.Kind, &behavior.kind)
+		semanticErr := checkSemanticCompatibility(instrument.Kind, &behavior)
 
 		existingInsts := v.names[behavior.desc.Name]
 		var leaf leafInstrument
@@ -380,6 +445,13 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 			N,
 			sum.State[N, Traits, sum.NonMonotonic],
 			sum.Methods[N, Traits, sum.NonMonotonic, sum.State[N, Traits, sum.NonMonotonic]],
+		](behavior)
+	case aggregation.GaugeKind:
+		// Note: off-spec synchronous gauge support
+		return newSyncView[
+			N,
+			gauge.State[N, Traits],
+			gauge.Methods[N, Traits, gauge.State[N, Traits]],
 		](behavior)
 	default:
 		fallthrough
@@ -522,10 +594,7 @@ func equalConfigs(a, b aggregator.Config) bool {
 }
 
 // viewAggConfig returns the aggregator configuration prescribed by a view clause.
-func viewAggConfig(r *view.DefaultConfig, ak aggregation.Kind, ik sdkinstrument.Kind, nk number.Kind, vcfg aggregator.Config) aggregator.Config {
-	if ak != aggregation.HistogramKind {
-		return aggregator.Config{}
-	}
+func viewAggConfig(r *view.DefaultConfig, ik sdkinstrument.Kind, nk number.Kind, vcfg aggregator.Config) aggregator.Config {
 	if vcfg != (aggregator.Config{}) {
 		return vcfg
 	}
@@ -534,8 +603,13 @@ func viewAggConfig(r *view.DefaultConfig, ak aggregation.Kind, ik sdkinstrument.
 
 // checkSemanticCompatibility checks whether an instrument /
 // aggregator pairing is well defined.
-func checkSemanticCompatibility(ik sdkinstrument.Kind, aggPtr *aggregation.Kind) error {
-	agg := *aggPtr
+func checkSemanticCompatibility(ik sdkinstrument.Kind, behavior *singleBehavior) error {
+	if behavior.hinted {
+		// Anything goes!
+		return nil
+	}
+
+	agg := behavior.kind
 	cat := agg.Category(ik)
 
 	if agg == aggregation.AnySumKind {
@@ -547,7 +621,7 @@ func checkSemanticCompatibility(ik sdkinstrument.Kind, aggPtr *aggregation.Kind)
 		default:
 			agg = aggregation.UndefinedKind
 		}
-		*aggPtr = agg
+		behavior.kind = agg
 	}
 
 	switch ik {
@@ -576,7 +650,7 @@ func checkSemanticCompatibility(ik sdkinstrument.Kind, aggPtr *aggregation.Kind)
 		}
 	}
 
-	*aggPtr = view.StandardAggregationKind(ik)
+	behavior.kind = view.StandardAggregationKind(ik)
 	return SemanticError{
 		Instrument:  ik,
 		Aggregation: agg,

@@ -42,15 +42,7 @@ func New(name string, opts ...Option) *Views {
 }
 
 func checkAggregation(err error, agg *aggregation.Kind, def aggregation.Kind) error {
-	switch *agg {
-	case aggregation.UndefinedKind,
-		aggregation.DropKind,
-		aggregation.AnySumKind,
-		aggregation.MonotonicSumKind,
-		aggregation.NonMonotonicSumKind,
-		aggregation.GaugeKind,
-		aggregation.HistogramKind:
-	default:
+	if !agg.Valid() {
 		err = multierr.Append(err, fmt.Errorf("invalid aggregation: %v", *agg))
 		*agg = def
 	}
@@ -58,11 +50,7 @@ func checkAggregation(err error, agg *aggregation.Kind, def aggregation.Kind) er
 }
 
 func checkTemporality(err error, tempo *aggregation.Temporality, def aggregation.Temporality) error {
-	switch *tempo {
-	case aggregation.UndefinedTemporality,
-		aggregation.DeltaTemporality,
-		aggregation.CumulativeTemporality:
-	default:
+	if !tempo.Valid() {
 		err = multierr.Append(err, fmt.Errorf("invalid temporality: %v", *tempo))
 		*tempo = def
 	}
@@ -70,7 +58,7 @@ func checkTemporality(err error, tempo *aggregation.Temporality, def aggregation
 }
 
 func checkAggConfig(err error, acfg *aggregator.Config) error {
-	if acfg.Histogram.MaxSize != 0 && acfg.Histogram.MaxSize < 2 {
+	if !acfg.Valid() {
 		err = multierr.Append(err, fmt.Errorf("invalid histogram size: %v", acfg.Histogram.MaxSize))
 		acfg.Histogram.MaxSize = histogram.DefaultMaxSize
 	}

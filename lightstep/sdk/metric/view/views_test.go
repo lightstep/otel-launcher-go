@@ -15,6 +15,7 @@
 package view
 
 import (
+	"encoding/json"
 	"regexp"
 	"testing"
 
@@ -244,4 +245,26 @@ func TestInvalidViewDefaults(t *testing.T) {
 	require.Contains(t, err.Error(), "invalid temporality")
 	require.Contains(t, err.Error(), "invalid aggregation")
 	require.Contains(t, err.Error(), "invalid histogram size")
+}
+
+func TestHintEncoding(t *testing.T) {
+	var hint Hint
+
+	require.NoError(t, json.Unmarshal([]byte(`{
+  "description": "lala",
+  "aggregation": "lolo",
+  "config": {
+    "histogram": {
+      "max_size": 199
+    }
+  }
+}`), &hint))
+	require.Equal(t, Hint{
+		Description: "lala",
+		Aggregation: "lolo",
+		Config: aggregator.Config{
+			Histogram: aggregator.HistogramConfig{
+				MaxSize: 199,
+			},
+		}}, hint)
 }
