@@ -395,7 +395,6 @@ func ConfigureOpentelemetry(opts ...Option) Launcher {
 	err := validateConfiguration(c)
 	if err != nil {
 		c.logger.Fatalf("configuration error: %v", err)
-		return ls // Note: I testing, Fatalf() is not fatal.
 	}
 
 	if c.errorHandler != nil {
