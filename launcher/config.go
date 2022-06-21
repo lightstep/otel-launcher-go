@@ -388,17 +388,18 @@ func ConfigureOpentelemetry(opts ...Option) Launcher {
 		c.Headers[lightstepAccessTokenHeader] = token
 	}
 
+	ls := Launcher{
+		config: c,
+	}
+
 	err := validateConfiguration(c)
 	if err != nil {
 		c.logger.Fatalf("configuration error: %v", err)
+		return ls // Note: I testing, Fatalf() is not fatal.
 	}
 
 	if c.errorHandler != nil {
 		otel.SetErrorHandler(c.errorHandler)
-	}
-
-	ls := Launcher{
-		config: c,
 	}
 
 	for _, setup := range []setupFunc{setupTracing, setupMetrics} {

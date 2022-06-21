@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/lightstep/otel-launcher-go/pipelines/test"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -46,7 +47,7 @@ func (logger *testLogger) addOutput(output string) {
 }
 
 func (logger *testLogger) Fatalf(format string, v ...interface{}) {
-	logger.addOutput(fmt.Sprintf(format, v...))
+	logger.addOutput(fmt.Sprintf("TESTfatal: "+format, v...))
 }
 
 func (logger *testLogger) Debugf(format string, v ...interface{}) {
@@ -89,8 +90,12 @@ func fakeAccessToken() string {
 	return strings.Repeat("1", 32)
 }
 
+func newTestLogger(t *testing.T) *testLogger {
+	return &testLogger{}
+}
+
 func TestInvalidServiceName(t *testing.T) {
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	lsOtel := ConfigureOpentelemetry(WithLogger(logger))
 	defer lsOtel.Shutdown()
 
@@ -99,7 +104,7 @@ func TestInvalidServiceName(t *testing.T) {
 }
 
 func testInvalidMissingAccessToken(t *testing.T, opts ...Option) {
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	lsOtel := ConfigureOpentelemetry(
 		append(opts,
 			WithLogger(logger),
@@ -134,7 +139,7 @@ func TestInvalidMetricDefaultAccessToken(t *testing.T) {
 }
 
 func testInvalidAccessToken(t *testing.T, opts ...Option) {
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	lsOtel := ConfigureOpentelemetry(
 		append(opts,
 			WithLogger(logger),
@@ -162,7 +167,7 @@ func TestInvalidMetricAccessTokenLength(t *testing.T) {
 }
 
 func testEndpointDisabled(t *testing.T, expected string, opts ...Option) {
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	lsOtel := ConfigureOpentelemetry(
 		append(opts,
 			WithLogger(logger),
@@ -195,13 +200,15 @@ func TestMetricEndpointDisabled(t *testing.T) {
 }
 
 func TestValidConfig(t *testing.T) {
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
 		WithAccessToken(fakeAccessToken()),
 		WithErrorHandler(&testErrorHandler{}),
 	)
+	testServer := test.NewServer(t)
+	defer testServer.Stop()
 	defer lsOtel.Shutdown()
 
 	logger.reset()
@@ -209,8 +216,10 @@ func TestValidConfig(t *testing.T) {
 	lsOtel = ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
-		WithMetricExporterEndpoint("localhost:443"),
-		WithSpanExporterEndpoint("localhost:443"),
+		WithMetricExporterEndpoint(fmt.Sprintf(":%d", testServer.InsecureMetricsPort)),
+		WithSpanExporterEndpoint(fmt.Sprintf(":%d", testServer.InsecureTracePort)),
+		WithSpanExporterInsecure(true),
+		WithMetricExporterInsecure(true),
 	)
 	defer lsOtel.Shutdown()
 
@@ -222,7 +231,7 @@ func TestValidConfig(t *testing.T) {
 func TestInvalidEnvironment(t *testing.T) {
 	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_INSECURE", "bleargh")
 
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
@@ -236,7 +245,7 @@ func TestInvalidEnvironment(t *testing.T) {
 func TestInvalidMetricsPushIntervalEnv(t *testing.T) {
 	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_PERIOD", "300million")
 
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
@@ -250,7 +259,7 @@ func TestInvalidMetricsPushIntervalEnv(t *testing.T) {
 }
 
 func TestInvalidMetricsPushIntervalConfig(t *testing.T) {
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
@@ -265,7 +274,7 @@ func TestInvalidMetricsPushIntervalConfig(t *testing.T) {
 }
 
 func TestDebugEnabled(t *testing.T) {
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
@@ -290,7 +299,7 @@ func TestDebugEnabled(t *testing.T) {
 }
 
 func TestDefaultConfig(t *testing.T) {
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	handler := &testErrorHandler{}
 	config := newConfig(
 		WithLogger(logger),
@@ -325,7 +334,7 @@ func TestDefaultConfig(t *testing.T) {
 
 func TestEnvironmentVariables(t *testing.T) {
 	setEnvironment()
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	handler := &testErrorHandler{}
 	config := newConfig(
 		WithLogger(logger),
@@ -362,7 +371,7 @@ func TestEnvironmentVariables(t *testing.T) {
 
 func TestConfigurationOverrides(t *testing.T) {
 	setEnvironment()
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	handler := &testErrorHandler{}
 	config := newConfig(
 		WithServiceName("override-service-name"),
@@ -433,7 +442,7 @@ func TestConfigurePropagators(t *testing.T) {
 	ctx := baggage.ContextWithBaggage(context.Background(), bag)
 
 	unsetEnvironment()
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	lsOtel := ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
@@ -464,7 +473,7 @@ func TestConfigurePropagators(t *testing.T) {
 	assert.Contains(t, carrier.Get("baggage"), "keyone=foo1")
 	assert.Greater(t, len(carrier.Get("traceparent")), 0)
 
-	logger = &testLogger{}
+	logger = newTestLogger(t)
 	lsOtel = ConfigureOpentelemetry(
 		WithLogger(logger),
 		WithServiceName("test-service"),
@@ -539,7 +548,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 
 func TestServiceNameViaResourceAttributes(t *testing.T) {
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-b")
-	logger := &testLogger{}
+	logger := newTestLogger(t)
 	lsOtel := ConfigureOpentelemetry(WithLogger(logger))
 	defer lsOtel.Shutdown()
 
