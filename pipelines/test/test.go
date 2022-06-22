@@ -180,8 +180,9 @@ func NewServer(t *testing.T) *Server {
 		return listener, port
 	}
 
+	stop := make(chan struct{})
 	server := &Server{
-		stop: make(chan struct{}),
+		stop: stop,
 	}
 	var insecureMetrics, insecureTrace net.Listener
 	var secureMetrics, secureTrace net.Listener
@@ -200,7 +201,7 @@ func NewServer(t *testing.T) *Server {
 		}()
 
 		defer grpcServer.Stop()
-		<-server.stop
+		<-stop
 	}(insecureMetrics)
 
 	go func(listener net.Listener) {
@@ -212,7 +213,7 @@ func NewServer(t *testing.T) *Server {
 		}()
 
 		defer grpcServer.Stop()
-		<-server.stop
+		<-stop
 	}(insecureTrace)
 
 	go func(listener net.Listener) {
@@ -225,7 +226,7 @@ func NewServer(t *testing.T) *Server {
 		}()
 
 		defer grpcServer.Stop()
-		<-server.stop
+		<-stop
 	}(secureMetrics)
 
 	go func(listener net.Listener) {
@@ -238,7 +239,7 @@ func NewServer(t *testing.T) *Server {
 		}()
 
 		defer grpcServer.Stop()
-		<-server.stop
+		<-stop
 	}(secureTrace)
 
 	return server
@@ -269,6 +270,8 @@ func (s *Server) MetricsMDs() []grpcMetadata.MD {
 }
 
 func (s *Server) Stop() {
+	s.lock.Lock()
+	defer s.lock.Unlock()
 	close(s.stop)
 	s.stop = nil
 }
