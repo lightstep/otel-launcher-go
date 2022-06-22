@@ -60,6 +60,10 @@ type (
 )
 
 var (
+	// The certificates and keys used in these tests expire in
+	// June 2042.  They were generated using the
+	// github.com/stripe/certstrap utility.
+
 	TestCARootCertificate = `-----BEGIN CERTIFICATE-----
 MIIE5DCCAsygAwIBAgIBATANBgkqhkiG9w0BAQsFADARMQ8wDQYDVQQDEwZUZXN0
 Q0EwIBcNMjIwNjIyMDUzNzM2WhgPMjA1MjA2MjIwNTQ3MzFaMBExDzANBgNVBAMT
@@ -166,16 +170,6 @@ func NewServer(t *testing.T) *Server {
 		ClientAuth:   tls.NoClientCert,
 		Certificates: []tls.Certificate{certificate},
 		ClientCAs:    certPool,
-
-		// MinVersion:   tls.VersionTLS12,
-		// CurvePreferences:         []tls.CurveID{tls.CurveP521, tls.CurveP384, tls.CurveP256},
-		// PreferServerCipherSuites: true,
-		// CipherSuites: []uint16{
-		// 	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-		// 	tls.TLS_ECDHE_RSA_WITH_AES_256_CBC_SHA,
-		// 	tls.TLS_RSA_WITH_AES_256_GCM_SHA384,
-		// 	tls.TLS_RSA_WITH_AES_256_CBC_SHA,
-		// },
 	}
 
 	newListener := func() (net.Listener, int) {
