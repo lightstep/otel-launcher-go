@@ -14,7 +14,12 @@
 
 package pipelines
 
-import "go.opentelemetry.io/otel/sdk/resource"
+import (
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+	"google.golang.org/grpc/credentials"
+)
 
 type PipelineConfig struct {
 	Endpoint        string
@@ -23,6 +28,29 @@ type PipelineConfig struct {
 	Resource        *resource.Resource
 	ReportingPeriod string
 	Propagators     []string
+	Credentials     credentials.TransportCredentials
 }
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)
+
+func (p PipelineConfig) secureMetricOption() otlpmetricgrpc.Option {
+	if p.Insecure {
+		return otlpmetricgrpc.WithInsecure()
+	} else if p.Credentials != nil {
+		return otlpmetricgrpc.WithTLSCredentials(p.Credentials)
+	}
+	return otlpmetricgrpc.WithTLSCredentials(
+		credentials.NewClientTLSFromCert(nil, ""),
+	)
+}
+
+func (p PipelineConfig) secureTraceOption() otlptracegrpc.Option {
+	if p.Insecure {
+		return otlptracegrpc.WithInsecure()
+	} else if p.Credentials != nil {
+		return otlptracegrpc.WithTLSCredentials(p.Credentials)
+	}
+	return otlptracegrpc.WithTLSCredentials(
+		credentials.NewClientTLSFromCert(nil, ""),
+	)
+}
