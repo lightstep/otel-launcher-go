@@ -146,10 +146,14 @@ func (mp *MeterProvider) ForceFlush(ctx context.Context) error {
 func (mp *MeterProvider) Shutdown(ctx context.Context) error {
 	var err error
 
+	// Note that the readers will call getOrdered(), so take the
+	// lock to check for previous shutdown and release.
 	mp.lock.Lock()
-	defer mp.lock.Unlock()
+	meters := mp.meters
+	mp.meters = nil
+	mp.lock.Unlock()
 
-	if mp.meters == nil {
+	if meters == nil {
 		return ErrAlreadyShutdown
 	}
 
@@ -157,7 +161,6 @@ func (mp *MeterProvider) Shutdown(ctx context.Context) error {
 		err = multierr.Append(err, r.Shutdown(ctx))
 	}
 
-	mp.meters = nil
 	return err
 }
 

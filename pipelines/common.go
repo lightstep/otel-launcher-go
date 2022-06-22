@@ -15,6 +15,10 @@
 package pipelines
 
 import (
+	"google.golang.org/grpc/credentials"
+
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -28,6 +32,35 @@ type PipelineConfig struct {
 
 	// TemporalityPreference is one of "cumulative", "delta", or "stateless"
 	TemporalityPreference string
+
+	// Credentials carries the TLS settings.
+	Credentials credentials.TransportCredentials
+
+	// UseAlternateMetricsSDK determines whether to use the metrics
+	// SDK at ../lightstep/sdk/metric.
+	UseAlternateMetricsSDK bool
 }
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)
+
+func (p PipelineConfig) secureMetricOption() otlpmetricgrpc.Option {
+	if p.Insecure {
+		return otlpmetricgrpc.WithInsecure()
+	} else if p.Credentials != nil {
+		return otlpmetricgrpc.WithTLSCredentials(p.Credentials)
+	}
+	return otlpmetricgrpc.WithTLSCredentials(
+		credentials.NewClientTLSFromCert(nil, ""),
+	)
+}
+
+func (p PipelineConfig) secureTraceOption() otlptracegrpc.Option {
+	if p.Insecure {
+		return otlptracegrpc.WithInsecure()
+	} else if p.Credentials != nil {
+		return otlptracegrpc.WithTLSCredentials(p.Credentials)
+	}
+	return otlptracegrpc.WithTLSCredentials(
+		credentials.NewClientTLSFromCert(nil, ""),
+	)
+}

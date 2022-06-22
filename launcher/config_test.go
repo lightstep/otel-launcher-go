@@ -19,10 +19,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/lightstep/otel-launcher-go/pipelines/test"
+	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
@@ -37,7 +39,61 @@ const (
 	expectedMetricsDisabledMessage  = "metrics are disabled by configuration: no endpoint set"
 )
 
+type testSuite struct {
+	suite.Suite
+
+	*test.Server
+
+	testLogger
+	testErrorHandler
+}
+
+func (suite *testSuite) SetupSuite() {
+	suite.Server = test.NewServer(suite.T())
+}
+
+func (suite *testSuite) SetupTest() {
+	suite.testLogger.reset()
+}
+
+func (suite *testSuite) bothInsecureEndpointOptions() []Option {
+	return []Option{
+		WithMetricExporterEndpoint(fmt.Sprintf(":%d", suite.Server.InsecureMetricsPort)),
+		WithSpanExporterEndpoint(fmt.Sprintf(":%d", suite.Server.InsecureTracePort)),
+		WithSpanExporterInsecure(true),
+		WithMetricExporterInsecure(true),
+	}
+}
+
+func (suite *testSuite) insecureTraceEndpointOptions() []Option {
+	return []Option{
+		WithSpanExporterEndpoint(fmt.Sprintf(":%d", suite.Server.InsecureTracePort)),
+		WithSpanExporterInsecure(true),
+	}
+}
+
+func (suite *testSuite) insecureMetricsEndpointOptions() []Option {
+	return []Option{
+		WithSpanExporterEndpoint(fmt.Sprintf(":%d", suite.Server.InsecureMetricsPort)),
+		WithSpanExporterInsecure(true),
+	}
+}
+
+func (suite *testSuite) TearDownTest() {
+	unsetEnvironment()
+	suite.testLogger.reset()
+}
+
+func (suite *testSuite) TearDownSuite() {
+	suite.Server.Stop()
+}
+
+func TestLauncherSuite(t *testing.T) {
+	suite.Run(t, new(testSuite))
+}
+
 type testLogger struct {
+	lock   sync.Mutex
 	output []string
 }
 
@@ -53,206 +109,211 @@ func (logger *testLogger) Debugf(format string, v ...interface{}) {
 	logger.addOutput(fmt.Sprintf(format, v...))
 }
 
-func (logger *testLogger) requireContains(t *testing.T, expected string) {
-	t.Helper()
-	for _, output := range logger.output {
+func (suite *testSuite) getOutput() []string {
+	suite.testLogger.lock.Lock()
+	defer suite.testLogger.lock.Unlock()
+	return suite.testLogger.output
+}
+
+func (suite *testSuite) requireLogContains(expected string) {
+	suite.T().Helper()
+
+	for _, output := range suite.getOutput() {
 		if strings.Contains(output, expected) {
 			return
 		}
 	}
 
-	t.Errorf("\nString unexpectedly not found: %v\nIn: %v", expected, logger.output)
+	suite.T().Errorf("\nString unexpectedly not found: %v\nIn: %v", expected, suite.getOutput())
 }
 
-func (logger *testLogger) requireNotContains(t *testing.T, expected string) {
-	t.Helper()
-	for _, output := range logger.output {
+func (suite *testSuite) requireLogNotContains(expected string) {
+	suite.T().Helper()
+
+	for _, output := range suite.getOutput() {
 		if strings.Contains(output, expected) {
-			t.Errorf("\nString unexpectedly found: %v\nIn: %v", expected, logger.output)
+			suite.T().Errorf("\nString unexpectedly found: %v\nIn: %v", expected, suite.getOutput())
 			return
 		}
 	}
 }
 
 func (logger *testLogger) reset() {
+	logger.lock.Lock()
+	defer logger.lock.Unlock()
 	logger.output = nil
 }
 
 type testErrorHandler struct {
+	lock sync.Mutex
+	errs []error
 }
 
 func (t *testErrorHandler) Handle(err error) {
 	fmt.Printf("test error handler handled error: %v\n", err)
+
+	t.lock.Lock()
+	defer t.lock.Unlock()
+	t.errs = append(t.errs, err)
 }
 
 func fakeAccessToken() string {
 	return strings.Repeat("1", 32)
 }
 
-func TestInvalidServiceName(t *testing.T) {
-	logger := &testLogger{}
-	lsOtel := ConfigureOpentelemetry(WithLogger(logger))
+func (suite *testSuite) TestInvalidServiceName() {
+	lsOtel := ConfigureOpentelemetry(WithLogger(&suite.testLogger))
 	defer lsOtel.Shutdown()
 
 	expected := "invalid configuration: service name missing"
-	logger.requireContains(t, expected)
+	suite.requireLogContains(expected)
 }
 
-func testInvalidMissingAccessToken(t *testing.T, opts ...Option) {
-	logger := &testLogger{}
+func (suite *testSuite) testInvalidMissingAccessToken(opts ...Option) {
 	lsOtel := ConfigureOpentelemetry(
 		append(opts,
-			WithLogger(logger),
+			WithLogger(&suite.testLogger),
 			WithServiceName("test-service"),
 		)...,
 	)
 	defer lsOtel.Shutdown()
 
-	logger.requireContains(t, expectedAccessTokenMissingError)
+	suite.requireLogContains(expectedAccessTokenMissingError)
 }
 
-func TestInvalidMissingDefaultAccessToken(t *testing.T) {
-	testInvalidMissingAccessToken(
-		t,
+func (suite *testSuite) TestInvalidMissingDefaultAccessToken() {
+	suite.testInvalidMissingAccessToken(
 		WithAccessToken(""),
 	)
 }
 
-func TestInvalidTraceDefaultAccessToken(t *testing.T) {
-	testInvalidMissingAccessToken(t,
-		WithAccessToken(""),
-		WithSpanExporterEndpoint(DefaultSpanExporterEndpoint),
-		WithMetricExporterEndpoint("127.0.0.1:4000"),
+func (suite *testSuite) TestInvalidTraceDefaultAccessToken() {
+	suite.testInvalidMissingAccessToken(
+		append(suite.insecureMetricsEndpointOptions(),
+			WithAccessToken(""),
+			WithSpanExporterEndpoint(DefaultSpanExporterEndpoint),
+		)...,
 	)
 }
 
-func TestInvalidMetricDefaultAccessToken(t *testing.T) {
-	testInvalidMissingAccessToken(t,
-		WithAccessToken(""),
-		WithSpanExporterEndpoint("127.0.0.1:4000"),
-		WithMetricExporterEndpoint(DefaultMetricExporterEndpoint))
+func (suite *testSuite) TestInvalidMetricDefaultAccessToken() {
+	suite.testInvalidMissingAccessToken(
+		append(suite.insecureTraceEndpointOptions(),
+			WithAccessToken(""),
+			WithMetricExporterEndpoint(DefaultMetricExporterEndpoint),
+		)...,
+	)
 }
 
-func testInvalidAccessToken(t *testing.T, opts ...Option) {
-	logger := &testLogger{}
+func (suite *testSuite) testInvalidAccessToken(opts ...Option) {
 	lsOtel := ConfigureOpentelemetry(
 		append(opts,
-			WithLogger(logger),
+			WithLogger(&suite.testLogger),
 			WithServiceName("test-service"),
 		)...,
 	)
 	defer lsOtel.Shutdown()
 
-	logger.requireContains(t, expectedAccessTokenLengthError)
+	suite.requireLogContains(expectedAccessTokenLengthError)
 }
 
-func TestInvalidTraceAccessTokenLength(t *testing.T) {
-	testInvalidAccessToken(t,
-		WithSpanExporterEndpoint("127.0.0.1:4000"),
-		WithAccessToken("1234"),
+func (suite *testSuite) TestInvalidTraceAccessTokenLength() {
+	suite.testInvalidAccessToken(
+		append(suite.insecureTraceEndpointOptions(),
+			WithAccessToken("1234"),
+		)...,
 	)
 }
 
-func TestInvalidMetricAccessTokenLength(t *testing.T) {
-	testInvalidAccessToken(t,
-		WithSpanExporterEndpoint(""),
-		WithMetricExporterEndpoint("127.0.0.1:4000"),
-		WithAccessToken("1234"),
+func (suite *testSuite) TestInvalidMetricAccessTokenLength() {
+	suite.testInvalidAccessToken(
+		append(suite.bothInsecureEndpointOptions(),
+			WithAccessToken("1234"),
+		)...,
 	)
 }
 
-func testEndpointDisabled(t *testing.T, expected string, opts ...Option) {
-	logger := &testLogger{}
+func (suite *testSuite) testEndpointDisabled(expected string, opts ...Option) {
 	lsOtel := ConfigureOpentelemetry(
 		append(opts,
-			WithLogger(logger),
+			WithLogger(&suite.testLogger),
 			WithServiceName("test-service"),
 			WithMetricsEnabled(false),
 		)...,
 	)
 	defer lsOtel.Shutdown()
 
-	logger.requireNotContains(t, expectedAccessTokenMissingError)
-	logger.requireContains(t, expected)
+	suite.requireLogNotContains(expectedAccessTokenMissingError)
+	suite.requireLogContains(expected)
 }
 
-func TestTraceEndpointDisabled(t *testing.T) {
-	testEndpointDisabled(
-		t,
+func (suite *testSuite) TestTraceEndpointDisabled() {
+	suite.testEndpointDisabled(
 		expectedTracingDisabledMessage,
 		WithAccessToken(fakeAccessToken()),
 		WithSpanExporterEndpoint(""),
 	)
 }
 
-func TestMetricEndpointDisabled(t *testing.T) {
-	testEndpointDisabled(
-		t,
+func (suite *testSuite) TestMetricEndpointDisabled() {
+	suite.testEndpointDisabled(
 		expectedMetricsDisabledMessage,
 		WithAccessToken(fakeAccessToken()),
 		WithMetricExporterEndpoint(""),
 	)
 }
 
-func TestValidConfig(t *testing.T) {
-	logger := &testLogger{}
+func (suite *testSuite) TestValidConfig() {
 	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
+		WithLogger(&suite.testLogger),
 		WithServiceName("test-service"),
 		WithAccessToken(fakeAccessToken()),
-		WithErrorHandler(&testErrorHandler{}),
+		WithErrorHandler(&suite.testErrorHandler),
 	)
 	defer lsOtel.Shutdown()
-
-	logger.reset()
 
 	lsOtel = ConfigureOpentelemetry(
-		WithLogger(logger),
-		WithServiceName("test-service"),
-		WithMetricExporterEndpoint("localhost:443"),
-		WithSpanExporterEndpoint("localhost:443"),
+		append(suite.bothInsecureEndpointOptions(),
+			WithLogger(&suite.testLogger),
+			WithServiceName("test-service"),
+		)...,
 	)
 	defer lsOtel.Shutdown()
 
-	if len(logger.output) > 0 {
-		t.Errorf("\nExpected: no logs\ngot: %v", logger.output)
+	if len(suite.getOutput()) > 0 {
+		suite.T().Errorf("\nExpected: no logs\ngot: %v", suite.getOutput())
 	}
 }
 
-func TestInvalidEnvironment(t *testing.T) {
+func (suite *testSuite) TestInvalidEnvironment() {
 	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_INSECURE", "bleargh")
 
-	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
+		WithLogger(&suite.testLogger),
 		WithServiceName("test-service"),
 	)
 	defer lsOtel.Shutdown()
 
-	logger.requireContains(t, "environment error")
-	unsetEnvironment()
+	suite.requireLogContains("environment error")
 }
 
-func TestInvalidMetricsPushIntervalEnv(t *testing.T) {
+func (suite *testSuite) TestInvalidMetricsPushIntervalEnv() {
 	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_PERIOD", "300million")
 
-	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
+		WithLogger(&suite.testLogger),
 		WithServiceName("test-service"),
 		WithSpanExporterEndpoint("127.0.0.1:4000"),
 		WithMetricExporterEndpoint("127.0.0.1:4000"),
 	)
 	defer lsOtel.Shutdown()
 
-	logger.requireContains(t, "setup error: invalid metric reporting period")
-	unsetEnvironment()
+	suite.requireLogContains("setup error: invalid metric reporting period")
 }
 
-func TestInvalidMetricsPushIntervalConfig(t *testing.T) {
-	logger := &testLogger{}
+func (suite *testSuite) TestInvalidMetricsPushIntervalConfig() {
 	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
+		WithLogger(&suite.testLogger),
 		WithServiceName("test-service"),
 		WithSpanExporterEndpoint("127.0.0.1:4000"),
 		WithMetricExporterEndpoint("127.0.0.1:4000"),
@@ -260,14 +321,12 @@ func TestInvalidMetricsPushIntervalConfig(t *testing.T) {
 	)
 	defer lsOtel.Shutdown()
 
-	logger.requireContains(t, "setup error: invalid metric reporting period")
-	unsetEnvironment()
+	suite.requireLogContains("setup error: invalid metric reporting period")
 }
 
-func TestDebugEnabled(t *testing.T) {
-	logger := &testLogger{}
+func (suite *testSuite) TestDebugEnabled() {
 	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
+		WithLogger(&suite.testLogger),
 		WithServiceName("test-service"),
 		WithAccessToken("access-token-123-123456789abcdef"),
 		WithSpanExporterEndpoint("localhost:443"),
@@ -278,23 +337,23 @@ func TestDebugEnabled(t *testing.T) {
 		}),
 	)
 	defer lsOtel.Shutdown()
-	output := strings.Join(logger.output[:], ",")
-	assert.Contains(t, output, "debug logging enabled")
-	assert.Contains(t, output, "test-service")
-	assert.Contains(t, output, "access-token-123")
-	assert.Contains(t, output, "localhost:443")
-	assert.Contains(t, output, "attr1")
-	assert.Contains(t, output, "val1")
-	assert.Contains(t, output, "host.name")
-	assert.Contains(t, output, "host456")
+	output := strings.Join(suite.getOutput()[:], ",")
+	assert := suite.Assert()
+	assert.Contains(output, "debug logging enabled")
+	assert.Contains(output, "test-service")
+	assert.Contains(output, "access-token-123")
+	assert.Contains(output, "localhost:443")
+	assert.Contains(output, "attr1")
+	assert.Contains(output, "val1")
+	assert.Contains(output, "host.name")
+	assert.Contains(output, "host456")
 }
 
-func TestDefaultConfig(t *testing.T) {
-	logger := &testLogger{}
-	handler := &testErrorHandler{}
+func (suite *testSuite) TestDefaultConfig() {
+	assert := suite.Assert()
 	config := newConfig(
-		WithLogger(logger),
-		WithErrorHandler(handler),
+		WithLogger(&suite.testLogger),
+		WithErrorHandler(&suite.testErrorHandler),
 	)
 
 	attributes := []attribute.KeyValue{
@@ -318,19 +377,20 @@ func TestDefaultConfig(t *testing.T) {
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
 		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		logger:                         logger,
-		errorHandler:                   handler,
+		logger:                         &suite.testLogger,
+		errorHandler:                   &suite.testErrorHandler,
 	}
-	assert.Equal(t, expected, config)
+	assert.Equal(expected, config)
 }
 
-func TestEnvironmentVariables(t *testing.T) {
+func (suite *testSuite) TestEnvironmentVariables() {
+	assert := suite.Assert()
+
 	setEnvironment()
-	logger := &testLogger{}
-	handler := &testErrorHandler{}
+
 	config := newConfig(
-		WithLogger(logger),
-		WithErrorHandler(handler),
+		WithLogger(&suite.testLogger),
+		WithErrorHandler(&suite.testErrorHandler),
 	)
 
 	attributes := []attribute.KeyValue{
@@ -354,18 +414,18 @@ func TestEnvironmentVariables(t *testing.T) {
 		LogLevel:                       "debug",
 		Propagators:                    []string{"b3", "w3c"},
 		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		logger:                         logger,
-		errorHandler:                   handler,
+		logger:                         &suite.testLogger,
+		errorHandler:                   &suite.testErrorHandler,
 	}
-	unsetEnvironment()
-	assert.Equal(t, expected, config)
+	assert.Equal(expected, config)
 
 }
 
-func TestConfigurationOverrides(t *testing.T) {
+func (suite *testSuite) TestConfigurationOverrides() {
+	assert := suite.Assert()
+
 	setEnvironment()
-	logger := &testLogger{}
-	handler := &testErrorHandler{}
+
 	config := newConfig(
 		WithServiceName("override-service-name"),
 		WithServiceVersion("override-service-version"),
@@ -376,8 +436,8 @@ func TestConfigurationOverrides(t *testing.T) {
 		WithMetricExporterInsecure(false),
 		WithMetricTemporalityPreference("stateless"),
 		WithLogLevel("info"),
-		WithLogger(logger),
-		WithErrorHandler(handler),
+		WithLogger(&suite.testLogger),
+		WithErrorHandler(&suite.testErrorHandler),
 		WithPropagators([]string{"b3"}),
 	)
 
@@ -403,10 +463,10 @@ func TestConfigurationOverrides(t *testing.T) {
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
 		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		logger:                         logger,
-		errorHandler:                   handler,
+		logger:                         &suite.testLogger,
+		errorHandler:                   &suite.testErrorHandler,
 	}
-	assert.Equal(t, expected, config)
+	assert.Equal(expected, config)
 }
 
 type TestCarrier struct {
@@ -429,19 +489,19 @@ func (t TestCarrier) Set(key string, value string) {
 	t.values[key] = value
 }
 
-func TestConfigurePropagators(t *testing.T) {
+func (suite *testSuite) TestConfigurePropagators() {
+	assert := suite.Assert()
 	mem1, _ := baggage.NewMember("keyone", "foo1")
 	mem2, _ := baggage.NewMember("keytwo", "bar1")
 	bag, _ := baggage.New(mem1, mem2)
 
 	ctx := baggage.ContextWithBaggage(context.Background(), bag)
 
-	unsetEnvironment()
-	logger := &testLogger{}
 	lsOtel := ConfigureOpentelemetry(
-		WithLogger(logger),
-		WithServiceName("test-service"),
-		WithSpanExporterEndpoint("localhost:443"),
+		append(suite.insecureTraceEndpointOptions(),
+			WithLogger(&suite.testLogger),
+			WithServiceName("test-service"),
+		)...,
 	)
 	defer lsOtel.Shutdown()
 	ctx, finish := otel.Tracer("ex.com/basic").Start(ctx, "foo")
@@ -449,38 +509,38 @@ func TestConfigurePropagators(t *testing.T) {
 	carrier := TestCarrier{values: map[string]string{}}
 	prop := otel.GetTextMapPropagator()
 	prop.Inject(ctx, carrier)
-	assert.Greater(t, len(carrier.Get("x-b3-traceid")), 0)
-	assert.Equal(t, "", carrier.Get("baggage"))
-	assert.Equal(t, len(carrier.Get("traceparent")), 0)
+	assert.Greater(len(carrier.Get("x-b3-traceid")), 0)
+	assert.Equal("", carrier.Get("baggage"))
+	assert.Equal(len(carrier.Get("traceparent")), 0)
 
 	lsOtel = ConfigureOpentelemetry(
-		WithLogger(logger),
-		WithServiceName("test-service"),
-		WithSpanExporterEndpoint("localhost:443"),
-		WithPropagators([]string{"b3", "baggage", "tracecontext"}),
+		append(suite.insecureTraceEndpointOptions(),
+			WithLogger(&suite.testLogger),
+			WithServiceName("test-service"),
+			WithPropagators([]string{"b3", "baggage", "tracecontext"}),
+		)...,
 	)
 	defer lsOtel.Shutdown()
 	carrier = TestCarrier{values: map[string]string{}}
 	prop = otel.GetTextMapPropagator()
 	prop.Inject(ctx, carrier)
-	assert.Greater(t, len(carrier.Get("x-b3-traceid")), 0)
-	assert.Contains(t, carrier.Get("baggage"), "keytwo=bar1")
-	assert.Contains(t, carrier.Get("baggage"), "keyone=foo1")
-	assert.Greater(t, len(carrier.Get("traceparent")), 0)
+	assert.Greater(len(carrier.Get("x-b3-traceid")), 0)
+	assert.Contains(carrier.Get("baggage"), "keytwo=bar1")
+	assert.Contains(carrier.Get("baggage"), "keyone=foo1")
+	assert.Greater(len(carrier.Get("traceparent")), 0)
 
-	logger = &testLogger{}
 	lsOtel = ConfigureOpentelemetry(
-		WithLogger(logger),
-		WithServiceName("test-service"),
-		WithSpanExporterEndpoint("localhost:443"),
-		WithPropagators([]string{"invalid"}),
-		WithMetricExporterEndpoint("localhost:443"),
+		append(suite.bothInsecureEndpointOptions(),
+			WithLogger(&suite.testLogger),
+			WithServiceName("test-service"),
+			WithPropagators([]string{"invalid"}),
+		)...,
 	)
 	defer lsOtel.Shutdown()
 
-	expected := "invalid configuration: unsupported propagators. Supported options: b3,baggage,tracecontext,ottrace"
-	if !strings.Contains(logger.output[0], expected) {
-		t.Errorf("\nString not found: %v\nIn: %v", expected, logger.output[0])
+	expected := "setup error: invalid configuration: unsupported propagators. Supported options: b3,baggage,tracecontext,ottrace"
+	if !assert.Contains(suite.getOutput(), expected) {
+		suite.T().Errorf("\nString not found: %v\nIn: %v", expected, suite.getOutput())
 	}
 }
 
@@ -489,7 +549,8 @@ func host() string {
 	return host
 }
 
-func TestConfigureResourcesAttributes(t *testing.T) {
+func (suite *testSuite) TestConfigureResourcesAttributes() {
+	assert := suite.Assert()
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "label1=value1,label2=value2")
 	config := Config{
 		ServiceName:    "test-service",
@@ -506,7 +567,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		attribute.String("telemetry.sdk.name", "launcher"),
 		attribute.String("telemetry.sdk.version", version),
 	}
-	assert.Equal(t, expected, resource.Attributes())
+	assert.Equal(expected, resource.Attributes())
 
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "telemetry.sdk.language=test-language")
 	config = Config{
@@ -522,7 +583,7 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		attribute.String("telemetry.sdk.name", "launcher"),
 		attribute.String("telemetry.sdk.version", version),
 	}
-	assert.Equal(t, expected, resource.Attributes())
+	assert.Equal(expected, resource.Attributes())
 
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-b,host.name=host123")
 	config = Config{
@@ -538,22 +599,22 @@ func TestConfigureResourcesAttributes(t *testing.T) {
 		attribute.String("telemetry.sdk.name", "launcher"),
 		attribute.String("telemetry.sdk.version", version),
 	}
-	assert.Equal(t, expected, resource.Attributes())
+	assert.Equal(expected, resource.Attributes())
 }
 
-func TestServiceNameViaResourceAttributes(t *testing.T) {
+func (suite *testSuite) TestServiceNameViaResourceAttributes() {
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-b")
-	logger := &testLogger{}
-	lsOtel := ConfigureOpentelemetry(WithLogger(logger))
+	lsOtel := ConfigureOpentelemetry(WithLogger(&suite.testLogger))
 	defer lsOtel.Shutdown()
 
 	expected := "invalid configuration: service name missing"
-	if strings.Contains(logger.output[0], expected) {
-		t.Errorf("\nString found: %v\nIn: %v", expected, logger.output[0])
+	if strings.Contains(suite.getOutput()[0], expected) {
+		suite.T().Errorf("\nString found: %v\nIn: %v", expected, suite.getOutput()[0])
 	}
 }
 
-func TestEmptyHostnameDefaultsToOsHostname(t *testing.T) {
+func (suite *testSuite) TestEmptyHostnameDefaultsToOsHostname() {
+	assert := suite.Assert()
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "host.name=")
 	lsOtel := ConfigureOpentelemetry(
 		WithServiceName("test-service"),
@@ -568,11 +629,12 @@ func TestEmptyHostnameDefaultsToOsHostname(t *testing.T) {
 
 	attrs := attribute.NewSet(lsOtel.config.Resource.Attributes()...)
 	v, ok := attrs.Value("host.name")
-	assert.Equal(t, host(), v.AsString())
-	assert.True(t, ok)
+	assert.Equal(host(), v.AsString())
+	assert.True(ok)
 }
 
-func TestConfigWithResourceAttributes(t *testing.T) {
+func (suite *testSuite) TestConfigWithResourceAttributes() {
+	assert := suite.Assert()
 	lsOtel := ConfigureOpentelemetry(
 		WithServiceName("test-service"),
 		WithSpanExporterEndpoint("localhost:443"),
@@ -585,12 +647,12 @@ func TestConfigWithResourceAttributes(t *testing.T) {
 	defer lsOtel.Shutdown()
 	attrs := attribute.NewSet(lsOtel.config.Resource.Attributes()...)
 	v, ok := attrs.Value("attr1")
-	assert.Equal(t, "val1", v.AsString())
-	assert.True(t, ok)
+	assert.Equal("val1", v.AsString())
+	assert.True(ok)
 
 	v, ok = attrs.Value("attr2")
-	assert.Equal(t, "val2", v.AsString())
-	assert.True(t, ok)
+	assert.Equal("val2", v.AsString())
+	assert.True(ok)
 }
 
 func setEnvironment() {
