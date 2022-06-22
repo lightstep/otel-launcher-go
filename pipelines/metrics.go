@@ -32,7 +32,7 @@ import (
 )
 
 func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
-	metricExporter, err := newMetricsExporter(c.Endpoint, c.Insecure, c.Headers)
+	metricExporter, err := newMetricsExporter(c.Endpoint, c.Insecure, c.Headers, c.MetricsOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 	}
@@ -77,7 +77,7 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 	}, nil
 }
 
-func newMetricsExporter(endpoint string, insecure bool, headers map[string]string) (*otlpmetric.Exporter, error) {
+func newMetricsExporter(endpoint string, insecure bool, headers map[string]string, extra []otlpmetricgrpc.Option) (*otlpmetric.Exporter, error) {
 	secureOption := otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
 	if insecure {
 		secureOption = otlpmetricgrpc.WithInsecure()
@@ -85,10 +85,12 @@ func newMetricsExporter(endpoint string, insecure bool, headers map[string]strin
 	return otlpmetric.New(
 		context.Background(),
 		otlpmetricgrpc.NewClient(
-			secureOption,
-			otlpmetricgrpc.WithEndpoint(endpoint),
-			otlpmetricgrpc.WithHeaders(headers),
-			otlpmetricgrpc.WithCompressor(gzip.Name),
+			append(extra,
+				secureOption,
+				otlpmetricgrpc.WithEndpoint(endpoint),
+				otlpmetricgrpc.WithHeaders(headers),
+				otlpmetricgrpc.WithCompressor(gzip.Name),
+			)...,
 		),
 	)
 }

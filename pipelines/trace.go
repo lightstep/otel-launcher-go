@@ -30,7 +30,7 @@ import (
 )
 
 func NewTracePipeline(c PipelineConfig) (func() error, error) {
-	spanExporter, err := newTraceExporter(c.Endpoint, c.Insecure, c.Headers)
+	spanExporter, err := newTraceExporter(c.Endpoint, c.Insecure, c.Headers, c.TraceOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create span exporter: %v", err)
 	}
@@ -54,7 +54,7 @@ func NewTracePipeline(c PipelineConfig) (func() error, error) {
 	}, nil
 }
 
-func newTraceExporter(endpoint string, insecure bool, headers map[string]string) (*otlptrace.Exporter, error) {
+func newTraceExporter(endpoint string, insecure bool, headers map[string]string, extra []otlptracegrpc.Option) (*otlptrace.Exporter, error) {
 	secureOption := otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
 	if insecure {
 		secureOption = otlptracegrpc.WithInsecure()
@@ -62,10 +62,12 @@ func newTraceExporter(endpoint string, insecure bool, headers map[string]string)
 	return otlptrace.New(
 		context.Background(),
 		otlptracegrpc.NewClient(
-			secureOption,
-			otlptracegrpc.WithEndpoint(endpoint),
-			otlptracegrpc.WithHeaders(headers),
-			otlptracegrpc.WithCompressor(gzip.Name),
+			append(extra,
+				secureOption,
+				otlptracegrpc.WithEndpoint(endpoint),
+				otlptracegrpc.WithHeaders(headers),
+				otlptracegrpc.WithCompressor(gzip.Name),
+			)...,
 		),
 	)
 }

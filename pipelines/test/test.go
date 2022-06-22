@@ -1,3 +1,17 @@
+// Copyright Lightstep Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package test
 
 import (
@@ -7,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 	"testing"
 
 	metricService "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
@@ -14,6 +29,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	_ "google.golang.org/grpc/encoding/gzip"
+	grpcMetadata "google.golang.org/grpc/metadata"
 )
 
 type (
@@ -29,6 +45,12 @@ type (
 
 	Server struct {
 		stop chan struct{}
+		lock sync.Mutex
+
+		metricsRequests []*metricService.ExportMetricsServiceRequest
+		metricsMDs      []grpcMetadata.MD
+		traceRequests   []*traceService.ExportTraceServiceRequest
+		traceMDs        []grpcMetadata.MD
 
 		InsecureMetricsPort int
 		SecureMetricsPort   int
@@ -70,59 +92,61 @@ NkjHQ0jCBNZ2wekgribyNtFwVfECyJ5XQAH+SutY
 `
 
 	TestServerPublicCertificate = `-----BEGIN CERTIFICATE-----
-MIIELDCCAhSgAwIBAgIRAKQ7lQ5Fb5wgWXa2C+SpdokwDQYJKoZIhvcNAQELBQAw
-HTEbMBkGA1UEAxMSVGVzdE9UZWxMYXVuY2hlckdvMB4XDTIyMDYyMTE4MDc0MloX
+MIIEPzCCAiegAwIBAgIRAKuNLsqy7M0h4nD5bnmS6sowDQYJKoZIhvcNAQELBQAw
+HTEbMBkGA1UEAxMSVGVzdE9UZWxMYXVuY2hlckdvMB4XDTIyMDYyMTIzNTEzOFoX
 DTIzMTIyMTE4MTYzMVowEzERMA8GA1UEAxMIVGVzdENlcnQwggEiMA0GCSqGSIb3
-DQEBAQUAA4IBDwAwggEKAoIBAQDFD3+pMdHiZ2UsHyepKSJKTdlvX2jtzs6Y1u24
-dhWiVFNMajZQHcuYoETk5QWktb/BQ6KL9i6C5RgpCWFlBhncLCSzR04gKqMRCg+b
-rdhxlxT79ycyH9jY2Zvnmmht36S86XC+bhUAvvST6R88GDHQi8KUN4TGxuxiz8/v
-0yqYEthmK79Ke77DKOWoHuu5OK9lH44XJMtcRDq0FLkJMFl6sWY9gIOITNF/KU6L
-Dp8T6C1hv8qBh9D2gIXX5gBmLc6t9I7x/XP4ilVM1oYznzuQS1L8P9XpWFktDwkS
-x7O2VqhzPFKBX3liHylC6Q4DHVMnqNMgktHSWoKuxhYLiUCvAgMBAAGjcTBvMA4G
-A1UdDwEB/wQEAwIDuDAdBgNVHSUEFjAUBggrBgEFBQcDAQYIKwYBBQUHAwIwHQYD
-VR0OBBYEFI2V2h0pHlDofX5vz4s/7xj2fbvbMB8GA1UdIwQYMBaAFMYG11jnWgmx
-FVAvvRm5iy2y8A9JMA0GCSqGSIb3DQEBCwUAA4ICAQCB0XVVLnCSi8VAKiojX5pj
-LDQME7o1xSkXUGcOzBvDU0XGe28N7zh0roS98ml2TJqmNqsBA9LpktEK8rkWlCyb
-iIM6Sg4GdPgmC5vXURdDpFEtujzTVx5J5M1efMCb8jBqNM/nlj/lWshTVi4OvZVb
-KEfNfVeV+isIkZx8LNoohOlqM3s/K6FuSU3qZa9JXYsdsjJn97xg3fukx7/SDcML
-JW/0qS+VtbMZUpmN0BWo47u2JGcAS3gHSTPYfedbliQjWzGNJNcmWVskIZJn6uti
-EK6KqMnAE86xFObZlr2IEyuh7IVHN3UlGqI+wj+XvlV2qT2oX7Z66El5IEcDVS5s
-0VFhXk4n5wD8Y51wXUWpkrkJRegitQBKol51zfSU6c8CHIQ7ZSK3VEj5w/p6R6tl
-sr7guDE5a4tEx1Sj8TRYOdlayY5wPyYdzYSpbKe7TbXzffxwOG36u6xup6YPVYtI
-+yBP0l+Hpx4+t6hqZS0Saba1+VV55hhdcJXGdsv9IqK7VcVkrWeDPE6PdA4OjOxM
-mtD1RGKbLrZ/2RWC/EpqWRpYhO5zO3JgUwaw7UV4trwt81XU4ROgNJ3/qkmth10v
-JQp2vO1plfX+LbXSRnJsKk2FAFSZFzAYqy7gneQdm6DCn3dvPPCm7V8adX3O/ZoU
-eLEBc7vRK92zDssz9H1tog==
------END CERTIFICATE-----`
-
-	TestServerPrivateKey = `-----BEGIN RSA PRIVATE KEY-----
-MIIEpAIBAAKCAQEAxQ9/qTHR4mdlLB8nqSkiSk3Zb19o7c7OmNbtuHYVolRTTGo2
-UB3LmKBE5OUFpLW/wUOii/YuguUYKQlhZQYZ3Cwks0dOICqjEQoPm63YcZcU+/cn
-Mh/Y2Nmb55pobd+kvOlwvm4VAL70k+kfPBgx0IvClDeExsbsYs/P79MqmBLYZiu/
-Snu+wyjlqB7ruTivZR+OFyTLXEQ6tBS5CTBZerFmPYCDiEzRfylOiw6fE+gtYb/K
-gYfQ9oCF1+YAZi3OrfSO8f1z+IpVTNaGM587kEtS/D/V6VhZLQ8JEseztlaoczxS
-gV95Yh8pQukOAx1TJ6jTIJLR0lqCrsYWC4lArwIDAQABAoIBACqM0Szwc/hmCQOA
-6qhtGFlg++0/dcG7oQKBji0BWmSFvsLGQFoGRPr8yEOAbDqHgBM0DnoYOyzKWPAr
-dVtB+P2AjqAjamwpqLI6MOqVnCHS1JYfZNg+5izUuARHY/stij28TjrgPCrAEMGL
-WdI5CzCTrP0iC8p8E3i2lJidSRoyvfGk/xKzTSZ4/CpdIZzgvtSgcAjfkMvB2zZG
-pDC0TP+l5cUhUgxjBsYIUoYl3sFYPxpC63nWVV/q3nBm3q6WnTO8FLWyacObVGOt
-UzwHbzU887ZPgQozBuO2a1QSm5JPmCKjJwG4QMPWiWh+b/y2acoCRSbXRx9jaFK7
-oc2s/vECgYEA+orDsXIRJXmu3XijcLUFqaM/XTFE80YZEA0Qs/52l+ovHOPA32At
-9z4P9HI+9bI22KnEWrkWZN3bxs6XOe8Xo6qt4JLY4PwaRD9WKe7hOnO8JFYE27Op
-8Mc1RddVwGKte2GYaYzHDGWl5m/OfJrfrrUkg1H+SWON5wU6G/Mrp5kCgYEAyVp5
-0vvr5RvZiezG5pCYC68u7WoWco5sT7e3Sf86rNDEwwumXY3u2vVxQx0E522vzaCE
-rTkYvQLNxO3SkE/OepGk2ky00fooGjA48LtLvWeGGgV0kk18v10yn3VMzIF/2VwK
-q8Z+8gXW0jXKb6EcQZMY0IT/fDWo2SGv7mvSN4cCgYEA+es99l3QmM9fDXFvp9gL
-RAKiDHY/T2TXT1mZFdN5vWRPhsPx+2DXuU/hXngwMaqKZ2pBgjYrDob42sHtvE6y
-CAMT23bgfN093mJHsyCk70fPn3dm9TmtBY/Rpk99LKHCZ9ccz/0r+UPUT5+sHEPp
-aT8sowpBXDfAr3hZVNQm8dECgYBM2ur7HEtbJPkwyx7UbMaMVy6rUj4FNdWjy/T7
-Gp+TzQ/9ftnehclw7BRyUIZJq7VZ4HYkBFIr+wD9tOUVTlD6udLZvEOcjkZ2UIe7
-Y1Iylmw6THDFUyxVgsZK1SQePyPEnHw6OsbDrHTlwcBmQXGemf3zwYAfMgAj+NbF
-Q4R2ywKBgQDT9H9AAjfBeDc7vvniXuKBq+70IV1aSAZrtGEy1UHTrZPl/CHSaMR+
-tx1P0kRuRjgvVuQPejEpWHOJkQ1hzhCVo4fa2wl47Ot0qIroAHeMisxeTuUCiwgF
-TKUq/P56Wk3pGIcwlNl5Tu+NE6WLQt16pU/yiwtfYr83RLGB6sR03w==
------END RSA PRIVATE KEY-----
+DQEBAQUAA4IBDwAwggEKAoIBAQCg7SFl18ctsqE9Gl9Hms/o482OzW1a4W1aGAaP
+COrCsbASKZCQOY+IvFO0sgMcYB8lirZLdx0BGk+9fM/uHKzqVqLvv8K9cKdSfDJI
+IPtcWvcOwq8+ChjqufBUVVDRnlBLtIg6MOiiHD2PvAjjz1MMcqBzA61j618eJ1cu
+1UTU2tPSCa7Lbmj8oAW/RMzSAbmid+6jSDHbQcftp6Z4/x9GjMCgW5bAxmCzxCMY
+mNKXFjSZViKr7k/fFdE4A6a42lQOEM4pl8yVsQd85+S2+AQptFZWbfrXkUuvwv76
+6b62fShOYXvlMZiw6Ygvd61EZiQqhxI8XKf3zKFpIrI6pqojAgMBAAGjgYMwgYAw
+DgYDVR0PAQH/BAQDAgO4MB0GA1UdJQQWMBQGCCsGAQUFBwMBBggrBgEFBQcDAjAd
+BgNVHQ4EFgQU96hmBUCLr1jfQG+JvMUnjb5cwvAwHwYDVR0jBBgwFoAUxgbXWOda
+CbEVUC+9GbmLLbLwD0kwDwYDVR0RBAgwBocEAAAAADANBgkqhkiG9w0BAQsFAAOC
+AgEAWPhNZO7wt2Uwo7g1Ngq/3ihBG1PfKfKyc2AUKdY/cxzvckIF1cQltsaGcGkh
+hXk1H8CNxIsrit3ssWKrJDvuqZjpE/k9EpHX53tv3UTWzaHB75az/w0KfQMdtJ+9
+7WxqWoof92u7EKIRtD/5jxcF2837ZA6x3BMoZBCm9Sc21JArtYwAYSstoyyMkDbb
+QKwULmZpemFVJVGb0XQ//NWC7gFYpOjfN0DOJSREkwfE84MyXl+qOQ9NJcvHCrOQ
+eBlTK6k+qiqruxiA7FSJxCkybLziEsmmwiIM4MOBx3fWgGiWJXQwata6Rn+tzDih
+DHtaA0f8J5WXTIPwyt2s4aKJpxvijKRaA+K8nLCW9GLURR7RqSdwzkp6wx5ipQW9
+tEyOQv9M8qlvafF2jaU3RBBcliLWn765jOM+u0OnaAHmklrSxywrZTDgbbn47b8P
+3medxiXCBMNMrGzkQqfshITC4VyhkDE/WzRXQ6lV3smCAYNkQhzm92Lo7X/pGRG1
+vl9aq+XxHjKNaxsc67tNtE+yK6jJSAsLBfIWI7X42tgNzNbKX1d7BUCY5kHnptQg
+rPKBqtv4KD14DqoSzF6JmLIY0AWEq0HHgObVz0skEy+w9aHvUp7z5kzYuAFa/RI3
+t/TKz4OySwlajE5xlTPgrkBiZXuHfY7pSOG9Dxira6Xe1mc=
+-----END CERTIFICATE-----
 `
+	TestServerPrivateKey = `-----BEGIN RSA PRIVATE KEY-----
+MIIEpQIBAAKCAQEAoO0hZdfHLbKhPRpfR5rP6OPNjs1tWuFtWhgGjwjqwrGwEimQ
+kDmPiLxTtLIDHGAfJYq2S3cdARpPvXzP7hys6lai77/CvXCnUnwySCD7XFr3DsKv
+PgoY6rnwVFVQ0Z5QS7SIOjDoohw9j7wI489TDHKgcwOtY+tfHidXLtVE1NrT0gmu
+y25o/KAFv0TM0gG5onfuo0gx20HH7aemeP8fRozAoFuWwMZgs8QjGJjSlxY0mVYi
+q+5P3xXROAOmuNpUDhDOKZfMlbEHfOfktvgEKbRWVm3615FLr8L++um+tn0oTmF7
+5TGYsOmIL3etRGYkKocSPFyn98yhaSKyOqaqIwIDAQABAoIBABmXXDZL6DrWK1oC
+NaC3d9S7VVceSAOp0bAAHhrk+iBYDX316i1lWfQOrukPXftHNezMcEzz9kLUolWp
+4Y8mNEFX4bVqs1dY8OLnKT/bLt3zAVLxltiw1mGNjDB9GMsc9/vyC6/lUzlkcE3J
+Q0inEbfrCqT/srUvGwM6kly6QaXvni05BQN+4uS4p6jjoH6nkewpx0XaYRQ4F9LY
+wZWjVEWSi8eDlZVWu8koNrO70i6qNMj7lpKU0hZXZ1IFGWTP4MfwEf6Z4n9ocfCb
+gUl6dUpocM3A9o4Kfbk5uzLz8lxda2V660n6hllv6scjw9YEP4EV9VLDwRb5pN1i
+bRzXkrECgYEAybvQ8mWR7RFZsxi1QR36ru9zRAeYNHkTTIz2+jrodBvJ05VU1Eoe
+zneQKxzoQl2kO9IE7rXv6274tjK/3CZQDKoSxJmNEeGdBcsSnKlsU65JK+qw2zOi
+U3j0G48JNIH8BM4TsVEK9Bjsvh4onIs0l/66d2chfpavEJD+RzHKyv0CgYEAzDco
+BukhctcYO4XorUyQlTHF2Nh3RkXno9XLVo49ugfDVbsc1vnQwtMFvmhlAiM69pZ5
+14ABhSC8uhuCS4hW84kcf2bHQEv0iEbAD64lyAqt2abLgps2W09V+g1UM4mljCsc
+NBTFBRRrUcd1NoHf6RYZLvtTuogBhK9JQENaI58CgYEAi1k3ThknIdD4WyRYH/Dr
+dudkgbuVQbnYwOomuFb0ty9yzLq8bB//A7PHXGCNdzpj9gZu7c2zOrffCUwpB5NX
+fEgGytMehRmJc7UA2EKX133ugW2OWPxjxrEoPdkiDKk1QsRvCe7nWBHXhsQiXXAz
+FkMY3t3YXy8LIrBlVRxp7qkCgYEApwaNxGk1JFpsxXJWxjcTIhOdgCg8FcvjE4sv
+TlH0ho0G5L2vbtzQNCioT/3Ob5slBL46VVmq5JnMAmOxg9m1VGbWWhVT7nCxRiyn
+tat31090tcnINcCBCtmutl/keGqibixsWuSJ6Ae1ZyO96KD85AVg/54r8yp+I2nC
+fb8YoH0CgYEAuFXii84Llf/aB+8ijSecj02vkROM2EFENPnJH7Q5XLr0u90eenid
+JZjhLMtJrPoEC6qbEJGeVP5lnvZ9XGnkDQE8lK/sSftBJlhTC4iuY2wWpjGZ8lyI
+5YMUz9AKT49KMOdp04CDmMLSARuUSj0wRvmgTXS3lEwtS/lfYIwu6OA=
+-----END RSA PRIVATE KEY-----`
+
+	// ServerName is encoded in the above certificates.
+	ServerName = "0.0.0.0"
 
 	ErrUnsupported = fmt.Errorf("unsupported method")
 )
@@ -146,7 +170,7 @@ func NewServer(t *testing.T) *Server {
 	}
 
 	newListener := func() (net.Listener, int) {
-		listener, err := net.Listen("tcp", "0.0.0.0:0")
+		listener, err := net.Listen("tcp", fmt.Sprint(ServerName, ":0"))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -210,6 +234,30 @@ func NewServer(t *testing.T) *Server {
 	return server
 }
 
+func (s *Server) TraceRequests() []*traceService.ExportTraceServiceRequest {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.traceRequests
+}
+
+func (s *Server) TraceMDs() []grpcMetadata.MD {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.traceMDs
+}
+
+func (s *Server) MetricsRequests() []*metricService.ExportMetricsServiceRequest {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.metricsRequests
+}
+
+func (s *Server) MetricsMDs() []grpcMetadata.MD {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	return s.metricsMDs
+}
+
 func (s *Server) Stop() {
 	close(s.stop)
 	s.stop = nil
@@ -217,10 +265,24 @@ func (s *Server) Stop() {
 
 func (s *metricsServer) Export(ctx context.Context, req *metricService.ExportMetricsServiceRequest) (*metricService.ExportMetricsServiceResponse, error) {
 	var emptyValue = metricService.ExportMetricsServiceResponse{}
+
+	md, _ := grpcMetadata.FromIncomingContext(ctx)
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.metricsRequests = append(s.metricsRequests, req)
+	s.metricsMDs = append(s.metricsMDs, md)
+
 	return &emptyValue, nil
 }
 
 func (s *traceServer) Export(ctx context.Context, req *traceService.ExportTraceServiceRequest) (*traceService.ExportTraceServiceResponse, error) {
 	var emptyValue = traceService.ExportTraceServiceResponse{}
+	md, _ := grpcMetadata.FromIncomingContext(ctx)
+
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	s.traceRequests = append(s.traceRequests, req)
+	s.traceMDs = append(s.traceMDs, md)
+
 	return &emptyValue, nil
 }

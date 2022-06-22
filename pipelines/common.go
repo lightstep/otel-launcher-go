@@ -14,7 +14,11 @@
 
 package pipelines
 
-import "go.opentelemetry.io/otel/sdk/resource"
+import (
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
+	"go.opentelemetry.io/otel/sdk/resource"
+)
 
 type PipelineConfig struct {
 	Endpoint        string
@@ -23,6 +27,8 @@ type PipelineConfig struct {
 	Resource        *resource.Resource
 	ReportingPeriod string
 	Propagators     []string
+	MetricsOptions  []otlpmetricgrpc.Option
+	TraceOptions    []otlptracegrpc.Option
 }
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)

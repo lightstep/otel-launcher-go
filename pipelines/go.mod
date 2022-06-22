@@ -19,6 +19,7 @@ require (
 )
 
 require (
+	github.com/stretchr/testify v1.7.1
 	go.opentelemetry.io/proto/otlp v0.16.0
 	golang.org/x/net v0.0.0-20220111093109-d55c255bac03 // indirect
 	golang.org/x/text v0.3.7 // indirect
