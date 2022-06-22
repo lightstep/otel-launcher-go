@@ -13,7 +13,6 @@ import (
 	"github.com/lightstep/otel-launcher-go/pipelines/test"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
@@ -61,7 +60,6 @@ func TestSecureTrace(t *testing.T) {
 
 	shutdown, err := NewTracePipeline(PipelineConfig{
 		Endpoint: fmt.Sprintf("%s:%d", test.ServerName, server.SecureTracePort),
-		Insecure: true,
 		Headers: map[string]string{
 			"test-header": "test-value",
 		},
@@ -70,12 +68,8 @@ func TestSecureTrace(t *testing.T) {
 			attribute.String("test-r1", "test-v1"),
 		),
 		ReportingPeriod: "24h",
-		TraceOptions: []otlptracegrpc.Option{
-			otlptracegrpc.WithTLSCredentials(
-				credentials.NewTLS(newTLSConfig()),
-			),
-		},
-		Propagators: []string{"tracecontext", "baggage"},
+		Credentials:     credentials.NewTLS(newTLSConfig()),
+		Propagators:     []string{"tracecontext", "baggage"},
 	})
 	assert.NoError(t, err)
 

@@ -27,12 +27,11 @@ import (
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/encoding/gzip"
 )
 
 func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
-	metricExporter, err := newMetricsExporter(c.Endpoint, c.Insecure, c.Headers, c.MetricsOptions)
+	metricExporter, err := c.newMetricsExporter()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 	}
@@ -77,20 +76,14 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 	}, nil
 }
 
-func newMetricsExporter(endpoint string, insecure bool, headers map[string]string, extra []otlpmetricgrpc.Option) (*otlpmetric.Exporter, error) {
-	secureOption := otlpmetricgrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, ""))
-	if insecure {
-		secureOption = otlpmetricgrpc.WithInsecure()
-	}
+func (c PipelineConfig) newMetricsExporter() (*otlpmetric.Exporter, error) {
 	return otlpmetric.New(
 		context.Background(),
 		otlpmetricgrpc.NewClient(
-			append(extra,
-				secureOption,
-				otlpmetricgrpc.WithEndpoint(endpoint),
-				otlpmetricgrpc.WithHeaders(headers),
-				otlpmetricgrpc.WithCompressor(gzip.Name),
-			)...,
+			c.secureMetricOption(),
+			otlpmetricgrpc.WithEndpoint(c.Endpoint),
+			otlpmetricgrpc.WithHeaders(c.Headers),
+			otlpmetricgrpc.WithCompressor(gzip.Name),
 		),
 	)
 }

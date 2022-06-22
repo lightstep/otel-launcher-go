@@ -28,7 +28,6 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/pipelines/test"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	metricglobal "go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
@@ -37,17 +36,15 @@ import (
 func newTLSConfig() *tls.Config {
 	certPool := x509.NewCertPool()
 
-	tls := &tls.Config{
-		RootCAs:    certPool,
-		ServerName: test.ServerName,
-	}
-
 	ok := certPool.AppendCertsFromPEM([]byte(test.TestCARootCertificate))
 
 	if !ok {
 		panic("could not parse certificate authority certificate")
 	}
-	return tls
+	return &tls.Config{
+		RootCAs:    certPool,
+		ServerName: test.ServerName,
+	}
 }
 
 func TestInsecureMetrics(t *testing.T) {
@@ -93,7 +90,6 @@ func TestSecureMetrics(t *testing.T) {
 
 	shutdown, err := NewMetricsPipeline(PipelineConfig{
 		Endpoint: fmt.Sprintf("%s:%d", test.ServerName, server.SecureMetricsPort),
-		Insecure: true,
 		Headers: map[string]string{
 			"test-header": "test-value",
 		},
@@ -102,11 +98,7 @@ func TestSecureMetrics(t *testing.T) {
 			attribute.String("test-r1", "test-v1"),
 		),
 		ReportingPeriod: "24h",
-		MetricsOptions: []otlpmetricgrpc.Option{
-			otlpmetricgrpc.WithTLSCredentials(
-				credentials.NewTLS(newTLSConfig()),
-			),
-		},
+		Credentials:     credentials.NewTLS(newTLSConfig()),
 	})
 	assert.NoError(t, err)
 
