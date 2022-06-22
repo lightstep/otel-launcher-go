@@ -21,7 +21,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v0.0.0-20220610220517-18000e6f8f43 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v0.0.0-20220622184422-ef9dbfd619a6 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
