@@ -40,7 +40,7 @@ func TestInsecureTrace(t *testing.T) {
 	_, span := tracer.Start(context.Background(), "test-span")
 	span.End()
 
-	shutdown()
+	require.NoError(t, shutdown())
 
 	require.Equal(t, 0, len(server.MetricsRequests()))
 	require.Equal(t, 1, len(server.TraceRequests()))
@@ -77,7 +77,7 @@ func TestSecureTrace(t *testing.T) {
 	_, span := tracer.Start(context.Background(), "test-span")
 	span.End()
 
-	shutdown()
+	require.NoError(t, shutdown())
 
 	require.Equal(t, 0, len(server.MetricsRequests()))
 	require.Equal(t, 1, len(server.TraceRequests()))

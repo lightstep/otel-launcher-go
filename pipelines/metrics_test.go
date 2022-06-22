@@ -70,7 +70,7 @@ func TestInsecureMetrics(t *testing.T) {
 	assert.NoError(t, err)
 	counter.Add(context.Background(), 1)
 
-	shutdown()
+	require.NoError(t, shutdown())
 
 	require.Equal(t, 0, len(server.TraceRequests()))
 	require.Equal(t, 1, len(server.MetricsRequests()))
@@ -107,7 +107,7 @@ func TestSecureMetrics(t *testing.T) {
 	assert.NoError(t, err)
 	counter.Add(context.Background(), 1)
 
-	shutdown()
+	require.NoError(t, shutdown())
 
 	require.Equal(t, 0, len(server.TraceRequests()))
 	require.Equal(t, 1, len(server.MetricsRequests()))

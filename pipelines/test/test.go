@@ -28,7 +28,6 @@ import (
 	traceService "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
-	_ "google.golang.org/grpc/encoding/gzip"
 	grpcMetadata "google.golang.org/grpc/metadata"
 )
 
@@ -196,7 +195,9 @@ func NewServer(t *testing.T) *Server {
 		grpcServer := grpc.NewServer()
 		metricService.RegisterMetricsServiceServer(grpcServer, &metricsServer{Server: server})
 
-		go grpcServer.Serve(listener)
+		go func() {
+			_ = grpcServer.Serve(listener)
+		}()
 
 		defer grpcServer.Stop()
 		<-server.stop
@@ -206,7 +207,9 @@ func NewServer(t *testing.T) *Server {
 		grpcServer := grpc.NewServer()
 		traceService.RegisterTraceServiceServer(grpcServer, &traceServer{Server: server})
 
-		go grpcServer.Serve(listener)
+		go func() {
+			_ = grpcServer.Serve(listener)
+		}()
 
 		defer grpcServer.Stop()
 		<-server.stop
@@ -217,7 +220,9 @@ func NewServer(t *testing.T) *Server {
 		grpcServer := grpc.NewServer(serverOption)
 		metricService.RegisterMetricsServiceServer(grpcServer, &metricsServer{Server: server})
 
-		go grpcServer.Serve(listener)
+		go func() {
+			_ = grpcServer.Serve(listener)
+		}()
 
 		defer grpcServer.Stop()
 		<-server.stop
@@ -228,7 +233,9 @@ func NewServer(t *testing.T) *Server {
 		grpcServer := grpc.NewServer(serverOption)
 		traceService.RegisterTraceServiceServer(grpcServer, &traceServer{Server: server})
 
-		go grpcServer.Serve(listener)
+		go func() {
+			_ = grpcServer.Serve(listener)
+		}()
 
 		defer grpcServer.Stop()
 		<-server.stop
