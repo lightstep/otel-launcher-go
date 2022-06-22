@@ -48,12 +48,12 @@ type testSuite struct {
 	testErrorHandler
 }
 
-func (t *testSuite) SetupSuite() {
-	t.Server = test.NewServer(t.T())
+func (suite *testSuite) SetupSuite() {
+	suite.Server = test.NewServer(suite.T())
 }
 
-func (t *testSuite) SetupTest() {
-	t.testLogger.reset()
+func (suite *testSuite) SetupTest() {
+	suite.testLogger.reset()
 }
 
 func (suite *testSuite) bothInsecureEndpointOptions() []Option {
@@ -79,13 +79,13 @@ func (suite *testSuite) insecureMetricsEndpointOptions() []Option {
 	}
 }
 
-func (t *testSuite) TearDownTest() {
+func (suite *testSuite) TearDownTest() {
 	unsetEnvironment()
-	t.testLogger.reset()
+	suite.testLogger.reset()
 }
 
-func (t *testSuite) TearDownSuite() {
-	t.Server.Stop()
+func (suite *testSuite) TearDownSuite() {
+	suite.Server.Stop()
 }
 
 func TestLauncherSuite(t *testing.T) {
