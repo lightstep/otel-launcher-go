@@ -617,13 +617,14 @@ func (suite *testSuite) TestEmptyHostnameDefaultsToOsHostname() {
 	assert := suite.Assert()
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "host.name=")
 	lsOtel := ConfigureOpentelemetry(
-		WithServiceName("test-service"),
-		WithSpanExporterEndpoint("localhost:443"),
-		WithAccessToken(fakeAccessToken()),
-		WithResourceAttributes(map[string]string{
-			"attr1":     "val1",
-			"host.name": "",
-		}),
+		append(suite.bothInsecureEndpointOptions(),
+			WithServiceName("test-service"),
+			WithAccessToken(fakeAccessToken()),
+			WithResourceAttributes(map[string]string{
+				"attr1":     "val1",
+				"host.name": "",
+			}),
+		)...,
 	)
 	defer lsOtel.Shutdown()
 
@@ -636,13 +637,14 @@ func (suite *testSuite) TestEmptyHostnameDefaultsToOsHostname() {
 func (suite *testSuite) TestConfigWithResourceAttributes() {
 	assert := suite.Assert()
 	lsOtel := ConfigureOpentelemetry(
-		WithServiceName("test-service"),
-		WithSpanExporterEndpoint("localhost:443"),
-		WithAccessToken(fakeAccessToken()),
-		WithResourceAttributes(map[string]string{
-			"attr1": "val1",
-			"attr2": "val2",
-		}),
+		append(suite.bothInsecureEndpointOptions(),
+			WithServiceName("test-service"),
+			WithAccessToken(fakeAccessToken()),
+			WithResourceAttributes(map[string]string{
+				"attr1": "val1",
+				"attr2": "val2",
+			}),
+		)...,
 	)
 	defer lsOtel.Shutdown()
 	attrs := attribute.NewSet(lsOtel.config.Resource.Attributes()...)
