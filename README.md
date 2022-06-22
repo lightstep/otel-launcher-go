@@ -67,6 +67,7 @@ Additional options
 |WithResourceAttributes     |OTEL_RESOURCE_ATTRIBUTES           |n       |-                               |
 |WithMetricReportingPeriod  |OTEL_EXPORTER_OTLP_METRIC_PERIOD   |n       |30s                             |
 |WithMetricsEnabled         |LS_METRICS_ENABLED                 |n       |True                            |
+|WithAlternateMetricsSDK    |LS_ALTERNATE_METRICS_SDK           |n       |False                            |
 
 ### Principles behind Launcher
 
@@ -79,6 +80,23 @@ One of the key principles behind putting together Launcher is to make lives of O
 Another decision we made with launcher is to provide end users with a layer of validation of their configuration. This provides us the ability to give feedback to our users faster, so they can start collecting telemetry sooner.
 
 Start using it today in [Go](https://github.com/lightstep/otel-launcher-go), [Java](https://github.com/lightstep/otel-launcher-java), [Javascript](https://github.com/lightstep/otel-launcher-node) and [Python](https://github.com/lightstep/otel-launcher-python) and let us know what you think!
+
+### Lightstep Alternate Metrics SDK
+
+The Launcher contains an alternative to the [OTel-Go community Metrics
+SDK](https://github.com/open-telemetry/opentelemetry-go) being
+maintained by Lightstep as a way to quickly validate newer
+OpenTelemetry features, such as the OpenTelemetry exponential
+histogram.
+
+This Metrics SDK is being used in production at Lightstep.
+
+To select the alternative Metrics SDK, use
+`WithAlternateMetricsSDK(true)` or set `LS_ALTERNATE_METRICS_SDK=true`.
+
+The differences between the OpenTelemetry Metrics SDK specification
+and the alternative SDK are documented in its
+[README](./lightstep/sdk/metric/README.md).
 
 ------
 
