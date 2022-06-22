@@ -675,7 +675,6 @@ func setEnvironment() {
 	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE", "delta")
 	os.Setenv("LS_METRICS_ENABLED", "false")
 	os.Setenv("LS_ALTERNATE_METRICS_SDK", "true")
-
 }
 
 func unsetEnvironment() {
