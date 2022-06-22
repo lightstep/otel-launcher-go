@@ -15,16 +15,23 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
+	"github.com/lightstep/otel-launcher-go/pipelines/test"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestMinimumConfiguration(t *testing.T) {
+	server := test.NewServer(t)
+	defer server.Stop()
+
 	os.Setenv("LS_SERVICE_NAME", "test-service-name")
-	os.Setenv("OTEL_EXPORTER_OTLP_SPAN_ENDPOINT", "invalid-endpoint")
-	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_ENDPOINT", "invalid-endpoint")
+	os.Setenv("OTEL_EXPORTER_OTLP_SPAN_ENDPOINT", fmt.Sprint("0.0.0.0:", server.InsecureTracePort))
+	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_ENDPOINT", fmt.Sprint("0.0.0.0:", server.InsecureMetricsPort))
+	os.Setenv("OTEL_EXPORTER_OTLP_SPAN_INSECURE", "true")
+	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_INSECURE", "true")
 	os.Setenv("NOHANG", "true")
 	assert.NotPanics(t, main)
 }
