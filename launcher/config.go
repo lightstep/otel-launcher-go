@@ -380,12 +380,13 @@ func setupMetrics(c Config) (func() error, error) {
 		return nil, nil
 	}
 	return pipelines.NewMetricsPipeline(pipelines.PipelineConfig{
-		Endpoint:              c.MetricExporterEndpoint,
-		Insecure:              c.MetricExporterEndpointInsecure,
-		Headers:               c.Headers,
-		Resource:              c.Resource,
-		ReportingPeriod:       c.MetricReportingPeriod,
-		TemporalityPreference: c.MetricTemporalityPreference,
+		Endpoint:               c.MetricExporterEndpoint,
+		Insecure:               c.MetricExporterEndpointInsecure,
+		Headers:                c.Headers,
+		Resource:               c.Resource,
+		ReportingPeriod:        c.MetricReportingPeriod,
+		TemporalityPreference:  c.MetricTemporalityPreference,
+		UseAlternateMetricsSDK: c.UseAlternateMetricsSDK,
 	})
 }
 

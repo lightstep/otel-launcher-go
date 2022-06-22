@@ -23,11 +23,13 @@ import (
 	"testing"
 	"time"
 
+	sdkmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/pipelines/test"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
+	metricglobal "go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
@@ -702,4 +704,20 @@ func unsetEnvironment() {
 func TestMain(m *testing.M) {
 	unsetEnvironment()
 	os.Exit(m.Run())
+}
+
+func (suite *testSuite) TestAlternateMetricsSDK() {
+	lsOtel := ConfigureOpentelemetry(
+		append(suite.bothInsecureEndpointOptions(),
+			WithServiceName("test-service"),
+			WithAccessToken(fakeAccessToken()),
+			WithAlternateMetricsSDK(true),
+		)...,
+	)
+	defer lsOtel.Shutdown()
+
+	sdk := metricglobal.MeterProvider()
+	if _, ok := sdk.(*sdkmetric.MeterProvider); !ok {
+		suite.T().Errorf("did not find an alternate metrics SDK")
+	}
 }
