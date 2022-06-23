@@ -1,4 +1,4 @@
-## Alternate implementation of the OpenTelemetry-Go Metrics SDK
+## Lightstep implementation of the OpenTelemetry-Go Metrics SDK
 
 This implementation began as a prototype implementation of the
 OpenTelemetry SDK specification and has been used as a reference point

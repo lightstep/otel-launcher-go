@@ -67,7 +67,7 @@ Additional options
 |WithResourceAttributes     |OTEL_RESOURCE_ATTRIBUTES           |n       |-                               |
 |WithMetricReportingPeriod  |OTEL_EXPORTER_OTLP_METRIC_PERIOD   |n       |30s                             |
 |WithMetricsEnabled         |LS_METRICS_ENABLED                 |n       |True                            |
-|WithAlternateMetricsSDK    |LS_ALTERNATE_METRICS_SDK           |n       |False                            |
+|WithLightstepMetricsSDK    |LS_METRICS_SDK           |n       |False                            |
 
 ### Principles behind Launcher
 
@@ -81,7 +81,7 @@ Another decision we made with launcher is to provide end users with a layer of v
 
 Start using it today in [Go](https://github.com/lightstep/otel-launcher-go), [Java](https://github.com/lightstep/otel-launcher-java), [Javascript](https://github.com/lightstep/otel-launcher-node) and [Python](https://github.com/lightstep/otel-launcher-python) and let us know what you think!
 
-### Lightstep Alternate Metrics SDK
+### Lightstep Metrics SDK
 
 The Launcher contains an alternative to the [OTel-Go community Metrics
 SDK](https://github.com/open-telemetry/opentelemetry-go) being
