@@ -379,7 +379,7 @@ func (suite *testSuite) TestDefaultConfig() {
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
 		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		UseAlternateMetricsSDK:         false,
+		UseLightstepMetricsSDK:         false,
 		logger:                         &suite.testLogger,
 		errorHandler:                   &suite.testErrorHandler,
 	}
@@ -443,7 +443,7 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		WithLogger(&suite.testLogger),
 		WithErrorHandler(&suite.testErrorHandler),
 		WithPropagators([]string{"b3"}),
-		WithAlternateMetricsSDK(false),
+		WithLightstepMetricsSDK(false),
 	)
 
 	attributes := []attribute.KeyValue{
@@ -468,7 +468,7 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		LogLevel:                       "info",
 		Propagators:                    []string{"b3"},
 		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		UseAlternateMetricsSDK:         false,
+		UseLightstepMetricsSDK:         false,
 		logger:                         &suite.testLogger,
 		errorHandler:                   &suite.testErrorHandler,
 	}
@@ -676,7 +676,7 @@ func setEnvironment() {
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-name-b")
 	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE", "delta")
 	os.Setenv("LS_METRICS_ENABLED", "false")
-	os.Setenv("LS_ALTERNATE_METRICS_SDK", "true")
+	os.Setenv("LS_METRICS_SDK", "true")
 }
 
 func unsetEnvironment() {
@@ -694,7 +694,7 @@ func unsetEnvironment() {
 		"OTEL_EXPORTER_OTLP_METRIC_PERIOD",
 		"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE",
 		"LS_METRICS_ENABLED",
-		"LS_ALTERNATE_METRICS_SDK",
+		"LS_METRICS_SDK",
 	}
 	for _, envvar := range vars {
 		os.Unsetenv(envvar)
@@ -706,12 +706,12 @@ func TestMain(m *testing.M) {
 	os.Exit(m.Run())
 }
 
-func (suite *testSuite) TestAlternateMetricsSDK() {
+func (suite *testSuite) TestLightstepMetricsSDK() {
 	lsOtel := ConfigureOpentelemetry(
 		append(suite.bothInsecureEndpointOptions(),
 			WithServiceName("test-service"),
 			WithAccessToken(fakeAccessToken()),
-			WithAlternateMetricsSDK(true),
+			WithLightstepMetricsSDK(true),
 		)...,
 	)
 	defer lsOtel.Shutdown()

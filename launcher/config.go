@@ -168,11 +168,11 @@ func WithLogger(logger Logger) Option {
 	}
 }
 
-// WithAlternateMetricsSDK enables the alternate metrics SDK from this
+// WithLightstepMetricsSDK enables the Lightstep metrics SDK from this
 // repository.
-func WithAlternateMetricsSDK(alt bool) Option {
+func WithLightstepMetricsSDK(alt bool) Option {
 	return func(c *Config) {
-		c.UseAlternateMetricsSDK = alt
+		c.UseLightstepMetricsSDK = alt
 	}
 }
 
@@ -217,7 +217,7 @@ type Config struct {
 	Propagators                    []string          `env:"OTEL_PROPAGATORS,default=b3"`
 	MetricReportingPeriod          string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
 	MetricTemporalityPreference    string            `env:"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE,default=cumulative"`
-	UseAlternateMetricsSDK         bool              `env:"LS_ALTERNATE_METRICS_SDK,default=false"`
+	UseLightstepMetricsSDK         bool              `env:"LS_METRICS_SDK,default=false"`
 	ResourceAttributes             map[string]string
 	Resource                       *resource.Resource
 	logger                         Logger
@@ -386,7 +386,7 @@ func setupMetrics(c Config) (func() error, error) {
 		Resource:               c.Resource,
 		ReportingPeriod:        c.MetricReportingPeriod,
 		TemporalityPreference:  c.MetricTemporalityPreference,
-		UseAlternateMetricsSDK: c.UseAlternateMetricsSDK,
+		UseLightstepMetricsSDK: c.UseLightstepMetricsSDK,
 	})
 }
 
