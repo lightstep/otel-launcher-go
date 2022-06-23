@@ -19,10 +19,7 @@ Differences from the OpenTelemetry metrics SDK specification:
 1. The exponential histogram is enabled by default; the
    explicit-boundary histogram has been removed
 2. The OTLP exporter is the only provided exporter
-3. The OTLP exporter supports a "stateless" temporality preference,
-   which uses delta temporality for only Counter and Histogram
-   instruments
-4. There is an alternate aggregation for Histogram instruments,
+3. There is an alternate aggregation for Histogram instruments,
    "MinMaxSumCount", which encodes as a zero-bucket explicit-boundary
    histogram.
 
