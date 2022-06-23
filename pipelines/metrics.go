@@ -36,6 +36,7 @@ import (
 	// The old Metrics SDK
 	oldotlpmetric "go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
 	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
+	oldaggregation "go.opentelemetry.io/otel/sdk/metric/export/aggregation"
 	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
 	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
 
@@ -59,6 +60,11 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 	var provider metric.MeterProvider
 	var shutdown func() error
 
+	newPref, oldPref, err := tempoOptions(c)
+	if err != nil {
+		return nil, fmt.Errorf("invalid metric view configuration: %v", err)
+	}
+
 	if c.UseAlternateMetricsSDK {
 		// Install the Lightstep alternate metrics SDK
 		metricExporter, err := c.newMetricsExporter()
@@ -66,16 +72,11 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 			return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 		}
 
-		vopts, err := viewOptions(c)
-		if err != nil {
-			return nil, fmt.Errorf("invalid metric view configuration: %v", err)
-		}
-
 		sdk := sdkmetric.NewMeterProvider(
 			sdkmetric.WithResource(c.Resource),
 			sdkmetric.WithReader(
 				sdkmetric.NewPeriodicReader(metricExporter, period),
-				vopts...,
+				newPref,
 			),
 		)
 
@@ -86,7 +87,7 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 
 	} else {
 		// Install the OTel-Go community metrics SDK.
-		metricExporter, err := c.newOldMetricsExporter()
+		metricExporter, err := c.newOldMetricsExporter(oldPref)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 		}
@@ -134,7 +135,7 @@ func (c PipelineConfig) newMetricsExporter() (*otlpmetric.Exporter, error) {
 	)
 }
 
-func (c PipelineConfig) newOldMetricsExporter() (*oldotlpmetric.Exporter, error) {
+func (c PipelineConfig) newOldMetricsExporter(tempo oldaggregation.TemporalitySelector) (*oldotlpmetric.Exporter, error) {
 	return oldotlpmetric.New(
 		context.Background(),
 		otlpmetricgrpc.NewClient(
@@ -143,39 +144,46 @@ func (c PipelineConfig) newOldMetricsExporter() (*oldotlpmetric.Exporter, error)
 			otlpmetricgrpc.WithHeaders(c.Headers),
 			otlpmetricgrpc.WithCompressor(gzip.Name),
 		),
+		oldotlpmetric.WithMetricAggregationTemporalitySelector(tempo),
 	)
 }
 
-func viewOptions(c PipelineConfig) ([]view.Option, error) {
+func tempoOptions(c PipelineConfig) (view.Option, oldaggregation.TemporalitySelector, error) {
 	syncPref := aggregation.CumulativeTemporality
 	asyncPref := aggregation.CumulativeTemporality
+	var oldSelector oldaggregation.TemporalitySelector
 
 	switch lower := strings.ToLower(c.TemporalityPreference); lower {
 	case "delta":
 		// Delta means exercising the cumulative-to-delta
 		// export path.  This is an unusual setting for
-		// Lightstep users to choose, but could be
+		// Lightstep users to choose.
 		syncPref = aggregation.DeltaTemporality
 		asyncPref = aggregation.DeltaTemporality
+
+		oldSelector = oldaggregation.DeltaTemporalitySelector()
 	case "stateless":
+		// asyncPref set above.
 		syncPref = aggregation.DeltaTemporality
+
+		oldSelector = oldaggregation.StatelessTemporalitySelector()
 	case "", "cumulative":
-		// Defaults set above.
+		// syncPref, asyncPref set above.
+		oldSelector = oldaggregation.CumulativeTemporalitySelector()
 	default:
-		return nil, fmt.Errorf("invalid temporality preference: %v", c.TemporalityPreference)
+		return nil, nil, fmt.Errorf("invalid temporality preference: %v", c.TemporalityPreference)
+
 	}
-	return []view.Option{
-		view.WithDefaultAggregationTemporalitySelector(
-			func(k sdkinstrument.Kind) aggregation.Temporality {
-				switch k {
-				case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
-					return aggregation.CumulativeTemporality
-				case sdkinstrument.SyncCounter, sdkinstrument.SyncHistogram:
-					return syncPref
-				default:
-					return asyncPref
-				}
-			},
-		),
-	}, nil
+	return view.WithDefaultAggregationTemporalitySelector(
+		func(k sdkinstrument.Kind) aggregation.Temporality {
+			switch k {
+			case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
+				return aggregation.CumulativeTemporality
+			case sdkinstrument.SyncCounter, sdkinstrument.SyncHistogram:
+				return syncPref
+			default:
+				return asyncPref
+			}
+		},
+	), oldSelector, nil
 }
