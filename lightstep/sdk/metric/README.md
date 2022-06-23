@@ -51,8 +51,8 @@ description like this:
 
 ```
 {
+  "description": "measurement of ...",
   "config": {
-    "description": "measurement of ...",
     "histogram": {
       "max_size": 320
     }
@@ -64,8 +64,6 @@ To set the MinMaxSumCount aggregation for a specific histogram instrument:
 
 ```
 {
-  "config": {
-    "description": "measurement of ...",
-    "aggregation": "minmaxsumcount"
-  }
+  "description": "measurement of ...",
+  "aggregation": "minmaxsumcount"
 }
