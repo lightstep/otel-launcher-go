@@ -55,6 +55,11 @@ func main() {
 	c1, _ := meter.SyncInt64().Counter(prefix + "counter")
 	c2, _ := meter.SyncInt64().UpDownCounter(prefix + "updowncounter")
 	hist, _ := meter.SyncFloat64().Histogram(prefix + "histogram")
+	mmsc, _ := meter.SyncFloat64().Histogram(prefix + "mmsc",
+		instrument.WithDescription(`{
+  "aggregation": "minmaxsumcount"
+}`),
+	)
 	go func() {
 		for {
 			c1.Add(ctx, 1)
@@ -65,7 +70,9 @@ func main() {
 			mult *= mult
 
 			for i := 0; i < 10000; i++ {
-				hist.Record(ctx, mult*(100+rand.NormFloat64()*100))
+				value := math.Abs(mult*(100+rand.NormFloat64()*100))
+				hist.Record(ctx, value)
+				mmsc.Record(ctx, value)
 			}
 
 			time.Sleep(time.Second)
