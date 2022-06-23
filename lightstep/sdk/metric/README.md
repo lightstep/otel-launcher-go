@@ -45,3 +45,27 @@ metric instrument as the JSON-encoded form of a
 structure.  If successfully parsed, the embedded aggrgation kind and
 configuration will be used, and the embedded Description field
 replaces the original hint.
+
+For example, to set the number of exponential histogram buckets, use a
+description like this:
+
+```
+{
+  "config": {
+    "description": "measurement of ...",
+    "histogram": {
+      "max_size": 320
+    }
+  }
+}
+```
+
+To set the MinMaxSumCount aggregation for a specific histogram instrument:
+
+```
+{
+  "config": {
+    "description": "measurement of ...",
+    "aggrgation": "minmaxsumcount"
+  }
+}
