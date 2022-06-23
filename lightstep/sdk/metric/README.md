@@ -31,3 +31,17 @@ the community SDK supports configuring the behaviors listed above.
 Moreover, Lightstep expects to make several optimizations in this SDK
 to further optimize the synchronous instrument fast path and continue
 improving memory performance.
+
+### Metric instrument "Hints" API
+
+There is a standing feature request in OpenTelemetry for a "Hints" API
+to inform the SDK of recommended aggregations in the source, when
+registering instruments.  This SDK implements an experimental form of
+Hints API, described as follows.
+
+The Views implementation attempts to parse the Description of each
+metric instrument as the JSON-encoded form of a
+`(github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view).Hint`
+structure.  If successfully parsed, the embedded aggrgation kind and
+configuration will be used, and the embedded Description field
+replaces the original hint.
