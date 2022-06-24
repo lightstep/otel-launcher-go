@@ -3,6 +3,7 @@ module github.com/lightstep/otel-launcher-go
 go 1.18
 
 require (
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v0.0.0-20220622184422-ef9dbfd619a6
 	github.com/lightstep/otel-launcher-go/pipelines v1.5.2
 	github.com/sethvargo/go-envconfig v0.6.2
 	github.com/stretchr/testify v1.7.4
@@ -21,7 +22,6 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v0.0.0-20220622184422-ef9dbfd619a6 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
@@ -48,7 +48,7 @@ require (
 	google.golang.org/genproto v0.0.0-20220112215332-a9c7c0acf9f2 // indirect
 	google.golang.org/grpc v1.46.0 // indirect
 	google.golang.org/protobuf v1.28.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 replace github.com/lightstep/otel-launcher-go/pipelines => ./pipelines
