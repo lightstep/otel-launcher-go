@@ -36,7 +36,7 @@ func NewTracePipeline(c PipelineConfig) (func() error, error) {
 
 	bsp := trace.NewBatchSpanProcessor(spanExporter)
 	tp := trace.NewTracerProvider(
-		trace.WithSampler(trace.AlwaysSample()),
+		trace.WithSampler(c.newSampler()),
 		trace.WithSpanProcessor(bsp),
 		trace.WithResource(c.Resource),
 	)
@@ -51,6 +51,19 @@ func NewTracePipeline(c PipelineConfig) (func() error, error) {
 		_ = bsp.Shutdown(context.Background())
 		return spanExporter.Shutdown(context.Background())
 	}, nil
+}
+
+func (c PipelineConfig) newSampler() trace.Sampler {
+	if !c.SamplingEnabled || c.SamplingPercent == 100 {
+		return trace.AlwaysSample()
+	}
+
+	if c.SamplingPercent == 0 {
+		return trace.NeverSample()
+	}
+
+	ratioed := trace.TraceIDRatioBased(float64(c.SamplingPercent) / 100.0)
+	return trace.ParentBased(ratioed)
 }
 
 func (c PipelineConfig) newTraceExporter() (*otlptrace.Exporter, error) {

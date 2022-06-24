@@ -103,6 +103,19 @@ func WithSpanExporterInsecure(insecure bool) Option {
 	}
 }
 
+// WithSpanSamplingPercent sets a percentage of spans to be sampled client-side.
+// For instance, if set to 75, then 25% of spans will be dropped and 75% will be
+// kept. The default value is 100 (no sampling).
+//
+// Sampling is applied at the trace level, rather than the span level, so either
+// all the spans in a trace are sampled, or none are.
+func WithSpanSamplingPercent(percent int) Option {
+	return func(c *Config) {
+		c.SpanSamplingEnabled = true
+		c.SpanSamplingPercent = percent
+	}
+}
+
 // WithMetricExporterInsecure permits connecting to the
 // metric endpoint without a certificate
 func WithMetricExporterInsecure(insecure bool) Option {
@@ -216,6 +229,8 @@ const (
 	// Note: the MetricExporterEndpoint currently defaults to "".  When LS is ready for OTLP metrics
 	// we'll set this to `DefaultMetricExporterEndpoint`.
 
+	DefaultSpanSamplingEnabled    = false
+	DefaultSpanSamplingPercent    = 100
 	DefaultSpanExporterEndpoint   = "ingest.lightstep.com:443"
 	DefaultMetricExporterEndpoint = "ingest.lightstep.com:443"
 )
@@ -223,6 +238,8 @@ const (
 type Config struct {
 	SpanExporterEndpoint                string            `env:"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT,default=ingest.lightstep.com:443"`
 	SpanExporterEndpointInsecure        bool              `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
+	SpanSamplingEnabled                 bool              `env:"LS_SPAN_SAMPLING_ENABLED,default=false"`
+	SpanSamplingPercent                 int               `env:"LS_SPAN_SAMPLING_PERCENT,default=100"`
 	ServiceName                         string            `env:"LS_SERVICE_NAME"`
 	ServiceVersion                      string            `env:"LS_SERVICE_VERSION,default=unknown"`
 	Headers                             map[string]string `env:"OTEL_EXPORTER_OTLP_HEADERS"`
@@ -382,11 +399,13 @@ func setupTracing(c Config) (func() error, error) {
 		return nil, nil
 	}
 	return pipelines.NewTracePipeline(pipelines.PipelineConfig{
-		Endpoint:    c.SpanExporterEndpoint,
-		Insecure:    c.SpanExporterEndpointInsecure,
-		Headers:     c.Headers,
-		Resource:    c.Resource,
-		Propagators: c.Propagators,
+		Endpoint:        c.SpanExporterEndpoint,
+		Insecure:        c.SpanExporterEndpointInsecure,
+		SamplingEnabled: c.SpanSamplingEnabled,
+		SamplingPercent: c.SpanSamplingPercent,
+		Headers:         c.Headers,
+		Resource:        c.Resource,
+		Propagators:     c.Propagators,
 	})
 }
 

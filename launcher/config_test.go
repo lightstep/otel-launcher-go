@@ -371,6 +371,8 @@ func (suite *testSuite) TestDefaultConfig() {
 		ServiceVersion:                      "unknown",
 		SpanExporterEndpoint:                "ingest.lightstep.com:443",
 		SpanExporterEndpointInsecure:        false,
+		SpanSamplingEnabled:                 false,
+		SpanSamplingPercent:                 100,
 		MetricExporterEndpoint:              "ingest.lightstep.com:443",
 		MetricExporterEndpointInsecure:      false,
 		MetricReportingPeriod:               "30s",
@@ -412,6 +414,8 @@ func (suite *testSuite) TestEnvironmentVariables() {
 		ServiceVersion:                      "test-service-version",
 		SpanExporterEndpoint:                "satellite-url",
 		SpanExporterEndpointInsecure:        true,
+		SpanSamplingEnabled:                 true,
+		SpanSamplingPercent:                 75,
 		MetricExporterEndpoint:              "metrics-url",
 		MetricExporterEndpointInsecure:      true,
 		MetricReportingPeriod:               "30s",
@@ -441,6 +445,7 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		WithAccessToken("override-access-token"),
 		WithSpanExporterEndpoint("override-satellite-url"),
 		WithSpanExporterInsecure(false),
+		WithSpanSamplingPercent(25),
 		WithMetricExporterEndpoint("override-metrics-url"),
 		WithMetricExporterInsecure(false),
 		WithMetricExporterTemporalityPreference("stateless"),
@@ -468,6 +473,8 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		ServiceVersion:                      "override-service-version",
 		SpanExporterEndpoint:                "override-satellite-url",
 		SpanExporterEndpointInsecure:        false,
+		SpanSamplingEnabled:                 true,
+		SpanSamplingPercent:                 25,
 		MetricExporterEndpoint:              "override-metrics-url",
 		MetricExporterEndpointInsecure:      false,
 		MetricReportingPeriod:               "30s",
@@ -690,6 +697,8 @@ func setEnvironment() {
 	os.Setenv("LS_METRICS_BUILTINS_ENABLED", "false")
 	os.Setenv("LS_METRICS_BUILTIN_LIBRARIES", "cputime:stable,runtime:stable")
 	os.Setenv("LS_METRICS_SDK", "true")
+	os.Setenv("LS_SPAN_SAMPLING_ENABLED", "true")
+	os.Setenv("LS_SPAN_SAMPLING_PERCENT", "75")
 }
 
 func unsetEnvironment() {
@@ -710,6 +719,8 @@ func unsetEnvironment() {
 		"LS_METRICS_BUILTINS_ENABLED",
 		"LS_METRICS_BUILTIN_LIBRARIES",
 		"LS_METRICS_SDK",
+		"LS_SPAN_SAMPLING_ENABLED",
+		"LS_SPAN_SAMPLING_PERCENT",
 	}
 	for _, envvar := range vars {
 		os.Unsetenv(envvar)
