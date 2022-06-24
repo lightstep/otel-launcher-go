@@ -146,7 +146,7 @@ func WithMetricReportingPeriod(p time.Duration) Option {
 // ignores this preference for specified reasons).
 func WithMetricExporterTemporalityPreference(prefName string) Option {
 	return func(c *Config) {
-		c.MetricTemporalityPreference = prefName
+		c.MetricExporterTemporalityPreference = prefName
 	}
 }
 
@@ -385,7 +385,7 @@ func setupMetrics(c Config) (func() error, error) {
 		Headers:                c.Headers,
 		Resource:               c.Resource,
 		ReportingPeriod:        c.MetricReportingPeriod,
-		TemporalityPreference:  c.MetricTemporalityPreference,
+		TemporalityPreference:  c.MetricExporterTemporalityPreference,
 		UseLightstepMetricsSDK: c.UseLightstepMetricsSDK,
 	})
 }

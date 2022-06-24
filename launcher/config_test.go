@@ -367,21 +367,21 @@ func (suite *testSuite) TestDefaultConfig() {
 	}
 
 	expected := Config{
-		ServiceName:                    "",
-		ServiceVersion:                 "unknown",
-		SpanExporterEndpoint:           "ingest.lightstep.com:443",
-		SpanExporterEndpointInsecure:   false,
-		MetricExporterEndpoint:         "ingest.lightstep.com:443",
-		MetricExporterEndpointInsecure: false,
-		MetricReportingPeriod:          "30s",
-		MetricsEnabled:                 true,
-		MetricTemporalityPreference:    "cumulative",
-		LogLevel:                       "info",
-		Propagators:                    []string{"b3"},
-		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		UseLightstepMetricsSDK:         false,
-		logger:                         &suite.testLogger,
-		errorHandler:                   &suite.testErrorHandler,
+		ServiceName:                         "",
+		ServiceVersion:                      "unknown",
+		SpanExporterEndpoint:                "ingest.lightstep.com:443",
+		SpanExporterEndpointInsecure:        false,
+		MetricExporterEndpoint:              "ingest.lightstep.com:443",
+		MetricExporterEndpointInsecure:      false,
+		MetricReportingPeriod:               "30s",
+		MetricsEnabled:                      true,
+		MetricExporterTemporalityPreference: "cumulative",
+		LogLevel:                            "info",
+		Propagators:                         []string{"b3"},
+		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
+		UseLightstepMetricsSDK:              false,
+		logger:                              &suite.testLogger,
+		errorHandler:                        &suite.testErrorHandler,
 	}
 	assert.Equal(expected, config)
 }
@@ -406,20 +406,20 @@ func (suite *testSuite) TestEnvironmentVariables() {
 	}
 
 	expected := Config{
-		ServiceName:                    "test-service-name",
-		ServiceVersion:                 "test-service-version",
-		SpanExporterEndpoint:           "satellite-url",
-		SpanExporterEndpointInsecure:   true,
-		MetricExporterEndpoint:         "metrics-url",
-		MetricExporterEndpointInsecure: true,
-		MetricReportingPeriod:          "30s",
-		MetricTemporalityPreference:    "delta",
-		LogLevel:                       "debug",
-		Propagators:                    []string{"b3", "w3c"},
-		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		UseAlternateMetricsSDK:         true,
-		logger:                         &suite.testLogger,
-		errorHandler:                   &suite.testErrorHandler,
+		ServiceName:                         "test-service-name",
+		ServiceVersion:                      "test-service-version",
+		SpanExporterEndpoint:                "satellite-url",
+		SpanExporterEndpointInsecure:        true,
+		MetricExporterEndpoint:              "metrics-url",
+		MetricExporterEndpointInsecure:      true,
+		MetricReportingPeriod:               "30s",
+		MetricExporterTemporalityPreference: "delta",
+		LogLevel:                            "debug",
+		Propagators:                         []string{"b3", "w3c"},
+		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
+		UseLightstepMetricsSDK:              true,
+		logger:                              &suite.testLogger,
+		errorHandler:                        &suite.testErrorHandler,
 	}
 	assert.Equal(expected, config)
 
@@ -438,7 +438,7 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		WithSpanExporterInsecure(false),
 		WithMetricExporterEndpoint("override-metrics-url"),
 		WithMetricExporterInsecure(false),
-		WithMetricTemporalityPreference("stateless"),
+		WithMetricExporterTemporalityPreference("stateless"),
 		WithLogLevel("info"),
 		WithLogger(&suite.testLogger),
 		WithErrorHandler(&suite.testErrorHandler),
@@ -456,21 +456,21 @@ func (suite *testSuite) TestConfigurationOverrides() {
 	}
 
 	expected := Config{
-		ServiceName:                    "override-service-name",
-		ServiceVersion:                 "override-service-version",
-		SpanExporterEndpoint:           "override-satellite-url",
-		SpanExporterEndpointInsecure:   false,
-		MetricExporterEndpoint:         "override-metrics-url",
-		MetricExporterEndpointInsecure: false,
-		MetricReportingPeriod:          "30s",
-		MetricTemporalityPreference:    "stateless",
-		Headers:                        map[string]string{"lightstep-access-token": "override-access-token"},
-		LogLevel:                       "info",
-		Propagators:                    []string{"b3"},
-		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		UseLightstepMetricsSDK:         false,
-		logger:                         &suite.testLogger,
-		errorHandler:                   &suite.testErrorHandler,
+		ServiceName:                         "override-service-name",
+		ServiceVersion:                      "override-service-version",
+		SpanExporterEndpoint:                "override-satellite-url",
+		SpanExporterEndpointInsecure:        false,
+		MetricExporterEndpoint:              "override-metrics-url",
+		MetricExporterEndpointInsecure:      false,
+		MetricReportingPeriod:               "30s",
+		MetricExporterTemporalityPreference: "stateless",
+		Headers:                             map[string]string{"lightstep-access-token": "override-access-token"},
+		LogLevel:                            "info",
+		Propagators:                         []string{"b3"},
+		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
+		UseLightstepMetricsSDK:              false,
+		logger:                              &suite.testLogger,
+		errorHandler:                        &suite.testErrorHandler,
 	}
 	assert.Equal(expected, config)
 }
@@ -718,6 +718,6 @@ func (suite *testSuite) TestLightstepMetricsSDK() {
 
 	sdk := metricglobal.MeterProvider()
 	if _, ok := sdk.(*sdkmetric.MeterProvider); !ok {
-		suite.T().Errorf("did not find an alternate metrics SDK")
+		suite.T().Errorf("did not find a lightstep metrics SDK")
 	}
 }
