@@ -57,13 +57,13 @@ func genericLastValueTest[N number.Any, Storage any, Methods aggregator.Methods[
 		updaters.Add(workers)
 
 		for i := 0; i < workers; i++ {
-			go func() {
+			go func(i int) {
 				defer updaters.Done()
 
 				for j := 0; j < ops/workers; j++ {
 					methods.Update(input, N(i+1))
 				}
-			}()
+			}(i)
 		}
 
 		updaters.Wait()

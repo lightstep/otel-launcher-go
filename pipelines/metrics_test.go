@@ -47,7 +47,7 @@ func newTLSConfig() *tls.Config {
 	}
 }
 
-func testInsecureMetrics(t *testing.T, altSDK bool) {
+func testInsecureMetrics(t *testing.T, lightstepSDK bool) {
 	server := test.NewServer(t)
 	defer server.Stop()
 
@@ -62,7 +62,7 @@ func testInsecureMetrics(t *testing.T, altSDK bool) {
 			attribute.String("test-r1", "test-v1"),
 		),
 		ReportingPeriod:        "24h",
-		UseAlternateMetricsSDK: altSDK,
+		UseLightstepMetricsSDK: lightstepSDK,
 	})
 	assert.NoError(t, err)
 
@@ -85,7 +85,7 @@ func testInsecureMetrics(t *testing.T, altSDK bool) {
 	require.Equal(t, []string{"test-value"}, server.MetricsMDs()[0]["test-header"])
 }
 
-func testSecureMetrics(t *testing.T, altSDK bool) {
+func testSecureMetrics(t *testing.T, lightstepSDK bool) {
 	server := test.NewServer(t)
 	defer server.Stop()
 
@@ -98,8 +98,9 @@ func testSecureMetrics(t *testing.T, altSDK bool) {
 			semconv.SchemaURL,
 			attribute.String("test-r1", "test-v1"),
 		),
-		ReportingPeriod: "24h",
-		Credentials:     credentials.NewTLS(newTLSConfig()),
+		ReportingPeriod:        "24h",
+		Credentials:            credentials.NewTLS(newTLSConfig()),
+		UseLightstepMetricsSDK: lightstepSDK,
 	})
 	assert.NoError(t, err)
 
