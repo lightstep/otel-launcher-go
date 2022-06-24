@@ -59,6 +59,15 @@ type PipelineConfig struct {
 	// UseLightstepMetricsSDK determines whether to use the metrics
 	// SDK at ../lightstep/sdk/metric.
 	UseLightstepMetricsSDK bool
+
+	// SamplingEnabled turns on span sampling. This should be set alongside the
+	// SamplingPercent attribute. If sampling is disabled, all traces are sent
+	// to the endpoint.
+	SamplingEnabled bool
+
+	// SamplingPercent is the percentage of spans will be sent to the endpoint,
+	// in the range 0-100. It is only consulted if SamplingEnabled is set to true
+	SamplingPercent int
 }
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)
