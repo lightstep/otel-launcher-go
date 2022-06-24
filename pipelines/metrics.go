@@ -144,10 +144,10 @@ type dropExample struct {
 
 type dropSummary struct {
 	Dropped struct {
-		Points  int `json:"points"`
-		Metrics int `json:"metrics"`
+		Points  int `json:"points,omitempty"`
+		Metrics int `json:"metrics,omitempty"`
 	} `json:"dropped"`
-	Examples []dropExample `json:"examples"`
+	Examples []dropExample `json:"examples,omitempty"`
 }
 
 func interceptor(
