@@ -16,12 +16,26 @@ however it is not covered by any stability guarantee.
 
 Differences from the OpenTelemetry metrics SDK specification:
 
-1. The exponential histogram is enabled by default; the
-   explicit-boundary histogram has been removed
-2. The OTLP exporter is the only provided exporter
-3. There is an alternate aggregation for Histogram instruments,
-   "MinMaxSumCount", which encodes as a zero-bucket explicit-boundary
-   histogram.
+1. [ExponentialHistogram](./aggregator/histogram/README.md) is the
+   default aggregation for Histogram instruments.  The
+   explicit-boundary histogram aggregation is not supported.
+2. [MinMaxSumCount](./aggregator/minmaxsumcount/README.md) is an
+   optional aggregation for Histogram instruments that encodes a
+   [zero-bucket explicit-boundary histogram data
+   point](https://opentelemetry.io/docs/reference/specification/metrics/datamodel/#histogram).
+   Note that this aggregation only encodes the `.Min` and `.Max`
+   fields when configured with delta temporality.  [Consider using the
+   "stateless" temporality preference in the launcher.](../../../README.md#temporality-settings).
+3. The OTLP exporter is the only provided exporter.
+
+These differences aside, this SDK features a complete implementation
+of the OpenTelemetry SDK specification with support for multiple
+readers.  It is possible, for example, to configure multiple OTLP
+exporters with different views and destinations.
+
+This SDK re-uses substantial portions of the community metrics SDK,
+including the OTLP gRPC client and the ExponentialHistogram mapping
+functions.
 
 Lightstep expects to continue maintaining this implementation until
 the community SDK supports configuring the behaviors listed above.
