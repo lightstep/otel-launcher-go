@@ -29,26 +29,26 @@ type compiledSyncBase[N number.Any, Storage any, Methods aggregator.Methods[N, S
 }
 
 // NewAccumulator returns a Accumulator for a synchronous instrument view.
-func (csv *compiledSyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set) Accumulator {
+func (c *compiledSyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set) Accumulator {
 	sc := &syncAccumulator[N, Storage, Methods]{}
-	csv.initStorage(&sc.current)
-	csv.initStorage(&sc.snapshot)
+	c.initStorage(&sc.current)
+	c.initStorage(&sc.snapshot)
 
-	sc.holder = csv.findStorage(kvs)
+	sc.holder = c.findStorage(kvs)
 	return sc
 }
 
 // findStorage locates the output Storage and adds to the auxiliary
 // reference count for synchronous instruments.
-func (csv *compiledSyncBase[N, Storage, Methods]) findStorage(
+func (c *compiledSyncBase[N, Storage, Methods]) findStorage(
 	kvs attribute.Set,
 ) *storageHolder[Storage, int64] {
-	kvs = csv.applyKeysFilter(kvs)
+	kvs = c.applyKeysFilter(kvs)
 
-	csv.instLock.Lock()
-	defer csv.instLock.Unlock()
+	c.instLock.Lock()
+	defer c.instLock.Unlock()
 
-	entry := csv.getOrCreateEntry(kvs)
+	entry := c.getOrCreateEntry(kvs)
 	atomic.AddInt64(&entry.auxiliary, 1)
 	return entry
 }
@@ -59,36 +59,36 @@ type compiledAsyncBase[N number.Any, Storage any, Methods aggregator.Methods[N, 
 }
 
 // NewAccumulator returns a Accumulator for an asynchronous instrument view.
-func (cav *compiledAsyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set) Accumulator {
+func (c *compiledAsyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set) Accumulator {
 	ac := &asyncAccumulator[N, Storage, Methods]{}
 
-	ac.holder = cav.findStorage(kvs)
+	ac.holder = c.findStorage(kvs)
 	return ac
 }
 
 // findStorage locates the output Storage for asynchronous instruments.
-func (cav *compiledAsyncBase[N, Storage, Methods]) findStorage(
+func (c *compiledAsyncBase[N, Storage, Methods]) findStorage(
 	kvs attribute.Set,
 ) *storageHolder[Storage, notUsed] {
-	kvs = cav.applyKeysFilter(kvs)
+	kvs = c.applyKeysFilter(kvs)
 
-	cav.instLock.Lock()
-	defer cav.instLock.Unlock()
+	c.instLock.Lock()
+	defer c.instLock.Unlock()
 
-	return cav.getOrCreateEntry(kvs)
+	return c.getOrCreateEntry(kvs)
 }
 
 // multiAccumulator
 type multiAccumulator[N number.Any] []Accumulator
 
-func (acc multiAccumulator[N]) SnapshotAndProcess(final bool) {
-	for _, coll := range acc {
+func (a multiAccumulator[N]) SnapshotAndProcess(final bool) {
+	for _, coll := range a {
 		coll.SnapshotAndProcess(final)
 	}
 }
 
-func (acc multiAccumulator[N]) Update(value N) {
-	for _, coll := range acc {
+func (a multiAccumulator[N]) Update(value N) {
+	for _, coll := range a {
 		coll.(Updater[N]).Update(value)
 	}
 }
@@ -103,20 +103,20 @@ type syncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, St
 	holder   *storageHolder[Storage, int64]
 }
 
-func (acc *syncAccumulator[N, Storage, Methods]) Update(number N) {
+func (a *syncAccumulator[N, Storage, Methods]) Update(number N) {
 	var methods Methods
-	methods.Update(&acc.current, number)
+	methods.Update(&a.current, number)
 }
 
-func (acc *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess(final bool) {
+func (a *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess(final bool) {
 	var methods Methods
-	acc.syncLock.Lock()
-	defer acc.syncLock.Unlock()
-	methods.Move(&acc.current, &acc.snapshot)
-	methods.Merge(&acc.snapshot, &acc.holder.storage)
+	a.syncLock.Lock()
+	defer a.syncLock.Unlock()
+	methods.Move(&a.current, &a.snapshot)
+	methods.Merge(&a.snapshot, &a.holder.storage)
 	if final {
 		// On the final snapshot-and-process, decrement the auxiliary reference count.
-		atomic.AddInt64(&acc.holder.auxiliary, -1)
+		atomic.AddInt64(&a.holder.auxiliary, -1)
 	}
 }
 
@@ -127,16 +127,16 @@ type asyncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, S
 	holder    *storageHolder[Storage, notUsed]
 }
 
-func (acc *asyncAccumulator[N, Storage, Methods]) Update(number N) {
-	acc.asyncLock.Lock()
-	defer acc.asyncLock.Unlock()
-	acc.current = number
+func (a *asyncAccumulator[N, Storage, Methods]) Update(number N) {
+	a.asyncLock.Lock()
+	defer a.asyncLock.Unlock()
+	a.current = number
 }
 
-func (acc *asyncAccumulator[N, Storage, Methods]) SnapshotAndProcess(_ bool) {
-	acc.asyncLock.Lock()
-	defer acc.asyncLock.Unlock()
+func (a *asyncAccumulator[N, Storage, Methods]) SnapshotAndProcess(_ bool) {
+	a.asyncLock.Lock()
+	defer a.asyncLock.Unlock()
 
 	var methods Methods
-	methods.Update(&acc.holder.storage, acc.current)
+	methods.Update(&a.holder.storage, a.current)
 }

@@ -153,27 +153,27 @@ func (h *State[N, Traits]) Count() uint64 {
 }
 
 // Scale implements aggregation.Histogram.
-func (s *State[N, Traits]) Scale() int32 {
-	if s.data.count == s.data.zeroCount {
+func (h *State[N, Traits]) Scale() int32 {
+	if h.data.count == h.data.zeroCount {
 		// all zeros! scale doesn't matter, use zero.
 		return 0
 	}
-	return s.data.mapping.Scale()
+	return h.data.mapping.Scale()
 }
 
 // ZeroCount implements aggregation.Histogram.
-func (s *State[N, Traits]) ZeroCount() uint64 {
-	return s.data.zeroCount
+func (h *State[N, Traits]) ZeroCount() uint64 {
+	return h.data.zeroCount
 }
 
 // Positive implements aggregation.Histogram.
-func (s *State[N, Traits]) Positive() aggregation.Buckets {
-	return &s.data.positive
+func (h *State[N, Traits]) Positive() aggregation.Buckets {
+	return &h.data.positive
 }
 
 // Negative implements aggregation.Histogram.
-func (s *State[N, Traits]) Negative() aggregation.Buckets {
-	return &s.data.negative
+func (h *State[N, Traits]) Negative() aggregation.Buckets {
+	return &h.data.negative
 }
 
 // Offset implements aggregation.Bucket.
@@ -208,13 +208,13 @@ func (b *buckets) At(pos0 uint32) uint64 {
 
 // clearState resets a histogram to the empty state without changing
 // backing array.  Scale is reset if there are no range limits.
-func (s *State[N, Traits]) clearState() {
-	s.positive.clearState()
-	s.negative.clearState()
-	s.sum = 0
-	s.count = 0
-	s.zeroCount = 0
-	s.mapping, _ = newMapping(logarithm.MaxScale)
+func (h *State[N, Traits]) clearState() {
+	h.positive.clearState()
+	h.negative.clearState()
+	h.sum = 0
+	h.count = 0
+	h.zeroCount = 0
+	h.mapping, _ = newMapping(logarithm.MaxScale)
 }
 
 // clearState zeros the backing array.

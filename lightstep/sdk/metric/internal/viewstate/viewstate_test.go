@@ -50,8 +50,6 @@ var (
 		view.WithName("bar"),
 	)
 
-	testHistBoundaries = []float64{1, 2, 3}
-
 	defaultAggregatorConfig = aggregator.Config{}
 
 	altHistogramConfig = aggregator.Config{

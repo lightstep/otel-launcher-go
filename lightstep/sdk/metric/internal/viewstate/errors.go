@@ -18,10 +18,10 @@ import (
 	"fmt"
 	"strings"
 
-	"go.opentelemetry.io/otel/attribute"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // ViewConflicts represents a per-reader summary of conflicts caused

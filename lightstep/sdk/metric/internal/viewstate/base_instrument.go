@@ -129,7 +129,7 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) appendInstrument(o
 // slice will be extended, if possible, and the existing Aggregation
 // is potentially re-used.  The variable `reset` determines whether
 // Move() or Copy() is used.  Note that both Move and Copy are
-// synchronized with respect to Update() and Merge(), necesary for the
+// synchronized with respect to Update() and Merge(), necessary for the
 // synchronous code path which may see concurrent collection.
 func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) appendPoint(inst *data.Instrument, set attribute.Set, storage *Storage, tempo aggregation.Temporality, start, end time.Time, reset bool) {
 	var methods Methods

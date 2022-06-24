@@ -148,24 +148,6 @@ func TestArrayAttributes(t *testing.T) {
 	}
 }
 
-func assertExpectedArrayValues(t *testing.T, expectedValues, actualValues []*commonpb.AnyValue) {
-	for i, actual := range actualValues {
-		expected := expectedValues[i]
-		if a, ok := actual.Value.(*commonpb.AnyValue_DoubleValue); ok {
-			e, ok := expected.Value.(*commonpb.AnyValue_DoubleValue)
-			if !ok {
-				t.Errorf("expected AnyValue_DoubleValue, got %T", expected.Value)
-				continue
-			}
-			if !assert.InDelta(t, e.DoubleValue, a.DoubleValue, 0.01) {
-				continue
-			}
-			e.DoubleValue = a.DoubleValue
-		}
-		assert.Equal(t, expected, actual)
-	}
-}
-
 func newOTelBoolArray(key string, values []bool) *commonpb.KeyValue {
 	arrayValues := []*commonpb.AnyValue{}
 	for _, b := range values {

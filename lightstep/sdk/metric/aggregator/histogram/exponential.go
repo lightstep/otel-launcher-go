@@ -85,7 +85,7 @@ type (
 
 // Move atomically copies and resets `s`.  The modification to `dest`
 // is not synchronized.
-func (s *State[N, Traits]) Move(dest *State[N, Traits]) error {
+func (s *State[N, Traits]) Move(dest *State[N, Traits]) {
 	if dest != nil {
 		// Swap case: This is the ordinary case for a
 		// synchronous instrument, where the SDK allocates two
@@ -106,8 +106,6 @@ func (s *State[N, Traits]) Move(dest *State[N, Traits]) error {
 		// contention.
 		s.clearState()
 	}
-
-	return nil
 }
 
 // Update adds the recorded measurement to the current data set.
@@ -336,7 +334,7 @@ func (b *buckets) incrementBucket(bucketIndex int32, incr uint64) {
 }
 
 // Merge combines data from `o` into `s`.  The modification to `s` is synchronized.
-func (s *State[N, Traits]) Merge(o *State[N, Traits]) error {
+func (s *State[N, Traits]) Merge(o *State[N, Traits]) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -362,8 +360,6 @@ func (s *State[N, Traits]) Merge(o *State[N, Traits]) error {
 
 	s.mergeBuckets(&s.positive, o, &o.positive, minScale)
 	s.mergeBuckets(&s.negative, o, &o.negative, minScale)
-
-	return nil
 }
 
 // mergeBuckets translates index values from another histogram into
@@ -472,7 +468,7 @@ func (b *bucketsVarwidth[N]) moveCount(src int32) uint64 {
 }
 
 func (b *bucketsVarwidth[N]) tryIncrement(bucketIndex int32, incr uint64) bool {
-	var limit uint64 = uint64(N(0) - 1)
+	var limit = uint64(N(0) - 1)
 	if uint64(b.counts[bucketIndex])+incr <= limit {
 		b.counts[bucketIndex] += N(incr)
 		return true

@@ -15,8 +15,8 @@
 package sdkinstrument
 
 import (
-	"go.opentelemetry.io/otel/metric/unit"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
+	"go.opentelemetry.io/otel/metric/unit"
 )
 
 // Descriptor contains all the settings that describe an instrument,

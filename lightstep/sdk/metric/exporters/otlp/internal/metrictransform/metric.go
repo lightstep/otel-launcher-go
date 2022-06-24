@@ -33,12 +33,6 @@ var (
 	ErrUnimplementedAgg = errors.New("unimplemented aggregator")
 )
 
-// result is the product of transforming Records into OTLP Metrics.
-type result struct {
-	Metric *metricspb.Metric
-	Err    error
-}
-
 // toNanos returns the number of nanoseconds since the UNIX epoch.
 func toNanos(t time.Time) uint64 {
 	if t.IsZero() {

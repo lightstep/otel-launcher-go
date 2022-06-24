@@ -18,8 +18,8 @@ import (
 	"context"
 	"testing"
 
-	"go.opentelemetry.io/otel/attribute"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func BenchmarkCounterAddNoAttrs(b *testing.B) {

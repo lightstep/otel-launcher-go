@@ -21,8 +21,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/otlpconfig"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/envconfig"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/otlpconfig"
 )
 
 const (
