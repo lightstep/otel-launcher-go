@@ -16,7 +16,9 @@ package asyncstate // import "github.com/lightstep/otel-launcher-go/lightstep/sd
 
 import (
 	"context"
+	"errors"
 	"math"
+	"strings"
 	"testing"
 	"time"
 
@@ -347,13 +349,13 @@ func TestCallbackDisabledInstrument(t *testing.T) {
 }
 
 func TestOutOfRangeValues(t *testing.T) {
-	errors := test.OTelErrors()
+	otelErrs := test.OTelErrors()
 
 	tt := testAsync("test")
 
-	c := testObserver[float64, number.Float64Traits](tt, "c", sdkinstrument.AsyncCounter)
-	u := testObserver[float64, number.Float64Traits](tt, "u", sdkinstrument.AsyncUpDownCounter)
-	g := testObserver[float64, number.Float64Traits](tt, "g", sdkinstrument.AsyncGauge)
+	c := testObserver[float64, number.Float64Traits](tt, "testPatternC", sdkinstrument.AsyncCounter)
+	u := testObserver[float64, number.Float64Traits](tt, "testPatternU", sdkinstrument.AsyncUpDownCounter)
+	g := testObserver[float64, number.Float64Traits](tt, "testPatternG", sdkinstrument.AsyncGauge)
 
 	cb, _ := NewCallback([]instrument.Asynchronous{
 		c, u, g,
@@ -402,7 +404,14 @@ func TestOutOfRangeValues(t *testing.T) {
 	}
 
 	// 2 readers x 3 error conditions x 3 instruments
-	require.Equal(t, 2*3*3, len(*errors))
-	require.Contains(t, (*errors), aggregator.ErrNaNInput)
-	require.Contains(t, (*errors), aggregator.ErrInfInput)
+	require.Equal(t, 2*3*3, len(*otelErrs))
+
+	for _, err := range *otelErrs {
+		isNaN := errors.Is(err, aggregator.ErrNaNInput)
+		isInf := errors.Is(err, aggregator.ErrInfInput)
+		isNeg := errors.Is(err, aggregator.ErrNegativeInput)
+
+		require.True(t, isNaN || isInf || isNeg)
+		require.True(t, strings.HasPrefix(err.Error(), "testPattern"))
+	}
 }

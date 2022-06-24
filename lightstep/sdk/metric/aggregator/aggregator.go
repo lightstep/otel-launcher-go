@@ -34,25 +34,25 @@ var (
 // This rejects NaN and Inf values.  This rejects negative values when the
 // aggregation does not support negative values, including
 // monotonic counter metrics and Histogram metrics.
-func RangeTest[N number.Any, Traits number.Traits[N]](num N, kind sdkinstrument.Kind) bool {
+func RangeTest[N number.Any, Traits number.Traits[N]](num N, desc sdkinstrument.Descriptor) bool {
 	var traits Traits
 
 	if traits.IsInf(num) {
-		otel.Handle(ErrInfInput)
+		otel.Handle(fmt.Errorf("%s: %w", desc.Name, ErrInfInput))
 		return false
 	}
 
 	if traits.IsNaN(num) {
-		otel.Handle(ErrNaNInput)
+		otel.Handle(fmt.Errorf("%s: %w", desc.Name, ErrNaNInput))
 		return false
 	}
 
 	// Check for negative values
-	switch kind {
+	switch desc.Kind {
 	case sdkinstrument.SyncCounter,
 		sdkinstrument.SyncHistogram:
 		if num < 0 {
-			otel.Handle(ErrNegativeInput)
+			otel.Handle(fmt.Errorf("%s: %w", desc.Name, ErrNegativeInput))
 			return false
 		}
 	}

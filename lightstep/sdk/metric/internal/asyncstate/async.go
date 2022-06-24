@@ -149,7 +149,7 @@ func capture[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *I
 		return
 	}
 
-	if !aggregator.RangeTest[N, Traits](value, inst.descriptor.Kind) {
+	if !aggregator.RangeTest[N, Traits](value, inst.descriptor) {
 		return
 	}
 

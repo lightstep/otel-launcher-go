@@ -157,7 +157,7 @@ func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Ins
 
 	// Note: Here, this is the place to use context, e.g., extract baggage.
 
-	if !aggregator.RangeTest[N, Traits](num, inst.descriptor.Kind) {
+	if !aggregator.RangeTest[N, Traits](num, inst.descriptor) {
 		return
 	}
 

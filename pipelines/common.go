@@ -36,9 +36,9 @@ type PipelineConfig struct {
 	// Credentials carries the TLS settings.
 	Credentials credentials.TransportCredentials
 
-	// UseAlternateMetricsSDK determines whether to use the metrics
+	// UseLightstepMetricsSDK determines whether to use the metrics
 	// SDK at ../lightstep/sdk/metric.
-	UseAlternateMetricsSDK bool
+	UseLightstepMetricsSDK bool
 }
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)
