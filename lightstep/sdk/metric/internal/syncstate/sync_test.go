@@ -103,7 +103,7 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 		numReaders  = 2
 		numRoutines = 10
 		numAttrs    = 10
-		numUpdates  = 1e6
+		numUpdates  = 1e5
 	)
 
 	var traits Traits
