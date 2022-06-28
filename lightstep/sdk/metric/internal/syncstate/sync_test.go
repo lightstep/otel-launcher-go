@@ -110,8 +110,8 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 	var writers sync.WaitGroup
 	var readers sync.WaitGroup
 
-	readers.Add(numReaders)
-	writers.Add(numRoutines)
+	readers.Add(numReaders + 1)
+	writers.Add(numRoutines + 1)
 
 	lib := instrumentation.Library{
 		Name: "testlib",
@@ -196,6 +196,11 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 			}
 		}()
 	}
+
+	// These undo the +1 added to each WaitGroup, because we know
+	// all goroutines have started.
+	writers.Done()
+	readers.Done()
 
 	writers.Wait()
 	cancel()
