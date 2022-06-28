@@ -63,7 +63,7 @@ func TestPeriodicRepeats(t *testing.T) {
 
 		producer.EXPECT().Produce(gomock.Not(gomock.Nil())).DoAndReturn(func(ptr *data.Metrics) data.Metrics {
 			return expectData
-		})
+		}).AnyTimes()
 
 		exporter.EXPECT().ExportMetrics(gomock.Any(), gomock.Eq(expectData)).DoAndReturn(func(_ context.Context, _ data.Metrics) error {
 			periodic.stop()
