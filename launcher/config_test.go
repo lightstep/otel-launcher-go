@@ -23,11 +23,13 @@ import (
 	"testing"
 	"time"
 
+	sdkmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/pipelines/test"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
+	metricglobal "go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
@@ -365,19 +367,21 @@ func (suite *testSuite) TestDefaultConfig() {
 	}
 
 	expected := Config{
-		ServiceName:                    "",
-		ServiceVersion:                 "unknown",
-		SpanExporterEndpoint:           "ingest.lightstep.com:443",
-		SpanExporterEndpointInsecure:   false,
-		MetricExporterEndpoint:         "ingest.lightstep.com:443",
-		MetricExporterEndpointInsecure: false,
-		MetricReportingPeriod:          "30s",
-		MetricsEnabled:                 true,
-		LogLevel:                       "info",
-		Propagators:                    []string{"b3"},
-		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		logger:                         &suite.testLogger,
-		errorHandler:                   &suite.testErrorHandler,
+		ServiceName:                         "",
+		ServiceVersion:                      "unknown",
+		SpanExporterEndpoint:                "ingest.lightstep.com:443",
+		SpanExporterEndpointInsecure:        false,
+		MetricExporterEndpoint:              "ingest.lightstep.com:443",
+		MetricExporterEndpointInsecure:      false,
+		MetricReportingPeriod:               "30s",
+		MetricsEnabled:                      true,
+		MetricExporterTemporalityPreference: "cumulative",
+		LogLevel:                            "info",
+		Propagators:                         []string{"b3"},
+		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
+		UseLightstepMetricsSDK:              false,
+		logger:                              &suite.testLogger,
+		errorHandler:                        &suite.testErrorHandler,
 	}
 	assert.Equal(expected, config)
 }
@@ -402,18 +406,20 @@ func (suite *testSuite) TestEnvironmentVariables() {
 	}
 
 	expected := Config{
-		ServiceName:                    "test-service-name",
-		ServiceVersion:                 "test-service-version",
-		SpanExporterEndpoint:           "satellite-url",
-		SpanExporterEndpointInsecure:   true,
-		MetricExporterEndpoint:         "metrics-url",
-		MetricExporterEndpointInsecure: true,
-		MetricReportingPeriod:          "30s",
-		LogLevel:                       "debug",
-		Propagators:                    []string{"b3", "w3c"},
-		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		logger:                         &suite.testLogger,
-		errorHandler:                   &suite.testErrorHandler,
+		ServiceName:                         "test-service-name",
+		ServiceVersion:                      "test-service-version",
+		SpanExporterEndpoint:                "satellite-url",
+		SpanExporterEndpointInsecure:        true,
+		MetricExporterEndpoint:              "metrics-url",
+		MetricExporterEndpointInsecure:      true,
+		MetricReportingPeriod:               "30s",
+		MetricExporterTemporalityPreference: "delta",
+		LogLevel:                            "debug",
+		Propagators:                         []string{"b3", "w3c"},
+		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
+		UseLightstepMetricsSDK:              true,
+		logger:                              &suite.testLogger,
+		errorHandler:                        &suite.testErrorHandler,
 	}
 	assert.Equal(expected, config)
 
@@ -432,10 +438,12 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		WithSpanExporterInsecure(false),
 		WithMetricExporterEndpoint("override-metrics-url"),
 		WithMetricExporterInsecure(false),
+		WithMetricExporterTemporalityPreference("stateless"),
 		WithLogLevel("info"),
 		WithLogger(&suite.testLogger),
 		WithErrorHandler(&suite.testErrorHandler),
 		WithPropagators([]string{"b3"}),
+		WithLightstepMetricsSDK(false),
 	)
 
 	attributes := []attribute.KeyValue{
@@ -448,19 +456,21 @@ func (suite *testSuite) TestConfigurationOverrides() {
 	}
 
 	expected := Config{
-		ServiceName:                    "override-service-name",
-		ServiceVersion:                 "override-service-version",
-		SpanExporterEndpoint:           "override-satellite-url",
-		SpanExporterEndpointInsecure:   false,
-		MetricExporterEndpoint:         "override-metrics-url",
-		MetricExporterEndpointInsecure: false,
-		MetricReportingPeriod:          "30s",
-		Headers:                        map[string]string{"lightstep-access-token": "override-access-token"},
-		LogLevel:                       "info",
-		Propagators:                    []string{"b3"},
-		Resource:                       resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		logger:                         &suite.testLogger,
-		errorHandler:                   &suite.testErrorHandler,
+		ServiceName:                         "override-service-name",
+		ServiceVersion:                      "override-service-version",
+		SpanExporterEndpoint:                "override-satellite-url",
+		SpanExporterEndpointInsecure:        false,
+		MetricExporterEndpoint:              "override-metrics-url",
+		MetricExporterEndpointInsecure:      false,
+		MetricReportingPeriod:               "30s",
+		MetricExporterTemporalityPreference: "stateless",
+		Headers:                             map[string]string{"lightstep-access-token": "override-access-token"},
+		LogLevel:                            "info",
+		Propagators:                         []string{"b3"},
+		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
+		UseLightstepMetricsSDK:              false,
+		logger:                              &suite.testLogger,
+		errorHandler:                        &suite.testErrorHandler,
 	}
 	assert.Equal(expected, config)
 }
@@ -613,13 +623,14 @@ func (suite *testSuite) TestEmptyHostnameDefaultsToOsHostname() {
 	assert := suite.Assert()
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "host.name=")
 	lsOtel := ConfigureOpentelemetry(
-		WithServiceName("test-service"),
-		WithSpanExporterEndpoint("localhost:443"),
-		WithAccessToken(fakeAccessToken()),
-		WithResourceAttributes(map[string]string{
-			"attr1":     "val1",
-			"host.name": "",
-		}),
+		append(suite.bothInsecureEndpointOptions(),
+			WithServiceName("test-service"),
+			WithAccessToken(fakeAccessToken()),
+			WithResourceAttributes(map[string]string{
+				"attr1":     "val1",
+				"host.name": "",
+			}),
+		)...,
 	)
 	defer lsOtel.Shutdown()
 
@@ -632,13 +643,14 @@ func (suite *testSuite) TestEmptyHostnameDefaultsToOsHostname() {
 func (suite *testSuite) TestConfigWithResourceAttributes() {
 	assert := suite.Assert()
 	lsOtel := ConfigureOpentelemetry(
-		WithServiceName("test-service"),
-		WithSpanExporterEndpoint("localhost:443"),
-		WithAccessToken(fakeAccessToken()),
-		WithResourceAttributes(map[string]string{
-			"attr1": "val1",
-			"attr2": "val2",
-		}),
+		append(suite.bothInsecureEndpointOptions(),
+			WithServiceName("test-service"),
+			WithAccessToken(fakeAccessToken()),
+			WithResourceAttributes(map[string]string{
+				"attr1": "val1",
+				"attr2": "val2",
+			}),
+		)...,
 	)
 	defer lsOtel.Shutdown()
 	attrs := attribute.NewSet(lsOtel.config.Resource.Attributes()...)
@@ -662,7 +674,9 @@ func setEnvironment() {
 	os.Setenv("OTEL_LOG_LEVEL", "debug")
 	os.Setenv("OTEL_PROPAGATORS", "b3,w3c")
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-name-b")
+	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE", "delta")
 	os.Setenv("LS_METRICS_ENABLED", "false")
+	os.Setenv("LS_METRICS_SDK", "true")
 }
 
 func unsetEnvironment() {
@@ -678,7 +692,9 @@ func unsetEnvironment() {
 		"OTEL_PROPAGATORS",
 		"OTEL_RESOURCE_ATTRIBUTES",
 		"OTEL_EXPORTER_OTLP_METRIC_PERIOD",
+		"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE",
 		"LS_METRICS_ENABLED",
+		"LS_METRICS_SDK",
 	}
 	for _, envvar := range vars {
 		os.Unsetenv(envvar)
@@ -688,4 +704,20 @@ func unsetEnvironment() {
 func TestMain(m *testing.M) {
 	unsetEnvironment()
 	os.Exit(m.Run())
+}
+
+func (suite *testSuite) TestLightstepMetricsSDK() {
+	lsOtel := ConfigureOpentelemetry(
+		append(suite.bothInsecureEndpointOptions(),
+			WithServiceName("test-service"),
+			WithAccessToken(fakeAccessToken()),
+			WithLightstepMetricsSDK(true),
+		)...,
+	)
+	defer lsOtel.Shutdown()
+
+	sdk := metricglobal.MeterProvider()
+	if _, ok := sdk.(*sdkmetric.MeterProvider); !ok {
+		suite.T().Errorf("did not find a lightstep metrics SDK")
+	}
 }

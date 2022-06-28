@@ -47,7 +47,7 @@ func newTLSConfig() *tls.Config {
 	}
 }
 
-func TestInsecureMetrics(t *testing.T) {
+func testInsecureMetrics(t *testing.T, lightstepSDK bool) {
 	server := test.NewServer(t)
 	defer server.Stop()
 
@@ -61,7 +61,8 @@ func TestInsecureMetrics(t *testing.T) {
 			semconv.SchemaURL,
 			attribute.String("test-r1", "test-v1"),
 		),
-		ReportingPeriod: "24h",
+		ReportingPeriod:        "24h",
+		UseLightstepMetricsSDK: lightstepSDK,
 	})
 	assert.NoError(t, err)
 
@@ -84,7 +85,7 @@ func TestInsecureMetrics(t *testing.T) {
 	require.Equal(t, []string{"test-value"}, server.MetricsMDs()[0]["test-header"])
 }
 
-func TestSecureMetrics(t *testing.T) {
+func testSecureMetrics(t *testing.T, lightstepSDK bool) {
 	server := test.NewServer(t)
 	defer server.Stop()
 
@@ -97,8 +98,9 @@ func TestSecureMetrics(t *testing.T) {
 			semconv.SchemaURL,
 			attribute.String("test-r1", "test-v1"),
 		),
-		ReportingPeriod: "24h",
-		Credentials:     credentials.NewTLS(newTLSConfig()),
+		ReportingPeriod:        "24h",
+		Credentials:            credentials.NewTLS(newTLSConfig()),
+		UseLightstepMetricsSDK: lightstepSDK,
 	})
 	assert.NoError(t, err)
 
@@ -119,4 +121,20 @@ func TestSecureMetrics(t *testing.T) {
 	require.Contains(t, string(txt), "test-library")
 
 	require.Equal(t, []string{"test-value"}, server.MetricsMDs()[0]["test-header"])
+}
+
+func TestSecureMetricsAltSDK(t *testing.T) {
+	testSecureMetrics(t, true)
+}
+
+func TestSecureMetricsOldSDK(t *testing.T) {
+	testSecureMetrics(t, false)
+}
+
+func TestInsecureMetricsAltSDK(t *testing.T) {
+	testInsecureMetrics(t, true)
+}
+
+func TestInsecureMetricsOldSDK(t *testing.T) {
+	testInsecureMetrics(t, false)
 }

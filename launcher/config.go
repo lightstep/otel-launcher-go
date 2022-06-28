@@ -141,6 +141,15 @@ func WithMetricReportingPeriod(p time.Duration) Option {
 	}
 }
 
+// WithMetricTemporalityPreference controls the temporality preference
+// used for Counter and Histogram (only not for UpDownCounter, which
+// ignores this preference for specified reasons).
+func WithMetricExporterTemporalityPreference(prefName string) Option {
+	return func(c *Config) {
+		c.MetricExporterTemporalityPreference = prefName
+	}
+}
+
 // WithMetricEnabled configures whether metrics should be enabled
 func WithMetricsEnabled(enabled bool) Option {
 	return func(c *Config) {
@@ -156,6 +165,14 @@ type Logger interface {
 func WithLogger(logger Logger) Option {
 	return func(c *Config) {
 		c.logger = logger
+	}
+}
+
+// WithLightstepMetricsSDK enables the Lightstep metrics SDK from this
+// repository.
+func WithLightstepMetricsSDK(alt bool) Option {
+	return func(c *Config) {
+		c.UseLightstepMetricsSDK = alt
 	}
 }
 
@@ -188,21 +205,23 @@ const (
 )
 
 type Config struct {
-	SpanExporterEndpoint           string            `env:"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT,default=ingest.lightstep.com:443"`
-	SpanExporterEndpointInsecure   bool              `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
-	ServiceName                    string            `env:"LS_SERVICE_NAME"`
-	ServiceVersion                 string            `env:"LS_SERVICE_VERSION,default=unknown"`
-	Headers                        map[string]string `env:"OTEL_EXPORTER_OTLP_HEADERS"`
-	MetricExporterEndpoint         string            `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT,default=ingest.lightstep.com:443"`
-	MetricExporterEndpointInsecure bool              `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
-	MetricsEnabled                 bool              `env:"LS_METRICS_ENABLED,default=true"`
-	LogLevel                       string            `env:"OTEL_LOG_LEVEL,default=info"`
-	Propagators                    []string          `env:"OTEL_PROPAGATORS,default=b3"`
-	MetricReportingPeriod          string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
-	ResourceAttributes             map[string]string
-	Resource                       *resource.Resource
-	logger                         Logger
-	errorHandler                   otel.ErrorHandler
+	SpanExporterEndpoint                string            `env:"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT,default=ingest.lightstep.com:443"`
+	SpanExporterEndpointInsecure        bool              `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
+	ServiceName                         string            `env:"LS_SERVICE_NAME"`
+	ServiceVersion                      string            `env:"LS_SERVICE_VERSION,default=unknown"`
+	Headers                             map[string]string `env:"OTEL_EXPORTER_OTLP_HEADERS"`
+	MetricExporterEndpoint              string            `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT,default=ingest.lightstep.com:443"`
+	MetricExporterEndpointInsecure      bool              `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
+	MetricExporterTemporalityPreference string            `env:"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE,default=cumulative"`
+	MetricsEnabled                      bool              `env:"LS_METRICS_ENABLED,default=true"`
+	LogLevel                            string            `env:"OTEL_LOG_LEVEL,default=info"`
+	Propagators                         []string          `env:"OTEL_PROPAGATORS,default=b3"`
+	MetricReportingPeriod               string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
+	UseLightstepMetricsSDK              bool              `env:"LS_METRICS_SDK,default=false"`
+	ResourceAttributes                  map[string]string
+	Resource                            *resource.Resource
+	logger                              Logger
+	errorHandler                        otel.ErrorHandler
 }
 
 func checkEndpointDefault(value, defValue string) error {
@@ -361,11 +380,13 @@ func setupMetrics(c Config) (func() error, error) {
 		return nil, nil
 	}
 	return pipelines.NewMetricsPipeline(pipelines.PipelineConfig{
-		Endpoint:        c.MetricExporterEndpoint,
-		Insecure:        c.MetricExporterEndpointInsecure,
-		Headers:         c.Headers,
-		Resource:        c.Resource,
-		ReportingPeriod: c.MetricReportingPeriod,
+		Endpoint:               c.MetricExporterEndpoint,
+		Insecure:               c.MetricExporterEndpointInsecure,
+		Headers:                c.Headers,
+		Resource:               c.Resource,
+		ReportingPeriod:        c.MetricReportingPeriod,
+		TemporalityPreference:  c.MetricExporterTemporalityPreference,
+		UseLightstepMetricsSDK: c.UseLightstepMetricsSDK,
 	})
 }
 

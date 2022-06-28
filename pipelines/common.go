@@ -15,10 +15,11 @@
 package pipelines
 
 import (
+	"google.golang.org/grpc/credentials"
+
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"google.golang.org/grpc/credentials"
 )
 
 type PipelineConfig struct {
@@ -28,7 +29,16 @@ type PipelineConfig struct {
 	Resource        *resource.Resource
 	ReportingPeriod string
 	Propagators     []string
-	Credentials     credentials.TransportCredentials
+
+	// TemporalityPreference is one of "cumulative", "delta", or "stateless"
+	TemporalityPreference string
+
+	// Credentials carries the TLS settings.
+	Credentials credentials.TransportCredentials
+
+	// UseLightstepMetricsSDK determines whether to use the metrics
+	// SDK at ../lightstep/sdk/metric.
+	UseLightstepMetricsSDK bool
 }
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)
