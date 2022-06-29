@@ -50,7 +50,7 @@ type (
 		Aggregation
 
 		// Review NOTE: Should this be LastValue() or Value()?
-		Gauge() number.Number
+		Gauge() (number.Number, bool)
 	}
 
 	// Histogram returns the count of events in exponential-scale

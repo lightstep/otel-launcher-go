@@ -119,15 +119,15 @@ func Metrics(metrics data.Metrics) (*metricspb.ResourceMetrics, error) {
 
 }
 
-func sumToValue(pt data.Point) number.Number {
-	return pt.Aggregation.(aggregation.Sum).Sum()
+func sumToValue(pt data.Point) (number.Number, bool) {
+	return pt.Aggregation.(aggregation.Sum).Sum(), true
 }
 
-func gaugeToValue(pt data.Point) number.Number {
+func gaugeToValue(pt data.Point) (number.Number, bool) {
 	return pt.Aggregation.(aggregation.Gauge).Gauge()
 }
 
-func NumberPoints(desc *sdkinstrument.Descriptor, points []data.Point, p2v func(data.Point) number.Number) []*metricspb.NumberDataPoint {
+func NumberPoints(desc *sdkinstrument.Descriptor, points []data.Point, p2v func(data.Point) (number.Number, bool)) []*metricspb.NumberDataPoint {
 	results := make([]*metricspb.NumberDataPoint, len(points))
 	for i, pt := range points {
 		results[i] = &metricspb.NumberDataPoint{
@@ -135,7 +135,10 @@ func NumberPoints(desc *sdkinstrument.Descriptor, points []data.Point, p2v func(
 			StartTimeUnixNano: toNanos(pt.Start),
 			TimeUnixNano:      toNanos(pt.End),
 		}
-		value := p2v(pt)
+		value, has := p2v(pt)
+		if !has {
+			continue
+		}
 		if desc.NumberKind == number.Float64Kind {
 			results[i].Value = &metricspb.NumberDataPoint_AsDouble{
 				AsDouble: number.ToFloat64(value),

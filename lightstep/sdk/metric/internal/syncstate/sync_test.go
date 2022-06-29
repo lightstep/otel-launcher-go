@@ -24,6 +24,7 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
@@ -35,13 +36,14 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
 var (
 	endTime    = time.Unix(100, 0)
-	middleTime = endTime.Add(-time.Millisecond)
-	startTime  = endTime.Add(-2 * time.Millisecond)
+	middleTime = time.Unix(99, 0)
+	startTime  = time.Unix(98, 0)
 
 	testSequence = data.Sequence{
 		Start: startTime,
@@ -383,4 +385,162 @@ func TestOutOfRangeValues(t *testing.T) {
 			),
 		)
 	}
+}
+
+func TestSyncGaugeDeltaInstrument(t *testing.T) {
+	ctx := context.Background()
+	lib := instrumentation.Library{
+		Name: "testlib",
+	}
+	vcs := make([]*viewstate.Compiler, 2)
+	vcs[0] = viewstate.New(lib, view.New(
+		"test",
+		deltaSelector,
+		view.WithClause(
+			view.WithKeys([]attribute.Key{"A", "C"}),
+		),
+	))
+
+	indesc := test.Descriptor(
+		"syncgauge",
+		sdkinstrument.SyncUpDownCounter,
+		number.Float64Kind,
+		instrument.WithDescription(`{
+  "aggregation": "gauge",
+  "description": "incredible"
+}`))
+
+	outdesc := test.Descriptor(
+		"syncgauge",
+		sdkinstrument.SyncUpDownCounter,
+		number.Float64Kind,
+		instrument.WithDescription("incredible"),
+	)
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 1)
+	pipes[0], _ = vcs[0].Compile(indesc)
+
+	require.NotNil(t, pipes[0])
+
+	inst := NewInstrument(indesc, nil, pipes)
+	require.NotNil(t, inst)
+
+	sg := NewCounter[float64, number.Float64Traits](inst)
+	require.NotNil(t, sg)
+
+	sg.Add(ctx, 1)
+	sg.Add(ctx, 2)
+	sg.Add(ctx, 3)
+
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			outdesc,
+			test.Point(middleTime, endTime,
+				gauge.NewFloat64(3),
+				aggregation.DeltaTemporality,
+			),
+		),
+	)
+
+	// If not set, it disappears.
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			outdesc,
+		),
+	)
+
+	// Set again
+	sg.Add(ctx, 172)
+	sg.Add(ctx, 175)
+
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			outdesc,
+			test.Point(middleTime, endTime,
+				gauge.NewFloat64(175),
+				aggregation.DeltaTemporality,
+			),
+		),
+	)
+
+	// Set different attribute sets, leave the first (empty set) unused.
+	sg.Add(ctx, 1333, attribute.String("A", "B"))
+	sg.Add(ctx, 1337, attribute.String("C", "D"))
+
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			outdesc,
+			test.Point(middleTime, endTime,
+				gauge.NewFloat64(1333),
+				aggregation.DeltaTemporality,
+				attribute.String("A", "B"),
+			),
+			test.Point(middleTime, endTime,
+				gauge.NewFloat64(1337),
+				aggregation.DeltaTemporality,
+				attribute.String("C", "D"),
+			),
+		),
+	)
+
+	// Test the filters.  Last value should win due to the Gauge
+	// sequence number (as opposed to random choice, which would
+	// happen naturally b/c of map iteration).
+	for i := 0; i < 1000; i++ {
+		sg.Add(ctx, float64(i), attribute.Int("ignored", i), attribute.String("A", "B"))
+	}
+	for i := 1000; i > 0; i-- {
+		sg.Add(ctx, float64(i), attribute.Int("ignored", i), attribute.String("C", "D"))
+	}
+
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			outdesc,
+			test.Point(middleTime, endTime,
+				gauge.NewFloat64(999),
+				aggregation.DeltaTemporality,
+				attribute.String("A", "B"),
+			),
+			test.Point(middleTime, endTime,
+				gauge.NewFloat64(1),
+				aggregation.DeltaTemporality,
+				attribute.String("C", "D"),
+			),
+		),
+	)
 }

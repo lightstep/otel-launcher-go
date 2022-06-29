@@ -81,9 +81,9 @@ func (c *compiledAsyncBase[N, Storage, Methods]) findStorage(
 // multiAccumulator
 type multiAccumulator[N number.Any] []Accumulator
 
-func (a multiAccumulator[N]) SnapshotAndProcess(final bool) {
+func (a multiAccumulator[N]) SnapshotAndProcess(release bool) {
 	for _, coll := range a {
-		coll.SnapshotAndProcess(final)
+		coll.SnapshotAndProcess(release)
 	}
 }
 
@@ -108,13 +108,13 @@ func (a *syncAccumulator[N, Storage, Methods]) Update(number N) {
 	methods.Update(&a.current, number)
 }
 
-func (a *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess(final bool) {
+func (a *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess(release bool) {
 	var methods Methods
 	a.syncLock.Lock()
 	defer a.syncLock.Unlock()
 	methods.Move(&a.current, &a.snapshot)
 	methods.Merge(&a.snapshot, &a.holder.storage)
-	if final {
+	if release {
 		// On the final snapshot-and-process, decrement the auxiliary reference count.
 		atomic.AddInt64(&a.holder.auxiliary, -1)
 	}

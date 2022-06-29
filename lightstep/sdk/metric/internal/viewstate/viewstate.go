@@ -116,10 +116,10 @@ type Accumulator interface {
 	// safely forget an Accumulator after this method is called,
 	// provided Update is not used again.
 	//
-	// When `final` is true, this is the last time the Accumulator
-	// will be snapshot and processed (according to the caller's
-	// reference counting).
-	SnapshotAndProcess(final bool)
+	// When `release` is true, this is the last time the Accumulator
+	// will be snapshot/processed (according to the caller's
+	// reference counting) and it can be forgotten.
+	SnapshotAndProcess(release bool)
 }
 
 // leafInstrument is one of the (synchronous or asynchronous),
@@ -196,11 +196,9 @@ func (v *Compiler) Collectors() []data.Collector {
 func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkinstrument.Descriptor, akind aggregation.Kind, acfg aggregator.Config, hinted bool) {
 	// These are the default behaviors, we'll use them unless there's a valid hint.
 	akind = v.views.Defaults.Aggregation(instrument.Kind)
-	acfg = viewAggConfig(
-		&v.views.Defaults,
+	acfg = v.views.Defaults.AggregationConfig(
 		instrument.Kind,
 		instrument.NumberKind,
-		aggregator.Config{},
 	)
 
 	// Check for required JSON symbols, empty strings, ...
@@ -261,16 +259,21 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 		if akind == aggregation.DropKind {
 			continue
 		}
+
+		modified, hintAkind, hintAcfg, hinted := v.tryToApplyHint(instrument)
+		instrument = modified // the hint erases itself from the description
+
 		if akind == aggregation.UndefinedKind {
-			akind = v.views.Defaults.Aggregation(instrument.Kind)
+			akind = hintAkind
 		}
 
 		cf := singleBehavior{
 			fromName: instrument.Name,
 			desc:     viewDescriptor(instrument, view),
 			kind:     akind,
-			acfg:     viewAggConfig(&v.views.Defaults, instrument.Kind, instrument.NumberKind, view.AggregatorConfig()),
+			acfg:     pickAggConfig(hintAcfg, view.AggregatorConfig()),
 			tempo:    v.views.Defaults.Temporality(instrument.Kind),
+			hinted:   hinted,
 		}
 
 		keys := view.Keys()
@@ -489,10 +492,16 @@ func newAsyncView[
 	instrument := compiledAsyncBase[N, Storage, Methods]{
 		instrumentBase: metric, //nolint:govet
 	}
+
 	if behavior.tempo == aggregation.DeltaTemporality {
-		return &statefulAsyncInstrument[N, Storage, Methods]{
-			compiledAsyncBase: instrument, //nolint:govet
+		var methods Methods
+		if methods.Kind() != aggregation.GaugeKind {
+			return &statefulAsyncInstrument[N, Storage, Methods]{
+				compiledAsyncBase: instrument, //nolint:govet
+			}
 		}
+		// Gauges fall through to the stateless behavior
+		// regardless of delta temporality.
 	}
 
 	return &statelessAsyncInstrument[N, Storage, Methods]{
@@ -593,12 +602,13 @@ func equalConfigs(a, b aggregator.Config) bool {
 	return a == b
 }
 
-// viewAggConfig returns the aggregator configuration prescribed by a view clause.
-func viewAggConfig(r *view.DefaultConfig, ik sdkinstrument.Kind, nk number.Kind, vcfg aggregator.Config) aggregator.Config {
+// pickAggConfig returns the aggregator configuration prescribed by a view clause
+// if it is not empty, otherwise the default value.
+func pickAggConfig(def, vcfg aggregator.Config) aggregator.Config {
 	if vcfg != (aggregator.Config{}) {
 		return vcfg
 	}
-	return r.AggregationConfig(ik, nk)
+	return def
 }
 
 // checkSemanticCompatibility checks whether an instrument /

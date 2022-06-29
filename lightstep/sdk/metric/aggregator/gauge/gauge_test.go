@@ -46,7 +46,7 @@ func genericLastValueTest[N number.Any, Storage any, Methods aggregator.Methods[
 		return &s
 	}
 
-	t.Run("copy", func(t *testing.T) {
+	t.Run("copy1", func(t *testing.T) {
 		input := init()
 		output := init()
 
@@ -72,14 +72,16 @@ func genericLastValueTest[N number.Any, Storage any, Methods aggregator.Methods[
 
 		g, ok := methods.ToAggregation(output).(aggregation.Gauge)
 		require.True(t, ok)
-		require.LessOrEqual(t, N(1), nf(g.Gauge()))
-		require.GreaterOrEqual(t, N(workers+1), nf(g.Gauge()))
+		gv, has := g.Gauge()
+		require.True(t, has)
+		require.LessOrEqual(t, N(1), nf(gv))
+		require.GreaterOrEqual(t, N(workers+1), nf(gv))
 
 		require.True(t, methods.HasChange(output))
 		require.True(t, !methods.HasChange(input))
 	})
 
-	t.Run("copy", func(t *testing.T) {
+	t.Run("copy2", func(t *testing.T) {
 		in := init()
 		out := init()
 		methods.Update(in, 17)
@@ -88,30 +90,33 @@ func genericLastValueTest[N number.Any, Storage any, Methods aggregator.Methods[
 		require.Equal(t, in, out)
 	})
 
-	t.Run("subtract", func(t *testing.T) {
+	t.Run("merge1", func(t *testing.T) {
 		first := init()
 		second := init()
 		methods.Update(first, 17)
 		methods.Update(second, 23)
-
-		six := init()
-		methods.Update(six, 6)
-		methods.SubtractSwap(first, second)
-
-		require.Equal(t, first, six)
-	})
-
-	t.Run("merge", func(t *testing.T) {
-		first := init()
-		second := init()
-		methods.Update(first, 17)
-		methods.Update(second, 23)
-
-		expect := init()
-		methods.Update(expect, 17)
 
 		methods.Merge(first, second)
 
-		require.Equal(t, expect, second)
+		var methods Methods
+		agg := methods.ToAggregation(second)
+		value, has := agg.(aggregation.Gauge).Gauge()
+		require.True(t, has)
+		require.Equal(t, N(23), nf(value))
+	})
+
+	t.Run("merge2", func(t *testing.T) {
+		first := init()
+		second := init()
+		methods.Update(second, 23)
+		methods.Update(first, 17)
+
+		methods.Merge(first, second)
+
+		var methods Methods
+		agg := methods.ToAggregation(second)
+		value, has := agg.(aggregation.Gauge).Gauge()
+		require.True(t, has)
+		require.Equal(t, N(17), nf(value))
 	})
 }

@@ -34,7 +34,8 @@ func GenericAggregatorTest[N number.Any, Storage any, Methods aggregator.Methods
 
 		agg := methods.ToAggregation(&storage)
 		if g, ok := agg.(aggregation.Gauge); ok {
-			require.Equal(t, N(0), nf(g.Gauge()))
+			_, has := g.Gauge()
+			require.False(t, has)
 		} else if h, ok := agg.(aggregation.Histogram); ok {
 			require.Equal(t, uint64(0), h.Count())
 			require.Equal(t, N(0), nf(h.Sum()))

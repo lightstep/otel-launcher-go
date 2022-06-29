@@ -21,6 +21,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
@@ -102,18 +103,26 @@ func RequireEqualPoints(t *testing.T, output []data.Point, expected ...data.Poin
 	cpy := make([]data.Point, len(expected))
 	copy(cpy, expected)
 
-	// Zero timestamps are skipped so as to bypass clock-based
-	// testing in typical testing scenarios.
+	// If the expectations have zero timestamps, the output
+	// timestamps are zeroed so they will match exactly.  Gauge
+	// sequence numbers are set to match test conditions.
 	for idx := range cpy {
 		exp := &cpy[idx]
 		out := &output[idx]
 
 		if exp.Start.IsZero() {
-			exp.Start = out.Start
+			out.Start = exp.Start
 		}
 
 		if exp.End.IsZero() {
-			exp.End = out.End
+			out.End = exp.End
+		}
+
+		if outig, ok := out.Aggregation.(*gauge.Int64); ok {
+			outig.SetSequenceForTesting()
+		}
+		if outfg, ok := out.Aggregation.(*gauge.Float64); ok {
+			outfg.SetSequenceForTesting()
 		}
 	}
 
