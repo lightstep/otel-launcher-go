@@ -921,7 +921,7 @@ func TestDeltaTemporalityAsyncGauge(t *testing.T) {
 	}
 
 	// Note "cumulative" in each of the expected points below.  This results from
-	// disregarding the temporality preference for Gauges.
+	// disregarding the temporality preference for *asynchronous* Gauges.
 	expectValues := func(x int, seq data.Sequence) {
 		test.RequireEqualMetrics(t,
 			testCollectSequence(t, vc, seq),
