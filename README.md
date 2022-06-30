@@ -86,7 +86,7 @@ Start using it today in [Go](https://github.com/lightstep/otel-launcher-go), [Ja
 
 ### Lightstep Metrics SDK
 
-**WARNING**: This SDK is new and is still undergoing early producgtion
+**WARNING**: This SDK is new and is still undergoing early production
 testing at Lightstep.  Please use this SDK with caution until further
 notice.
 
