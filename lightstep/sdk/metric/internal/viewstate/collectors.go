@@ -66,22 +66,21 @@ func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 
 		cpy, _ := methods.ToStorage(point.Aggregation)
 		if !methods.HasChange(cpy) {
-			// Except for Gauge, if additive data is unchanged,
-			// truncate to avoid sending a zero.  We allowed the
-			// array to grow before this test speculatively, since
-			// when it succeeds we are able to re-use the underlying
+			// We allowed the array to grow before this
+			// test speculatively, since when it succeeds
+			// we are able to re-use the underlying
 			// aggregator.
 			ioutput.Points = ptsArr[0 : len(ptsArr)-1 : cap(ptsArr)]
 		}
-		// If there are no more accumulators, remove from the
-		// map.  This happens when the syncstate the entry
-		// goes unused for the interval between collection, so
-		// if it happens here probably there was no change.
-		// This branch is outside the above HasChange() block
-		// in case of a race -- the entry can have a final
-		// change if it was updated after the (mods == coll)
-		// test in conditionalSnapshotAndProcess but before
-		// the entry is unmapped.
+		// If there are no more accumulator references to the
+		// entry, remove from the map.  This happens when the
+		// syncstate the entry goes unused for the interval
+		// between collection, so if it happens here probably
+		// there was no change.  This branch is outside the
+		// HasChange() block above in case of a race -- the
+		// entry can have a final change if it was updated
+		// after the (mods == coll) test in conditionalSnapshotAndProcess()
+		// but before the entry is unmapped.
 		if atomic.LoadInt64(&entry.auxiliary) == 0 {
 			delete(p.data, set)
 		}

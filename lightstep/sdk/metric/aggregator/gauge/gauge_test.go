@@ -72,10 +72,8 @@ func genericLastValueTest[N number.Any, Storage any, Methods aggregator.Methods[
 
 		g, ok := methods.ToAggregation(output).(aggregation.Gauge)
 		require.True(t, ok)
-		gv, has := g.Gauge()
-		require.True(t, has)
-		require.LessOrEqual(t, N(1), nf(gv))
-		require.GreaterOrEqual(t, N(workers+1), nf(gv))
+		require.LessOrEqual(t, N(1), nf(g.Gauge()))
+		require.GreaterOrEqual(t, N(workers+1), nf(g.Gauge()))
 
 		require.True(t, methods.HasChange(output))
 		require.True(t, !methods.HasChange(input))
@@ -99,10 +97,9 @@ func genericLastValueTest[N number.Any, Storage any, Methods aggregator.Methods[
 		methods.Merge(first, second)
 
 		var methods Methods
+		require.True(t, methods.HasChange(second))
 		agg := methods.ToAggregation(second)
-		value, has := agg.(aggregation.Gauge).Gauge()
-		require.True(t, has)
-		require.Equal(t, N(23), nf(value))
+		require.Equal(t, N(23), nf(agg.(aggregation.Gauge).Gauge()))
 	})
 
 	t.Run("merge2", func(t *testing.T) {
@@ -114,9 +111,8 @@ func genericLastValueTest[N number.Any, Storage any, Methods aggregator.Methods[
 		methods.Merge(first, second)
 
 		var methods Methods
+		require.True(t, methods.HasChange(second))
 		agg := methods.ToAggregation(second)
-		value, has := agg.(aggregation.Gauge).Gauge()
-		require.True(t, has)
-		require.Equal(t, N(17), nf(value))
+		require.Equal(t, N(17), nf(agg.(aggregation.Gauge).Gauge()))
 	})
 }

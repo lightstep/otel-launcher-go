@@ -49,8 +49,8 @@ type (
 	Gauge interface {
 		Aggregation
 
-		// Review NOTE: Should this be LastValue() or Value()?
-		Gauge() (number.Number, bool)
+		// Gauge returns the most recently observed value.
+		Gauge() number.Number
 	}
 
 	// Histogram returns the count of events in exponential-scale

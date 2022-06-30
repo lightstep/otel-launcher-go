@@ -15,19 +15,23 @@
 package gauge // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
+	"go.opentelemetry.io/otel"
 )
 
 // Note: this Gauge aggregator is designed to be used as a synchronous
 // aggregator.  For this, it captures monotonic sequence counter with
 // each Update, allowing the collection path to detect an unused
 // instrument as distinct from an unchanged value.  The atomic sequence
-// is unnecessary overhead for the async path.
+// number and locking generally are unnecessary overhead for the async
+// collection path.  However, in general we do not optimize for the async
+// colleciton path in this library.
 
 type (
 	Methods[N number.Any, Traits number.Traits[N], Storage State[N, Traits]] struct{}
@@ -45,10 +49,13 @@ type (
 	Float64Methods = Methods[float64, number.Float64Traits, Float64]
 )
 
+// initialSequence is the first assigned sequence number, also the
+// value used for setting expectations in test.  See SetSequenceForTesting().
 const initialSequence uint64 = 1
 
 var (
-	// The zero sequence value indicates an unset gauge
+	// sequenceVar is used to allocate sequence numbers.  zero
+	// means that a Gauge value is not set.
 	sequenceVar uint64 = initialSequence
 
 	_ aggregator.Methods[int64, Int64]     = Int64Methods{}
@@ -72,9 +79,22 @@ func NewFloat64(x float64) *Float64 {
 	}
 }
 
-func (g *State[N, Traits]) Gauge() (number.Number, bool) {
+var errUnsetGaugeAccess = fmt.Errorf("unset gauge access")
+
+func (g *State[N, Traits]) Gauge() number.Number {
 	var t Traits
-	return t.ToNumber(g.value), g.seq != 0
+	if g.seq == 0 {
+		// This should not be reachable.  Only the synchronous
+		// Gauge could end up here, under Delta temporality,
+		// but the viewstate skips export in that case by
+		// testing HasChange() first.  Since it is difficult
+		// to prove this code path is not taken (e.g., unlike
+		// panic below), this is treated as an error that
+		// would result in reporting a spurious 0 gauge value.
+		otel.Handle(errUnsetGaugeAccess)
+		return 0
+	}
+	return t.ToNumber(g.value)
 }
 
 func (g *State[N, Traits]) Kind() aggregation.Kind {
