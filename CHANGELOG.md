@@ -13,7 +13,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ### 🧰 Enhancements
 
 - Introduces the "Lightstep Metrics SDK" option, an alternative to the OpenTelemetry-Go
-  community SDK.  This SDK features experimental features listed below:
+  community SDK.  This SDK features experimental features listed below: [#196](https://github.com/lightstep/otel-launcher-go/pull/196)
   - Lightstep Metrics SDK: Exponential histogram on-by-default, no explicit-boundary Histogram
   - Lightstep Metrics SDK: Support for MinMaxSumCount aggregation (via a 0-bucket Histogram)
   - Lightstep Metrics SDK: Support for synchronous Gauge instrument (configured via API hints)
