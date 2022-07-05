@@ -66,17 +66,24 @@ func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 
 		cpy, _ := methods.ToStorage(point.Aggregation)
 		if !methods.HasChange(cpy) {
-			// Now  If the data is unchanged, truncate.
+			// We allowed the array to grow before this
+			// test speculatively, since when it succeeds
+			// we are able to re-use the underlying
+			// aggregator.
 			ioutput.Points = ptsArr[0 : len(ptsArr)-1 : cap(ptsArr)]
-			// If there are no more accumulators, remove from the map.
-			if atomic.LoadInt64(&entry.auxiliary) == 0 {
-				delete(p.data, set)
-			}
 		}
-		// Another design here would avoid the point before
-		// appending/truncating.  This choice uses the slice
-		// of points to store the extra allocator used, even
-		// until the next collection.
+		// If there are no more accumulator references to the
+		// entry, remove from the map.  This happens when the
+		// syncstate the entry goes unused for the interval
+		// between collection, so if it happens here probably
+		// there was no change.  This branch is outside the
+		// HasChange() block above in case of a race -- the
+		// entry can have a final change if it was updated
+		// after the (mods == coll) test in conditionalSnapshotAndProcess()
+		// but before the entry is unmapped.
+		if atomic.LoadInt64(&entry.auxiliary) == 0 {
+			delete(p.data, set)
+		}
 	}
 }
 
@@ -108,7 +115,8 @@ type statefulAsyncInstrument[N number.Any, Storage any, Methods aggregator.Metho
 	prior map[attribute.Set]*storageHolder[Storage, notUsed]
 }
 
-// Collect for asynchronous delta temporality.
+// Collect for asynchronous delta temporality.  Note this code path is
+// not used for Gauge instruments.
 func (p *statefulAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
 	var methods Methods
 
@@ -118,6 +126,7 @@ func (p *statefulAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 	ioutput := p.appendInstrument(output)
 
 	for set, entry := range p.data {
+		// Compute the difference.
 		pval, has := p.prior[set]
 		if has {
 			// This does `*pval := *storage - *pval`
@@ -127,11 +136,7 @@ func (p *statefulAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 			if !methods.HasChange(&pval.storage) {
 				continue
 			}
-			// Output the difference except for Gauge, in
-			// which case output the new value.
-			if p.desc.Kind.HasTemporality() {
-				entry = pval
-			}
+			entry = pval
 		}
 		p.appendPoint(ioutput, set, &entry.storage, aggregation.DeltaTemporality, seq.Last, seq.Now, false)
 	}

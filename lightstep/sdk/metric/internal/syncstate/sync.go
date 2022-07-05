@@ -86,25 +86,27 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 func (inst *Instrument) SnapshotAndProcess() {
 	inst.current.Range(func(key interface{}, value interface{}) bool {
 		rec := value.(*record)
-		if rec.snapshotAndProcess(false) {
+		if rec.conditionalSnapshotAndProcess(false) {
 			return true
 		}
 		// Having no updates since last collection, try to unmap:
-		if unmapped := rec.refMapped.tryUnmap(); !unmapped {
-			// The record is still referenced, continue.
-			return true
+		unmapped := rec.refMapped.tryUnmap()
+
+		// The first rec.conditionalSnapshotAndProcess
+		// returned false indicating no change, except:
+		// (a) it's now possible there was a race, the collector needs to
+		// see it.
+		// (b) if this is indeed the last reference, the collector needs the
+		// release signal.
+		_ = rec.conditionalSnapshotAndProcess(unmapped)
+
+		if unmapped {
+			// If any other goroutines are now trying to re-insert this
+			// entry in the map, they are busy calling Gosched() awaiting
+			// this deletion:
+			inst.current.Delete(key)
 		}
 
-		// If any other goroutines are now trying to re-insert this
-		// entry in the map, they are busy calling Gosched() awaiting
-		// this deletion:
-		inst.current.Delete(key)
-
-		// We have an exclusive reference to this accumulator
-		// now, but there could have been an update between
-		// the snapshotAndProcess() and tryUnmap() above, so
-		// snapshotAndProcess one last time.
-		_ = rec.snapshotAndProcess(true)
 		return true
 	})
 }
@@ -128,20 +130,22 @@ type record struct {
 	accumulator viewstate.Accumulator
 }
 
-// snapshotAndProcess checks whether the accumulator has been
+// conditionalSnapshotAndProcess checks whether the accumulator has been
 // modified since the last collection (by any reader), returns a
 // boolean indicating whether the record is active.  If active, calls
 // SnapshotAndProcess on the associated accumulator and returns true.
 // If updates happened since the last collection (by any reader),
 // returns false.
-func (rec *record) snapshotAndProcess(final bool) bool {
+func (rec *record) conditionalSnapshotAndProcess(release bool) bool {
 	mods := atomic.LoadInt64(&rec.updateCount)
-	coll := atomic.LoadInt64(&rec.collectedCount)
 
-	if mods == coll {
-		return false
+	if !release {
+		if mods == atomic.LoadInt64(&rec.collectedCount) {
+			return false
+		}
 	}
-	rec.accumulator.SnapshotAndProcess(final)
+
+	rec.accumulator.SnapshotAndProcess(release)
 
 	// Updates happened in this interval, collect and continue.
 	atomic.StoreInt64(&rec.collectedCount, mods)

@@ -49,7 +49,7 @@ type (
 	Gauge interface {
 		Aggregation
 
-		// Review NOTE: Should this be LastValue() or Value()?
+		// Gauge returns the most recently observed value.
 		Gauge() number.Number
 	}
 
