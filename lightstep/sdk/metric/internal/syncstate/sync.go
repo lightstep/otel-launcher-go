@@ -138,10 +138,11 @@ type record struct {
 // returns false.
 func (rec *record) conditionalSnapshotAndProcess(release bool) bool {
 	mods := atomic.LoadInt64(&rec.updateCount)
-	coll := atomic.LoadInt64(&rec.collectedCount)
 
-	if !release && mods == coll {
-		return false
+	if !release {
+		if mods == atomic.LoadInt64(&rec.collectedCount) {
+			return false
+		}
 	}
 
 	rec.accumulator.SnapshotAndProcess(release)
