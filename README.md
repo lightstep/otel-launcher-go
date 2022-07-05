@@ -86,13 +86,15 @@ Start using it today in [Go](https://github.com/lightstep/otel-launcher-go), [Ja
 
 ### Lightstep Metrics SDK
 
+**WARNING**: This SDK is new and is still undergoing early production
+testing at Lightstep.  Please use this SDK with caution until further
+notice.
+
 The Launcher contains an alternative to the [OTel-Go community Metrics
 SDK](https://github.com/open-telemetry/opentelemetry-go) being
 maintained by Lightstep as a way to quickly validate newer
 OpenTelemetry features, such as the OpenTelemetry exponential
 histogram.
-
-This Metrics SDK is being used in production at Lightstep.
 
 The community SDK is used by default.  To select the alternative
 Metrics SDK, use `WithLightstepMetricsSDK(true)` or set

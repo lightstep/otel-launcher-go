@@ -8,6 +8,22 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.7.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.7.0) - 2022-06-30
+
+### 💡 Enhancements
+
+- Introduces the "Lightstep Metrics SDK" option, an alternative to the OpenTelemetry-Go
+  community SDK.  This SDK features experimental features listed below: [#196](https://github.com/lightstep/otel-launcher-go/pull/196)
+  - Lightstep Metrics SDK: Exponential histogram on-by-default, no explicit-boundary Histogram
+  - Lightstep Metrics SDK: Support for MinMaxSumCount aggregation (via a 0-bucket Histogram)
+  - Lightstep Metrics SDK: Support for synchronous Gauge instrument (configured via API hints)
+- New in both Metrics SDKs: Support for "stateless" temporality preference
+- New in both Metrics SDKs: Recognize & print Lightstep's metric validation error details.
+
+## 1.6.x
+
+We are skipping version 1.6.x so that `otel-launcher-go` major and minor versions match the `opentelemetry-go` repository.
+
 ## [1.5.2](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.5.2) - 2022-05-12
 
 ### 🧰 Bug fixes 🧰
