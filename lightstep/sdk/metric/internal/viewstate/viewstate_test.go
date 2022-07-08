@@ -1090,14 +1090,13 @@ func TestDeltaTemporalitySyncGauge(t *testing.T) {
 	require.Equal(t, 1, len(compI.data))
 	require.Equal(t, 1, len(compF.data))
 
-	// observation races w/ collection, release anyway
+	// observation races w/ collection, release w/ active ref
 	observe(true, 12)
 	expectValues(12, seq)
 	tick()
-	// The release=true signal is honored, even when a final
-	// update races with the unmapping.
-	require.Equal(t, 0, len(compI.data))
-	require.Equal(t, 0, len(compF.data))
+
+	require.Equal(t, 1, len(compI.data))
+	require.Equal(t, 1, len(compF.data))
 
 	// repeat use
 	makeAccums()

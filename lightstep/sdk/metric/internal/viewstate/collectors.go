@@ -56,6 +56,12 @@ func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 	ioutput := p.appendInstrument(output)
 
 	for set, entry := range p.data {
+		// capture the number of references before the Move() call
+		// below.  we're holding the lock that prevents new refs, so
+		// the value before Move() indicates when it's safe to remove
+		// this entry from the map.
+		numRefs := atomic.LoadInt64(&entry.auxiliary)
+
 		p.appendPoint(ioutput, set, &entry.storage, aggregation.DeltaTemporality, seq.Last, seq.Now, true)
 
 		// By passing reset=true above, the aggregator data in
@@ -65,25 +71,23 @@ func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 		point := &ptsArr[len(ptsArr)-1]
 
 		cpy, _ := methods.ToStorage(point.Aggregation)
-		if !methods.HasChange(cpy) {
-			// We allowed the array to grow before this
-			// test speculatively, since when it succeeds
-			// we are able to re-use the underlying
-			// aggregator.
-			ioutput.Points = ptsArr[0 : len(ptsArr)-1 : cap(ptsArr)]
+
+		if methods.HasChange(cpy) {
+			continue
 		}
+
+		// We allowed the array to grow before this
+		// test speculatively, since when it succeeds
+		// we are able to re-use the underlying
+		// aggregator.
+		ioutput.Points = ptsArr[0 : len(ptsArr)-1 : cap(ptsArr)]
+
 		// If there are no more accumulator references to the
-		// entry, remove from the map.  This happens when the
-		// syncstate the entry goes unused for the interval
-		// between collection, so if it happens here probably
-		// there was no change.  This branch is outside the
-		// HasChange() block above in case of a race -- the
-		// entry can have a final change if it was updated
-		// after the (mods == coll) test in conditionalSnapshotAndProcess()
-		// but before the entry is unmapped.
-		if atomic.LoadInt64(&entry.auxiliary) == 0 {
+		// entry, remove from the map.
+		if numRefs == 0 {
 			delete(p.data, set)
 		}
+
 	}
 }
 
