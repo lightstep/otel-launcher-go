@@ -55,6 +55,10 @@ type (
 		// zeroCount is incremented by 1 when the measured
 		// value is exactly 0.
 		zeroCount uint64
+		// min is set when count > 0
+		min N
+		// max is set when count > 0
+		max N
 		// positive holds the positive values
 		positive buckets
 		// negative holds the negative values in these buckets
@@ -147,6 +151,18 @@ func (h *State[N, Traits]) Sum() number.Number {
 	return t.ToNumber(h.sum)
 }
 
+// Min implements aggregation.Histogram.
+func (h *State[N, Traits]) Min() number.Number {
+	var t Traits
+	return t.ToNumber(h.min)
+}
+
+// Max implements aggregation.Histogram.
+func (h *State[N, Traits]) Max() number.Number {
+	var t Traits
+	return t.ToNumber(h.max)
+}
+
 // Count implements aggregation.Histogram.
 func (h *State[N, Traits]) Count() uint64 {
 	return h.count
@@ -214,6 +230,8 @@ func (h *State[N, Traits]) clearState() {
 	h.sum = 0
 	h.count = 0
 	h.zeroCount = 0
+	h.min = 0
+	h.max = 0
 	h.mapping, _ = newMapping(logarithm.MaxScale)
 }
 

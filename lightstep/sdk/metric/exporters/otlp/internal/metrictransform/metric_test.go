@@ -210,7 +210,7 @@ func TestMetricTransform(t *testing.T) {
 						testUnit,
 						expectCumulative,
 						otlptest.HistogramDataPoint(
-							expectAttrs1, startTime, endTime, 7, 3, 0, 0, 0, []uint64{1, 1, 1}, 0, nil,
+							expectAttrs1, startTime, endTime, 7, 3, 0, 1, 4, 0, 0, []uint64{1, 1, 1}, 0, nil,
 						),
 					),
 				),
@@ -247,6 +247,8 @@ func TestMetricTransform(t *testing.T) {
 							10.5,
 							8,
 							2,
+							-2, // min
+							8,  // max
 							0,
 							// positive offset by 1
 							1,

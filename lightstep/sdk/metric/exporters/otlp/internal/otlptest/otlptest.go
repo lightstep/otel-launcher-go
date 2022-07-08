@@ -139,7 +139,7 @@ func Gauge(name, desc, unit string, idps ...*metricspb.NumberDataPoint) *metrics
 	}
 }
 
-func HistogramDataPoint(attributes []*commonpb.KeyValue, start, end time.Time, sum float64, count, zeroCount uint64, scale, posOffset int32, posBucketCounts []uint64, negOffset int32, negBucketCounts []uint64) *metricspb.ExponentialHistogramDataPoint {
+func HistogramDataPoint(attributes []*commonpb.KeyValue, start, end time.Time, sum float64, count, zeroCount uint64, min, max float64, scale, posOffset int32, posBucketCounts []uint64, negOffset int32, negBucketCounts []uint64) *metricspb.ExponentialHistogramDataPoint {
 	dp := &metricspb.ExponentialHistogramDataPoint{
 		Attributes:        attributes,
 		StartTimeUnixNano: toNanos(start),
@@ -149,6 +149,13 @@ func HistogramDataPoint(attributes []*commonpb.KeyValue, start, end time.Time, s
 		ZeroCount:         zeroCount,
 		Scale:             scale,
 	}
+	if !math.IsNaN(min) {
+		dp.Min = &min
+	}
+	if !math.IsNaN(max) {
+		dp.Max = &max
+	}
+
 	if posBucketCounts != nil {
 		dp.Positive = &metricspb.ExponentialHistogramDataPoint_Buckets{
 			Offset:       posOffset,
