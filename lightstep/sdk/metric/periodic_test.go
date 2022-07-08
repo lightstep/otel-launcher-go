@@ -147,6 +147,8 @@ func TestPeriodicRepeats(t *testing.T) {
 		periodic.Register(producer)
 		periodic.Register(producer)
 
+		periodic.stop()
+
 		require.Equal(t, 1, len(*errs))
 		require.True(t, errors.Is((*errs)[0], ErrMultipleReaderRegistration))
 	})

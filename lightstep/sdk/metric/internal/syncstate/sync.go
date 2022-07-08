@@ -193,8 +193,7 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) (
 	}
 
 	// Note: the accumulator set below is created speculatively;
-	// if it is never returned, it will not be updated and can be
-	// safely discarded.
+	// if it is never returned, it will be released below.
 	newRec := &record{
 		refMapped:   newRefcountMapped(),
 		accumulator: inst.compiled.NewAccumulator(aset),
@@ -204,6 +203,7 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) (
 		if found, loaded := inst.current.LoadOrStore(aset, newRec); loaded {
 			oldRec := found.(*record)
 			if oldRec.refMapped.ref() {
+				newRec.accumulator.SnapshotAndProcess(true)
 				return oldRec, oldRec.accumulator.(viewstate.Updater[N])
 			}
 			// When this happens, we are waiting for the call to Delete()
