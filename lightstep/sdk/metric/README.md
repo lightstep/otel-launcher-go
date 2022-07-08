@@ -26,7 +26,9 @@ Differences from the OpenTelemetry metrics SDK specification:
    Note that this aggregation only encodes the `.Min` and `.Max`
    fields when configured with delta temporality.  [Consider using the
    "stateless" temporality preference in the launcher.](../../../README.md#temporality-settings).
-3. The OTLP exporter is the only provided exporter.
+3. Synchronous Gauge instrument behavior is supported using an API 
+   hint, see below.
+4. The OTLP exporter is the only provided exporter.
 
 These differences aside, this SDK features a complete implementation
 of the OpenTelemetry SDK specification with support for multiple
@@ -78,3 +80,39 @@ To set the MinMaxSumCount aggregation for a specific histogram instrument:
   "description": "measurement of ...",
   "aggregation": "minmaxsumcount"
 }
+```
+
+### Synchronous Gauge instrument 
+
+[OpenTelemetry metrics API does not support a synchronous Gauge
+instrument, however the desired semantics are fairly
+clear.](https://github.com/open-telemetry/opentelemetry-specification/issues/2318)
+This SDK supports the intended behavior of a synchronous Gauge
+instrument by distinguishing two possible behaviors as a function of
+the configured temporality.
+
+Although the Gauge data point does not have the concept of temporality
+itself, the decision to report or not report a Gauge data point has
+traditionally been made in one of two ways.
+
+- When the output system is generally expecting cumulative Counters
+(as in Prometheus), it is traditional to report the latest Gauge value
+indefinitely, even when the instrument and attribute set are not used
+again.
+- When the output system is generally expecting delta Counters (as in
+Statsd), it is traditional to report Gauge values at most once.
+
+Therefore, when the Temporality selector for the instrument returns
+Delta and the aggregation is a Gauge (which is only possible with a
+Hint, at this time), the resulting instrument will be a synchronous
+Gauge instrument.
+
+For example, to configure a synchronous Gauge:
+
+```
+    gauge, _ := meter.SyncUpDownCounter(
+	    "some_gauge",
+	    instrument.WithDescription(`{"aggregation": "gauge"}`),
+	)
+```
+
