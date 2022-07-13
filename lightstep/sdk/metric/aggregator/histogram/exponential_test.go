@@ -765,6 +765,12 @@ func TestAggregatorCopyMove(t *testing.T) {
 	requireEqualValues(t, h2, h3)
 }
 
+func TestAggregatorMinMax(t *testing.T) {
+	h := NewFloat64(aggregator.HistogramConfig{}, 1, 3, 5, 7, 9)
+	require.Equal(t, 1.0, number.ToFloat64(h.Min()))
+	require.Equal(t, 9.0, number.ToFloat64(h.Max()))
+}
+
 // Benchmarks the Update() function for values in the range [1,2)
 func BenchmarkLinear(b *testing.B) {
 	src := rand.NewSource(77777677777)

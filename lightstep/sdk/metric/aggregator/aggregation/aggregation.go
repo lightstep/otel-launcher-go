@@ -66,6 +66,8 @@ type (
 		ZeroCount() uint64
 		Positive() Buckets
 		Negative() Buckets
+		Min() number.Number
+		Max() number.Number
 	}
 
 	// Buckets describes a range of consecutive buckets, starting

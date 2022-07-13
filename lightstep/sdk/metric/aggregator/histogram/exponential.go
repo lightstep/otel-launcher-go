@@ -121,6 +121,19 @@ func (s *State[N, Traits]) UpdateByIncr(number N, incr uint64) {
 
 	value := float64(number)
 
+	// Maintain min and max
+	if s.count == 0 {
+		s.min = number
+		s.max = number
+	} else {
+		if number < s.min {
+			s.min = number
+		}
+		if number > s.max {
+			s.max = number
+		}
+	}
+
 	// Note: Not checking for overflow here. TODO.
 	s.count += incr
 
@@ -337,6 +350,18 @@ func (b *buckets) incrementBucket(bucketIndex int32, incr uint64) {
 func (s *State[N, Traits]) Merge(o *State[N, Traits]) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
+
+	if s.count == 0 {
+		s.min = o.min
+		s.max = o.max
+	} else if o.count != 0 {
+		if o.min < s.min {
+			s.min = o.min
+		}
+		if o.max > s.max {
+			s.max = o.max
+		}
+	}
 
 	// Note: Not checking for overflow here. TODO.
 	s.sum += o.sum

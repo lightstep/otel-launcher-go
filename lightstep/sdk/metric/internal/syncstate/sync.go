@@ -46,8 +46,11 @@ type Instrument struct {
 	// for synchronous aggregation.
 	compiled viewstate.Instrument
 
-	// current is a synchronous form of map[attribute.Set]*record.
-	current sync.Map
+	// lock protects current.
+	lock sync.RWMutex
+
+	// current is protected by lock.
+	current map[attribute.Set]*record
 }
 
 // NewInstruments builds a new synchronous instrument given the
@@ -67,6 +70,7 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 	}
 	return &Instrument{
 		descriptor: desc,
+		current:    map[attribute.Set]*record{},
 
 		// Note that viewstate.Combine is used to eliminate
 		// the per-pipeline distinction that is useful in the
@@ -84,10 +88,12 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 // accumulators of this instrument.  Inactive accumulators will be
 // subsequently removed from the map.
 func (inst *Instrument) SnapshotAndProcess() {
-	inst.current.Range(func(key interface{}, value interface{}) bool {
-		rec := value.(*record)
+	inst.lock.Lock()
+	defer inst.lock.Unlock()
+
+	for key, rec := range inst.current {
 		if rec.conditionalSnapshotAndProcess(false) {
-			return true
+			continue
 		}
 		// Having no updates since last collection, try to unmap:
 		unmapped := rec.refMapped.tryUnmap()
@@ -104,11 +110,9 @@ func (inst *Instrument) SnapshotAndProcess() {
 			// If any other goroutines are now trying to re-insert this
 			// entry in the map, they are busy calling Gosched() awaiting
 			// this deletion:
-			inst.current.Delete(key)
+			delete(inst.current, key)
 		}
-
-		return true
-	})
+	}
 }
 
 // record consists of an accumulator, a reference count, the number of
@@ -165,55 +169,83 @@ func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Ins
 		return
 	}
 
-	rec, updater := acquireRecord[N](inst, attrs)
+	rec := acquireRecord[N](inst, attrs)
 	defer rec.refMapped.unref()
 
-	updater.Update(num)
+	rec.accumulator.(viewstate.Updater[N]).Update(num)
 
 	// Record was modified.
 	atomic.AddInt64(&rec.updateCount, 1)
 }
 
-// acquireRecord gets or creates a `*record` corresponding to `attrs`,
-// the input attributes.
-func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) (*record, viewstate.Updater[N]) {
-	aset := attribute.NewSet(attrs...)
+// acquireRead acquires the read lock and searches for a `*record`.
+func acquireRead(inst *Instrument, aset attribute.Set) *record {
+	inst.lock.RLock()
+	defer inst.lock.RUnlock()
 
-	if lookup, ok := inst.current.Load(aset); ok {
+	if rec, ok := inst.current[aset]; ok {
 		// Existing record case.
-		rec := lookup.(*record)
-
 		if rec.refMapped.ref() {
 			// At this moment it is guaranteed that the
 			// record is in the map and will not be removed.
-			return rec, rec.accumulator.(viewstate.Updater[N])
+			return rec
 		}
-		// This record is no longer mapped, try to add a new
-		// record below.
+	}
+	return nil
+}
+
+// acquireRecord gets or creates a `*record` corresponding to `attrs`,
+// the input attributes.
+func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *record {
+	aset := attribute.NewSet(attrs...)
+
+	rec := acquireRead(inst, aset)
+	if rec != nil {
+		return rec
 	}
 
+	// Record is not mapped.
+
 	// Note: the accumulator set below is created speculatively;
-	// if it is never returned, it will not be updated and can be
-	// safely discarded.
+	// it will be released if it is never returned.
 	newRec := &record{
 		refMapped:   newRefcountMapped(),
 		accumulator: inst.compiled.NewAccumulator(aset),
 	}
 
 	for {
-		if found, loaded := inst.current.LoadOrStore(aset, newRec); loaded {
-			oldRec := found.(*record)
-			if oldRec.refMapped.ref() {
-				return oldRec, oldRec.accumulator.(viewstate.Updater[N])
-			}
+		acquired, loaded := acquireWrite(inst, aset, newRec)
+
+		if !loaded {
 			// When this happens, we are waiting for the call to Delete()
 			// inside SnapshotAndProcess() to complete before inserting
 			// a new record.  This avoids busy-waiting.
 			runtime.Gosched()
 			continue
 		}
-		break
+
+		if acquired != newRec {
+			// Release the speculative accumulator, since it was
+			newRec.accumulator.SnapshotAndProcess(true)
+		}
+		return acquired
+	}
+}
+
+// acquireWrite acquires the write lock and gets or sets a `*record`.
+func acquireWrite(inst *Instrument, aset attribute.Set, newRec *record) (*record, bool) {
+	inst.lock.Lock()
+	defer inst.lock.Unlock()
+
+	oldRec, loaded := inst.current[aset]
+
+	if loaded {
+		if oldRec.refMapped.ref() {
+			return oldRec, true
+		}
+		return nil, false
 	}
 
-	return newRec, newRec.accumulator.(viewstate.Updater[N])
+	inst.current[aset] = newRec
+	return newRec, true
 }

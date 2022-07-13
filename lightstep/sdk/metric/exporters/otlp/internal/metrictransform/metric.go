@@ -158,6 +158,13 @@ func HistogramPoints(desc *sdkinstrument.Descriptor, points []data.Point) []*met
 		// supposed to drop the sum.
 		sum := hist.Sum().CoerceToFloat64(desc.NumberKind)
 
+		var minp, maxp *float64
+
+		if hist.Count() != 0 {
+			minp = float64Ptr(hist.Min().CoerceToFloat64(desc.NumberKind))
+			maxp = float64Ptr(hist.Max().CoerceToFloat64(desc.NumberKind))
+		}
+
 		results[i] = &metricspb.ExponentialHistogramDataPoint{
 			Attributes:        Attributes(pt.Attributes),
 			StartTimeUnixNano: toNanos(pt.Start),
@@ -166,6 +173,8 @@ func HistogramPoints(desc *sdkinstrument.Descriptor, points []data.Point) []*met
 			Sum:               &sum,
 			ZeroCount:         hist.ZeroCount(),
 			Scale:             hist.Scale(),
+			Min:               minp,
+			Max:               maxp,
 			Positive:          HistogramBuckets(hist.Positive()),
 			Negative:          HistogramBuckets(hist.Negative()),
 		}
