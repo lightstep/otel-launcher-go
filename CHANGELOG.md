@@ -8,6 +8,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.8.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.8.0) - 2022-07-13
+
+### 💡 Enhancements
+
+- Update OpenTelemetry dependencies to OTel-Go version 1.8.0 [#216](https://github.com/lightstep/otel-launcher-go/pull/216)
+- OTLP version 0.18.0: includes Min/Max support for exponential histogram [#215](https://github.com/lightstep/otel-launcher-go/pull/215)
+- `sync.Map` replaced with `sync.RWLock` and plain map (saves 3 allocations) [#206](https://github.com/lightstep/otel-launcher-go/pull/206)
+
+### 🧰 Bug fixes 🧰
+
+- Race condition possible with multiple exporters fixed [#205](https://github.com/lightstep/otel-launcher-go/pull/205)
+
 ## [1.7.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.7.0) - 2022-06-30
 
 ### 💡 Enhancements
