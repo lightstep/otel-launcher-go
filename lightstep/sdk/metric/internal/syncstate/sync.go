@@ -118,6 +118,9 @@ func (inst *Instrument) SnapshotAndProcess() {
 // record consists of an accumulator, a reference count, the number of
 // updates, and the number of collected updates.
 type record struct {
+	// refMapped tracks concurrent references to the record in
+	// order to keep the record mapped as long as it is active or
+	// uncollected.
 	refMapped refcountMapped
 
 	// updateCount is incremented on every Update.
@@ -132,6 +135,9 @@ type record struct {
 	// these distinctions are not relevant for synchronous
 	// instruments.
 	accumulator viewstate.Accumulator
+
+	// next is protected by the instrument's RWLock.
+	next *record
 }
 
 // conditionalSnapshotAndProcess checks whether the accumulator has been
@@ -225,7 +231,7 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *
 		}
 
 		if acquired != newRec {
-			// Release the speculative accumulator, since it was
+			// Release the speculative accumulator, since it was not used.
 			newRec.accumulator.SnapshotAndProcess(true)
 		}
 		return acquired
