@@ -214,9 +214,9 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *
 	}
 
 	for {
-		acquired, repeat := acquireWrite(inst, aset, newRec)
+		acquired, loaded := acquireWrite(inst, aset, newRec)
 
-		if repeat {
+		if !loaded {
 			// When this happens, we are waiting for the call to Delete()
 			// inside SnapshotAndProcess() to complete before inserting
 			// a new record.  This avoids busy-waiting.
@@ -241,11 +241,11 @@ func acquireWrite(inst *Instrument, aset attribute.Set, newRec *record) (*record
 
 	if loaded {
 		if oldRec.refMapped.ref() {
-			return oldRec, false
+			return oldRec, true
 		}
-		return nil, true
+		return nil, false
 	}
 
 	inst.current[aset] = newRec
-	return newRec, false
+	return newRec, true
 }
