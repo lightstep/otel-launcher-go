@@ -171,7 +171,7 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 				vc.Collectors()[0].Collect(seq, &scope.Instruments)
 
 				for _, pt := range scope.Instruments[0].Points {
-					partial[pt.Attributes] = update(partial[pt.Attributes], traits.FromNumber(pt.Aggregation.(*sum.State[N, Traits, sum.Monotonic]).Sum()))
+					partial[pt.Attributes] = update(partial[pt.Attributes], traits.FromNumber(pt.Aggregation.(*sum.State[N, Traits, sum.MonotonicTemporal]).Sum()))
 				}
 			}
 

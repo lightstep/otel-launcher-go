@@ -446,11 +446,16 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 	case aggregation.NonMonotonicSumKind:
 		return newSyncView[
 			N,
-			sum.State[N, Traits, sum.NonMonotonic],
-			sum.Methods[N, Traits, sum.NonMonotonic, sum.State[N, Traits, sum.NonMonotonic]],
+			sum.State[N, Traits, sum.NonMonotonicTemporal],
+			sum.Methods[N, Traits, sum.NonMonotonicTemporal, sum.State[N, Traits, sum.NonMonotonicTemporal]],
+		](behavior)
+	case aggregation.LatestSumKind:
+		return newSyncView[
+			N,
+			sum.State[N, Traits, sum.NonMonotonicSpatial],
+			sum.Methods[N, Traits, sum.NonMonotonicSpatial, sum.State[N, Traits, sum.NonMonotonicSpatial]],
 		](behavior)
 	case aggregation.GaugeKind:
-		// Note: off-spec synchronous gauge support
 		return newSyncView[
 			N,
 			gauge.State[N, Traits],
@@ -461,8 +466,8 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 	case aggregation.MonotonicSumKind:
 		return newSyncView[
 			N,
-			sum.State[N, Traits, sum.Monotonic],
-			sum.Methods[N, Traits, sum.Monotonic, sum.State[N, Traits, sum.Monotonic]],
+			sum.State[N, Traits, sum.MonotonicTemporal],
+			sum.Methods[N, Traits, sum.MonotonicTemporal, sum.State[N, Traits, sum.MonotonicTemporal]],
 		](behavior)
 	}
 }
@@ -516,14 +521,14 @@ func compileAsync[N number.Any, Traits number.Traits[N]](behavior singleBehavior
 	case aggregation.MonotonicSumKind:
 		return newAsyncView[
 			N,
-			sum.State[N, Traits, sum.Monotonic],
-			sum.Methods[N, Traits, sum.Monotonic, sum.State[N, Traits, sum.Monotonic]],
+			sum.State[N, Traits, sum.MonotonicTemporal],
+			sum.Methods[N, Traits, sum.MonotonicTemporal, sum.State[N, Traits, sum.MonotonicTemporal]],
 		](behavior)
-	case aggregation.NonMonotonicSumKind:
+	case aggregation.NonMonotonicSumKind, aggregation.LatestSumKind:
 		return newAsyncView[
 			N,
-			sum.State[N, Traits, sum.NonMonotonic],
-			sum.Methods[N, Traits, sum.NonMonotonic, sum.State[N, Traits, sum.NonMonotonic]],
+			sum.State[N, Traits, sum.NonMonotonicTemporal],
+			sum.Methods[N, Traits, sum.NonMonotonicTemporal, sum.State[N, Traits, sum.NonMonotonicTemporal]],
 		](behavior)
 	default:
 		fallthrough
@@ -641,7 +646,7 @@ func checkSemanticCompatibility(ik sdkinstrument.Kind, behavior *singleBehavior)
 			return nil
 		}
 
-	case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
+	case sdkinstrument.SyncUpDownCounter, sdkinstrument.SyncSettableUpDownCounter, sdkinstrument.AsyncUpDownCounter:
 		switch cat {
 		case aggregation.NonMonotonicSumCategory:
 			return nil
@@ -653,7 +658,7 @@ func checkSemanticCompatibility(ik sdkinstrument.Kind, behavior *singleBehavior)
 			return nil
 		}
 
-	case sdkinstrument.AsyncGauge:
+	case sdkinstrument.AsyncGauge, sdkinstrument.SyncSettableGauge:
 		switch cat {
 		case aggregation.GaugeCategory:
 			return nil

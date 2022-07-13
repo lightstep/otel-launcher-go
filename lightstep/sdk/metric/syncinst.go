@@ -43,6 +43,16 @@ func (i syncint64Instruments) Histogram(name string, opts ...instrument.Option) 
 	return syncstate.NewHistogram[int64, number.Int64Traits](inst), err
 }
 
+func (i syncint64Instruments) SettableUpDownCounter(name string, opts ...instrument.Option) (syncint64.SettableUpDownCounter, error) {
+	inst, err := i.synchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.SyncSettableUpDownCounter)
+	return syncstate.NewSettable[int64, number.Int64Traits](inst), err
+}
+
+func (i syncint64Instruments) SettableGauge(name string, opts ...instrument.Option) (syncint64.SettableGauge, error) {
+	inst, err := i.synchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.SyncSettableGauge)
+	return syncstate.NewSettable[int64, number.Int64Traits](inst), err
+}
+
 func (f syncfloat64Instruments) Counter(name string, opts ...instrument.Option) (syncfloat64.Counter, error) {
 	inst, err := f.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.SyncCounter)
 	return syncstate.NewCounter[float64, number.Float64Traits](inst), err
@@ -56,4 +66,14 @@ func (f syncfloat64Instruments) UpDownCounter(name string, opts ...instrument.Op
 func (f syncfloat64Instruments) Histogram(name string, opts ...instrument.Option) (syncfloat64.Histogram, error) {
 	inst, err := f.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.SyncHistogram)
 	return syncstate.NewHistogram[float64, number.Float64Traits](inst), err
+}
+
+func (i syncfloat64Instruments) SettableUpDownCounter(name string, opts ...instrument.Option) (syncfloat64.SettableUpDownCounter, error) {
+	inst, err := i.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.SyncSettableUpDownCounter)
+	return syncstate.NewSettable[float64, number.Float64Traits](inst), err
+}
+
+func (i syncfloat64Instruments) SettableGauge(name string, opts ...instrument.Option) (syncfloat64.SettableGauge, error) {
+	inst, err := i.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.SyncSettableGauge)
+	return syncstate.NewSettable[float64, number.Float64Traits](inst), err
 }

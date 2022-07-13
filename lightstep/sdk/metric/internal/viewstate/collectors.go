@@ -87,7 +87,6 @@ func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 		if numRefs == 0 {
 			delete(p.data, set)
 		}
-
 	}
 }
 

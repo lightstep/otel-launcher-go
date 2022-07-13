@@ -26,6 +26,10 @@ const (
 	SyncUpDownCounter
 	// SyncHistogram indicates a Histogram instrument.
 	SyncHistogram
+	// SyncSettableUpDownCounter indicates an UpDownCounter instrument that can be set.
+	SyncSettableUpDownCounter
+	// SyncSettableGauge indicates an Gauge instrument that can be set.
+	SyncSettableGauge
 
 	// AsyncCounter indicates an asynchronous Counter instrument.
 	AsyncCounter
@@ -42,13 +46,8 @@ const (
 // Synchronous returns whether this is a synchronous kind of instrument.
 func (k Kind) Synchronous() bool {
 	switch k {
-	case SyncCounter, SyncUpDownCounter, SyncHistogram:
+	case SyncCounter, SyncUpDownCounter, SyncHistogram, SyncSettableUpDownCounter, SyncSettableGauge:
 		return true
 	}
 	return false
-}
-
-// HasTemporality
-func (k Kind) HasTemporality() bool {
-	return k != AsyncGauge
 }

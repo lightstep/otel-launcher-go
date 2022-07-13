@@ -27,9 +27,9 @@ func StandardAggregationKind(ik sdkinstrument.Kind) aggregation.Kind {
 	case sdkinstrument.SyncHistogram:
 		// Note: the default is Exponential Histogram, not MinMaxSumCount.
 		return aggregation.HistogramKind
-	case sdkinstrument.AsyncGauge:
+	case sdkinstrument.AsyncGauge, sdkinstrument.SyncSettableGauge:
 		return aggregation.GaugeKind
-	case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
+	case sdkinstrument.SyncUpDownCounter, sdkinstrument.SyncSettableUpDownCounter, sdkinstrument.AsyncUpDownCounter:
 		return aggregation.NonMonotonicSumKind
 	default:
 		return aggregation.MonotonicSumKind
@@ -47,7 +47,7 @@ func StandardTemporality(ik sdkinstrument.Kind) aggregation.Temporality {
 // UpDownCounter, which remain Cumulative.
 func DeltaPreferredTemporality(ik sdkinstrument.Kind) aggregation.Temporality {
 	switch ik {
-	case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
+	case sdkinstrument.SyncUpDownCounter, sdkinstrument.SyncSettableUpDownCounter, sdkinstrument.AsyncUpDownCounter:
 		return aggregation.CumulativeTemporality
 	default:
 		return aggregation.DeltaTemporality

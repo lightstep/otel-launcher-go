@@ -34,14 +34,15 @@ func _() {
 	_ = x[AnySumKind-2]
 	_ = x[MonotonicSumKind-3]
 	_ = x[NonMonotonicSumKind-4]
-	_ = x[GaugeKind-5]
-	_ = x[HistogramKind-6]
-	_ = x[MinMaxSumCountKind-7]
+	_ = x[LatestSumKind-5]
+	_ = x[GaugeKind-6]
+	_ = x[HistogramKind-7]
+	_ = x[MinMaxSumCountKind-8]
 }
 
-const _Kind_name = "UndefinedKindDropKindAnySumKindMonotonicSumKindNonMonotonicSumKindGaugeKindHistogramKindMinMaxSumCountKind"
+const _Kind_name = "UndefinedKindDropKindAnySumKindMonotonicSumKindNonMonotonicSumKindLatestSumKindGaugeKindHistogramKindMinMaxSumCountKind"
 
-var _Kind_index = [...]uint8{0, 13, 21, 31, 47, 66, 75, 88, 106}
+var _Kind_index = [...]uint8{0, 13, 21, 31, 47, 66, 79, 88, 101, 119}
 
 func (i Kind) String() string {
 	if i < 0 || i >= Kind(len(_Kind_index)-1) {

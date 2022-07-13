@@ -178,7 +178,7 @@ func TestDeltaPreferredTemporality(t *testing.T) {
 	)
 	for i := sdkinstrument.Kind(0); i < sdkinstrument.NumKinds; i++ {
 		switch i {
-		case sdkinstrument.AsyncUpDownCounter, sdkinstrument.SyncUpDownCounter:
+		case sdkinstrument.AsyncUpDownCounter, sdkinstrument.SyncUpDownCounter, sdkinstrument.SyncSettableUpDownCounter:
 			require.Equal(t, aggregation.CumulativeTemporality, views.Defaults.Temporality(i))
 		default:
 			require.Equal(t, aggregation.DeltaTemporality, views.Defaults.Temporality(i))
@@ -196,11 +196,11 @@ func TestStandardAggregation(t *testing.T) {
 func expectStandardAggregation(t *testing.T, v *Views) {
 	for i := sdkinstrument.Kind(0); i < sdkinstrument.NumKinds; i++ {
 		switch i {
-		case sdkinstrument.AsyncGauge:
+		case sdkinstrument.AsyncGauge, sdkinstrument.SyncSettableGauge:
 			require.Equal(t, aggregation.GaugeKind, v.Defaults.Aggregation(i))
 		case sdkinstrument.SyncCounter, sdkinstrument.AsyncCounter:
 			require.Equal(t, aggregation.MonotonicSumKind, v.Defaults.Aggregation(i))
-		case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
+		case sdkinstrument.SyncUpDownCounter, sdkinstrument.SyncSettableUpDownCounter, sdkinstrument.AsyncUpDownCounter:
 			require.Equal(t, aggregation.NonMonotonicSumKind, v.Defaults.Aggregation(i))
 		case sdkinstrument.SyncHistogram:
 			require.Equal(t, aggregation.HistogramKind, v.Defaults.Aggregation(i))

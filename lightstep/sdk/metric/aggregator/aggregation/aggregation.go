@@ -111,6 +111,7 @@ const (
 	AnySumKind
 	MonotonicSumKind
 	NonMonotonicSumKind
+	LatestSumKind
 	GaugeKind
 	HistogramKind
 	MinMaxSumCountKind
@@ -122,13 +123,13 @@ func (k Kind) Category(ik sdkinstrument.Kind) Category {
 		switch ik {
 		case sdkinstrument.SyncHistogram, sdkinstrument.SyncCounter, sdkinstrument.AsyncCounter:
 			return MonotonicSumCategory
-		case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
+		case sdkinstrument.SyncUpDownCounter, sdkinstrument.SyncSettableUpDownCounter, sdkinstrument.AsyncUpDownCounter:
 			return NonMonotonicSumCategory
 		}
 		return UndefinedCategory
 	case MonotonicSumKind:
 		return MonotonicSumCategory
-	case NonMonotonicSumKind:
+	case NonMonotonicSumKind, LatestSumKind:
 		return NonMonotonicSumCategory
 	case GaugeKind:
 		return GaugeCategory
@@ -147,7 +148,7 @@ type KindSelector func(sdkinstrument.Kind) Kind
 func (k Kind) Valid() bool {
 	switch k {
 	case UndefinedKind, DropKind, AnySumKind,
-		MonotonicSumKind, NonMonotonicSumKind,
+		MonotonicSumKind, NonMonotonicSumKind, LatestSumKind,
 		GaugeKind, HistogramKind, MinMaxSumCountKind:
 		return true
 	}
@@ -166,6 +167,8 @@ func ParseKind(str string) (Kind, bool) {
 		return MonotonicSumKind, true
 	case "nonmonotonic_sum":
 		return NonMonotonicSumKind, true
+	case "latest_sum":
+		return LatestSumKind, true
 	case "gauge":
 		return GaugeKind, true
 	case "histogram", "exponential_histogram":
