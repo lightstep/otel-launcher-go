@@ -40,6 +40,12 @@ type (
 		indexEnd int32
 	}
 
+	// valueType is an interface constraint for the numeric type
+	// aggregated by this histogram.
+	valueType interface {
+		int64 | float64
+	}
+
 	// bucketsCount are the possible backing array widths.
 	bucketsCount interface {
 		uint8 | uint16 | uint32 | uint64
@@ -85,7 +91,7 @@ type (
 
 // Move atomically copies and resets `s`.  The modification to `dest`
 // is not synchronized.
-func (s *State[N, Traits]) Move(dest *State[N, Traits]) {
+func (s *State[N]) Move(dest *State[N]) {
 	if dest != nil {
 		// Swap case: This is the ordinary case for a
 		// synchronous instrument, where the SDK allocates two
@@ -109,13 +115,13 @@ func (s *State[N, Traits]) Move(dest *State[N, Traits]) {
 }
 
 // Update adds the recorded measurement to the current data set.
-func (s *State[N, Traits]) Update(number N) {
+func (s *State[N]) Update(number N) {
 	s.UpdateByIncr(number, 1)
 }
 
 // UpdateByIncr supports updating a histogram with a non-negative
 // increment.
-func (s *State[N, Traits]) UpdateByIncr(number N, incr uint64) {
+func (s *State[N]) UpdateByIncr(number N, incr uint64) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -157,7 +163,7 @@ func (s *State[N, Traits]) UpdateByIncr(number N, incr uint64) {
 }
 
 // downscale subtracts `change` from the current mapping scale.
-func (s *State[N, Traits]) downscale(change int32) {
+func (s *State[N]) downscale(change int32) {
 	if change < 0 {
 		panic(fmt.Sprint("impossible change of scale", change))
 	}
@@ -186,7 +192,7 @@ func changeScale(hl highLow, size int32) int32 {
 
 // update increments the appropriate buckets for a given absolute
 // value by the provided increment.
-func (s *State[N, Traits]) update(b *buckets, value float64, incr uint64) {
+func (s *State[N]) update(b *buckets, value float64, incr uint64) {
 	index := s.mapping.MapToIndex(value)
 
 	hl, success := s.incrementIndexBy(b, index, incr)
@@ -205,7 +211,7 @@ func (s *State[N, Traits]) update(b *buckets, value float64, incr uint64) {
 // increment determines if the index lies inside the current range
 // [indexStart, indexEnd] and, if not, returns the minimum size (up to
 // maxSize) will satisfy the new value.
-func (s *State[N, Traits]) incrementIndexBy(b *buckets, index int32, incr uint64) (highLow, bool) {
+func (s *State[N]) incrementIndexBy(b *buckets, index int32, incr uint64) (highLow, bool) {
 	if incr == 0 {
 		// Skipping a bunch of work for 0 increment.  This
 		// happens when merging sparse data, for example.
@@ -257,7 +263,7 @@ func (s *State[N, Traits]) incrementIndexBy(b *buckets, index int32, incr uint64
 // grow resizes the backing array by doubling in size up to maxSize.
 // this extends the array with a bunch of zeros and copies the
 // existing counts to the same position.
-func (s *State[N, Traits]) grow(b *buckets, needed int32) {
+func (s *State[N]) grow(b *buckets, needed int32) {
 	size := b.backing.size()
 	bias := b.indexBase - b.indexStart
 	oldPositiveLimit := size - bias
@@ -347,7 +353,7 @@ func (b *buckets) incrementBucket(bucketIndex int32, incr uint64) {
 }
 
 // Merge combines data from `o` into `s`.  The modification to `s` is synchronized.
-func (s *State[N, Traits]) Merge(o *State[N, Traits]) {
+func (s *State[N]) Merge(o *State[N]) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
@@ -389,7 +395,7 @@ func (s *State[N, Traits]) Merge(o *State[N, Traits]) {
 
 // mergeBuckets translates index values from another histogram into
 // the corresponding buckets of this histogram.
-func (s *State[N, Traits]) mergeBuckets(mine *buckets, other *State[N, Traits], theirs *buckets, scale int32) {
+func (s *State[N]) mergeBuckets(mine *buckets, other *State[N], theirs *buckets, scale int32) {
 	theirOffset := theirs.Offset()
 	theirChange := other.Scale() - scale
 
@@ -406,7 +412,7 @@ func (s *State[N, Traits]) mergeBuckets(mine *buckets, other *State[N, Traits], 
 }
 
 // highLowAtScale is an accessory for Merge() to calculate ideal combined scale.
-func (s *State[N, Traits]) highLowAtScale(b *buckets, scale int32) highLow {
+func (s *State[N]) highLowAtScale(b *buckets, scale int32) highLow {
 	if b.Len() == 0 {
 		return highLow{
 			low:  0,
