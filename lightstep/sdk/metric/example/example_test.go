@@ -36,6 +36,10 @@ func ExampleMinimumConfig() {
 
 	// Configure an exporter.
 	exp, _ := exporter.New(ctx, otlpmetricgrpc.NewClient(
+
+		// In a real scenario, replace the following three lines with, for example:
+		//    WithEndpoint("ingest.lightstep.com:443").
+		//    WithHeaders(map[string]string{"lightstep-access-token": "${YOUR_ACCESS_TOKEN}"}),
 		otlpmetricgrpc.WithInsecure(),
 		otlpmetricgrpc.WithEndpoint(fmt.Sprint(otlptest.ServerName, ":", server.InsecureMetricsPort)),
 		otlpmetricgrpc.WithHeaders(map[string]string{"lightstep-access-token": "${TOKEN}"}),
