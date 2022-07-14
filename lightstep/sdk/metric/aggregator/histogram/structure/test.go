@@ -24,7 +24,26 @@ import (
 
 // Test helpers
 
-func RequireEqualValues[N number.Any](t *testing.T, a, b *State[N]) {
+func NewFloat64(cfg Config, values ...float64) *Float64 {
+	return newHist[float64](cfg, values)
+}
+
+func NewInt64(cfg Config, values ...int64) *Int64 {
+	return newHist[int64](cfg, values)
+}
+
+func newHist[N number.Any](cfg Config, values []N) *Histogram[N] {
+	state := &Histogram[N]{}
+
+	state.Init(cfg)
+
+	for _, val := range values {
+		state.Update(val)
+	}
+	return state
+}
+
+func RequireEqualValues[N number.Any](t *testing.T, a, b *Histogram[N]) {
 	require.Equal(t, a.Scale(), b.Scale())
 	require.Equal(t, a.Count(), b.Count())
 	require.Equal(t, a.Sum(), b.Sum())

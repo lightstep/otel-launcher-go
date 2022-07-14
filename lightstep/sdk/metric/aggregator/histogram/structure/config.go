@@ -14,7 +14,7 @@
 
 package structure // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
 
-// DefaultMaxSize is the default maximum number of buckets per
+import "fmt" // DefaultMaxSize is the default maximum number of buckets per
 // positive or negative number range.  The value 160 is specified by
 // OpenTelemetry--yields a maximum relative error of less than 5% for
 // data with contrast 10**5 (e.g., latencies in the range 1ms to 100s).
@@ -62,22 +62,30 @@ func NewConfig(opts ...Option) Config {
 	for _, opt := range opts {
 		cfg = opt.apply(cfg)
 	}
-	if cfg.maxSize == 0 {
-		cfg.maxSize = DefaultMaxSize
-	}
-	if cfg.maxSize < MinSize {
-		cfg.maxSize = MinSize
-	}
-	if cfg.maxSize > MaximumMaxSize {
-		cfg.maxSize = MaximumMaxSize
-	}
 	return cfg
 }
 
-// Valid returns true for valid configurations.
+// Validate returns true for valid configurations.
 func (c Config) Valid() bool {
-	if c.maxSize == 0 {
-		return true
+	_, err := c.Validate()
+	return err == nil
+}
+
+// Validate returns true for valid configurations.
+func (c Config) Validate() (Config, error) {
+	if c.maxSize >= MinSize && c.maxSize <= MaximumMaxSize {
+		return c, nil
 	}
-	return c.maxSize >= MinSize && c.maxSize <= MaximumMaxSize
+	if c.maxSize == 0 {
+		c.maxSize = DefaultMaxSize
+		return c, nil
+	}
+	err := fmt.Errorf("invalid histogram size: %d", c.maxSize)
+	if c.maxSize < MinSize {
+		c.maxSize = MinSize
+	}
+	if c.maxSize > MaximumMaxSize {
+		c.maxSize = MaximumMaxSize
+	}
+	return c, err
 }

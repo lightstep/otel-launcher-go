@@ -26,7 +26,7 @@ import (
 var ErrNoSubtract = fmt.Errorf("histogram subtract not implemented")
 
 type (
-	Methods[N number.Any, Storage structure.State[N]] struct{}
+	Methods[N number.Any, Storage structure.Histogram[N]] struct{}
 
 	Int64Methods   = Methods[int64, structure.Int64]
 	Float64Methods = Methods[float64, structure.Float64]
@@ -40,7 +40,7 @@ var (
 	_ aggregation.Histogram = asLightstepHistogram[float64, number.Float64Traits](&structure.Float64{})
 )
 
-func asLightstepHistogram[N structure.ValueType, Traits number.Traits[N]](h *structure.State[N]) aggregation.Histogram {
+func asLightstepHistogram[N structure.ValueType, Traits number.Traits[N]](h *structure.Histogram[N]) aggregation.Histogram {
 	// @@@
 	return nil
 }
@@ -49,42 +49,42 @@ func (Methods[N, Storage]) Kind() aggregation.Kind {
 	return aggregation.HistogramKind
 }
 
-func (Methods[N, Storage]) Init(state *structure.State[N], cfg aggregator.Config) {
+func (Methods[N, Storage]) Init(state *structure.Histogram[N], cfg aggregator.Config) {
 	state.Init(cfg.Histogram)
 }
 
-func (Methods[N, Storage]) HasChange(ptr *structure.State[N]) bool {
+func (Methods[N, Storage]) HasChange(ptr *structure.Histogram[N]) bool {
 	return ptr.Count() != 0
 }
 
-func (Methods[N, Storage]) Move(from, to *structure.State[N]) {
+func (Methods[N, Storage]) Move(from, to *structure.Histogram[N]) {
 	from.Move(to)
 }
 
-func (Methods[N, Storage]) Copy(from, to *structure.State[N]) {
+func (Methods[N, Storage]) Copy(from, to *structure.Histogram[N]) {
 	from.Copy(to)
 }
 
 // Update adds the recorded measurement to the current data set.
-func (Methods[N, Storage]) Update(state *structure.State[N], number N) {
+func (Methods[N, Storage]) Update(state *structure.Histogram[N], number N) {
 	state.Update(number)
 }
 
 // Merge combines two histograms that have the same buckets into a single one.
-func (Methods[N, Storage]) Merge(from, to *structure.State[N]) {
+func (Methods[N, Storage]) Merge(from, to *structure.Histogram[N]) {
 	to.Merge(from)
 }
 
-func (Methods[N, Storage]) ToAggregation(state *structure.State[N]) aggregation.Aggregation {
+func (Methods[N, Storage]) ToAggregation(state *structure.Histogram[N]) aggregation.Aggregation {
 	return state
 }
 
-func (Methods[N, Storage]) ToStorage(aggr aggregation.Aggregation) (*structure.State[N], bool) {
-	r, ok := aggr.(*structure.State[N])
+func (Methods[N, Storage]) ToStorage(aggr aggregation.Aggregation) (*structure.Histogram[N], bool) {
+	r, ok := aggr.(*structure.Histogram[N])
 	return r, ok
 }
 
-func (Methods[N, Storage]) SubtractSwap(operand, argument *structure.State[N]) {
+func (Methods[N, Storage]) SubtractSwap(operand, argument *structure.Histogram[N]) {
 	// This can't be called b/c histogram's are only used with synchronous instruments,
 	// which start as delta temporality and thus never subtract.
 	panic("impossible call")

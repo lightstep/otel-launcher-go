@@ -24,6 +24,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
+	exponentialstructure "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/minmaxsumcount"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
@@ -193,7 +194,7 @@ func TestMetricTransform(t *testing.T) {
 					testScope1,
 					test.Instrument(
 						testInt64(),
-						test.Point(startTime, endTime, histogram.NewInt64(aggregator.HistogramConfig{
+						test.Point(startTime, endTime, exponentialstructure.NewInt64(aggregator.HistogramConfig{
 							MaxSize: 3,
 						}, 1, 2, 4), testCumulative, testAttrs1...),
 					),

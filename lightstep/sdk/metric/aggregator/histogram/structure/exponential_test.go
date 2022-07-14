@@ -40,9 +40,9 @@ type printableBucket struct {
 	lower float64
 }
 
-func (s *State[N]) printBuckets(b *buckets) (r []printableBucket) {
+func (h *Histogram[N]) printBuckets(b *buckets) (r []printableBucket) {
 	for i := uint32(0); i < b.Len(); i++ {
-		lower, _ := s.mapping.LowerBoundary(b.Offset() + int32(i))
+		lower, _ := h.mapping.LowerBoundary(b.Offset() + int32(i))
 		r = append(r, printableBucket{
 			index: b.Offset() + int32(i),
 			count: b.At(i),
@@ -59,15 +59,15 @@ func getCounts(b aggregation.Buckets) (r []uint64) {
 	return r
 }
 
-func (s printableBucket) String() string {
-	return fmt.Sprintf("%v=%v(%.2g)", s.index, s.count, s.lower)
+func (b printableBucket) String() string {
+	return fmt.Sprintf("%v=%v(%.2g)", b.index, b.count, b.lower)
 }
 
 // requireEqual is a helper used to require that two aggregators
 // should have equal contents.  Because the backing array is cyclic,
 // the two may are expected to have different underlying
 // representations.
-func requireEqual(t *testing.T, a, b *State[float64]) {
+func requireEqual(t *testing.T, a, b *Histogram[float64]) {
 	aSum := a.Sum()
 	bSum := b.Sum()
 	if aSum == 0 || bSum == 0 {

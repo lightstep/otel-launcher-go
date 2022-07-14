@@ -20,18 +20,17 @@ import (
 	"sync"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/exponent"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/logarithm"
 )
 
 type (
-	// State observes counts observations in exponentially-spaced
+	// Histogram observes counts observations in exponentially-spaced
 	// buckets.  It is configured with a maximum scale factor
 	// which determines resolution.  Scale is automatically
 	// adjusted to accommodate the range of input data.
-	State[N int64 | float64] struct {
+	Histogram[N int64 | float64] struct {
 		lock    sync.Mutex
 		maxSize int32
 		data[N]
@@ -129,30 +128,17 @@ type (
 		high int32
 	}
 
-	Int64   = State[int64]
-	Float64 = State[float64]
+	// Int64 is an integer histogram.
+	Int64 = Histogram[int64]
+
+	// Float64 is an integer histogram.
+	Float64 = Histogram[float64]
 )
 
-func NewFloat64(cfg Config, values ...float64) *Float64 {
-	return newHist[float64](cfg, values)
-}
+// Init initializes a new histogram.
+func (h *Histogram[N]) Init(cfg Config) {
+	cfg, _ = cfg.Validate()
 
-func NewInt64(cfg Config, values ...int64) *Int64 {
-	return newHist[int64](cfg, values)
-}
-
-func newHist[N number.Any](cfg Config, values []N) *State[N] {
-	state := &State[N]{}
-
-	state.Init(cfg)
-
-	for _, val := range values {
-		state.Update(val)
-	}
-	return state
-}
-
-func (h *State[N]) Init(cfg Config) {
 	h.maxSize = cfg.maxSize
 
 	mapping, _ := newMapping(logarithm.MaxScale)
@@ -160,27 +146,27 @@ func (h *State[N]) Init(cfg Config) {
 }
 
 // Sum implements aggregation.Histogram.
-func (h *State[N]) Sum() N {
+func (h *Histogram[N]) Sum() N {
 	return h.sum
 }
 
 // Min implements aggregation.Histogram.
-func (h *State[N]) Min() N {
+func (h *Histogram[N]) Min() N {
 	return h.min
 }
 
 // Max implements aggregation.Histogram.
-func (h *State[N]) Max() N {
+func (h *Histogram[N]) Max() N {
 	return h.max
 }
 
 // Count implements aggregation.Histogram.
-func (h *State[N]) Count() uint64 {
+func (h *Histogram[N]) Count() uint64 {
 	return h.count
 }
 
 // Scale implements aggregation.Histogram.
-func (h *State[N]) Scale() int32 {
+func (h *Histogram[N]) Scale() int32 {
 	if h.data.count == h.data.zeroCount {
 		// all zeros! scale doesn't matter, use zero.
 		return 0
@@ -189,17 +175,17 @@ func (h *State[N]) Scale() int32 {
 }
 
 // ZeroCount implements aggregation.Histogram.
-func (h *State[N]) ZeroCount() uint64 {
+func (h *Histogram[N]) ZeroCount() uint64 {
 	return h.data.zeroCount
 }
 
 // Positive implements aggregation.Histogram.
-func (h *State[N]) Positive() *buckets {
+func (h *Histogram[N]) Positive() *buckets {
 	return &h.data.positive
 }
 
 // Negative implements aggregation.Histogram.
-func (h *State[N]) Negative() *buckets {
+func (h *Histogram[N]) Negative() *buckets {
 	return &h.data.negative
 }
 
@@ -233,11 +219,11 @@ func (b *buckets) At(pos0 uint32) uint64 {
 	return b.backing.countAt(pos)
 }
 
-// clearState resets a histogram to the empty state without changing
+// clearHistogram resets a histogram to the empty state without changing
 // backing array.  Scale is reset if there are no range limits.
-func (h *State[N]) clearState() {
-	h.positive.clearState()
-	h.negative.clearState()
+func (h *Histogram[N]) clearHistogram() {
+	h.positive.clearHistogram()
+	h.negative.clearHistogram()
 	h.sum = 0
 	h.count = 0
 	h.zeroCount = 0
@@ -246,8 +232,8 @@ func (h *State[N]) clearState() {
 	h.mapping, _ = newMapping(logarithm.MaxScale)
 }
 
-// clearState zeros the backing array.
-func (b *buckets) clearState() {
+// clearHistogram zeros the backing array.
+func (b *buckets) clearHistogram() {
 	b.indexStart = 0
 	b.indexEnd = 0
 	b.indexBase = 0
@@ -263,105 +249,105 @@ func newMapping(scale int32) (mapping.Mapping, error) {
 	return logarithm.NewMapping(scale)
 }
 
-func (h *State[N]) Kind() aggregation.Kind {
+func (h *Histogram[N]) Kind() aggregation.Kind {
 	return aggregation.HistogramKind
 }
 
 // Move atomically copies and resets `s`.  The modification to `dest`
 // is not synchronized.
-func (s *State[N]) Move(dest *State[N]) {
+func (h *Histogram[N]) Move(dest *Histogram[N]) {
 	if dest != nil {
 		// Swap case: This is the ordinary case for a
 		// synchronous instrument, where the SDK allocates two
 		// Aggregators and lock contention is anticipated.
 		// Reset the target state before swapping it under the
 		// lock below.
-		dest.clearState()
+		dest.clearHistogram()
 	}
 
-	s.lock.Lock()
-	defer s.lock.Unlock()
+	h.lock.Lock()
+	defer h.lock.Unlock()
 	if dest != nil {
-		dest.data, s.data = s.data, dest.data
+		dest.data, h.data = h.data, dest.data
 	} else {
 		// No swap case: This is the ordinary case for an
 		// asynchronous instrument, where the SDK allocates a
 		// single Aggregator and there is no anticipated lock
 		// contention.
-		s.clearState()
+		h.clearHistogram()
 	}
 }
 
 // Copy atomically copies `s`.  The modification to `dest` is not
 // synchronized.
-func (s *State[N]) Copy(dest *State[N]) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func (h *Histogram[N]) Copy(dest *Histogram[N]) {
+	h.lock.Lock()
+	defer h.lock.Unlock()
 
-	dest.clearState()
-	dest.Merge(s)
+	dest.clearHistogram()
+	dest.Merge(h)
 }
 
 // UpdateByIncr supports updating a histogram with a non-negative
 // increment.
-func (s *State[N]) Update(number N) {
-	s.UpdateByIncr(number, 1)
+func (h *Histogram[N]) Update(number N) {
+	h.UpdateByIncr(number, 1)
 }
 
 // UpdateByIncr supports updating a histogram with a non-negative
 // increment.
-func (s *State[N]) UpdateByIncr(number N, incr uint64) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func (h *Histogram[N]) UpdateByIncr(number N, incr uint64) {
+	h.lock.Lock()
+	defer h.lock.Unlock()
 
 	value := float64(number)
 
 	// Maintain min and max
-	if s.count == 0 {
-		s.min = number
-		s.max = number
+	if h.count == 0 {
+		h.min = number
+		h.max = number
 	} else {
-		if number < s.min {
-			s.min = number
+		if number < h.min {
+			h.min = number
 		}
-		if number > s.max {
-			s.max = number
+		if number > h.max {
+			h.max = number
 		}
 	}
 
 	// Note: Not checking for overflow here. TODO.
-	s.count += incr
+	h.count += incr
 
 	if value == 0 {
-		s.zeroCount++
+		h.zeroCount++
 		return
 	}
 
 	// Sum maintains the original type, otherwise we use the floating point value.
-	s.sum += number * N(incr)
+	h.sum += number * N(incr)
 
 	var b *buckets
 	if value > 0 {
-		b = &s.positive
+		b = &h.positive
 	} else {
 		value = -value
-		b = &s.negative
+		b = &h.negative
 	}
 
-	s.update(b, value, incr)
+	h.update(b, value, incr)
 }
 
 // downscale subtracts `change` from the current mapping scale.
-func (s *State[N]) downscale(change int32) {
+func (h *Histogram[N]) downscale(change int32) {
 	if change < 0 {
 		panic(fmt.Sprint("impossible change of scale", change))
 	}
-	newScale := s.mapping.Scale() - change
+	newScale := h.mapping.Scale() - change
 
-	s.positive.downscale(change)
-	s.negative.downscale(change)
+	h.positive.downscale(change)
+	h.negative.downscale(change)
 	var err error
-	s.mapping, err = newMapping(newScale)
+	h.mapping, err = newMapping(newScale)
 	if err != nil {
 		panic(fmt.Sprint("impossible scale", newScale))
 	}
@@ -381,18 +367,18 @@ func changeScale(hl highLow, size int32) int32 {
 
 // update increments the appropriate buckets for a given absolute
 // value by the provided increment.
-func (s *State[N]) update(b *buckets, value float64, incr uint64) {
-	index := s.mapping.MapToIndex(value)
+func (h *Histogram[N]) update(b *buckets, value float64, incr uint64) {
+	index := h.mapping.MapToIndex(value)
 
-	hl, success := s.incrementIndexBy(b, index, incr)
+	hl, success := h.incrementIndexBy(b, index, incr)
 	if success {
 		return
 	}
 
-	s.downscale(changeScale(hl, s.maxSize))
+	h.downscale(changeScale(hl, h.maxSize))
 
-	index = s.mapping.MapToIndex(value)
-	if _, success := s.incrementIndexBy(b, index, incr); !success {
+	index = h.mapping.MapToIndex(value)
+	if _, success := h.incrementIndexBy(b, index, incr); !success {
 		panic("downscale logic error")
 	}
 }
@@ -400,7 +386,7 @@ func (s *State[N]) update(b *buckets, value float64, incr uint64) {
 // increment determines if the index lies inside the current range
 // [indexStart, indexEnd] and, if not, returns the minimum size (up to
 // maxSize) will satisfy the new value.
-func (s *State[N]) incrementIndexBy(b *buckets, index int32, incr uint64) (highLow, bool) {
+func (h *Histogram[N]) incrementIndexBy(b *buckets, index int32, incr uint64) (highLow, bool) {
 	if incr == 0 {
 		// Skipping a bunch of work for 0 increment.  This
 		// happens when merging sparse data, for example.
@@ -418,25 +404,25 @@ func (s *State[N]) incrementIndexBy(b *buckets, index int32, incr uint64) (highL
 		b.indexEnd = b.indexStart
 		b.indexBase = b.indexStart
 	} else if index < b.indexStart {
-		if span := b.indexEnd - index; span >= s.maxSize {
+		if span := b.indexEnd - index; span >= h.maxSize {
 			// rescale needed: mapped value to the right
 			return highLow{
 				low:  index,
 				high: b.indexEnd,
 			}, false
 		} else if span >= b.backing.size() {
-			s.grow(b, span+1)
+			h.grow(b, span+1)
 		}
 		b.indexStart = index
 	} else if index > b.indexEnd {
-		if span := index - b.indexStart; span >= s.maxSize {
+		if span := index - b.indexStart; span >= h.maxSize {
 			// rescale needed: mapped value to the left
 			return highLow{
 				low:  b.indexStart,
 				high: index,
 			}, false
 		} else if span >= b.backing.size() {
-			s.grow(b, span+1)
+			h.grow(b, span+1)
 		}
 		b.indexEnd = index
 	}
@@ -452,13 +438,13 @@ func (s *State[N]) incrementIndexBy(b *buckets, index int32, incr uint64) (highL
 // grow resizes the backing array by doubling in size up to maxSize.
 // this extends the array with a bunch of zeros and copies the
 // existing counts to the same position.
-func (s *State[N]) grow(b *buckets, needed int32) {
+func (h *Histogram[N]) grow(b *buckets, needed int32) {
 	size := b.backing.size()
 	bias := b.indexBase - b.indexStart
 	oldPositiveLimit := size - bias
 	newSize := int32(1) << (32 - bits.LeadingZeros32(uint32(needed)))
-	if newSize > s.maxSize {
-		newSize = s.maxSize
+	if newSize > h.maxSize {
+		newSize = h.maxSize
 	}
 	newPositiveLimit := newSize - bias
 	b.backing.growTo(newSize, oldPositiveLimit, newPositiveLimit)
@@ -542,54 +528,54 @@ func (b *buckets) incrementBucket(bucketIndex int32, incr uint64) {
 }
 
 // Merge combines data from `o` into `s`.  The modification to `s` is synchronized.
-func (s *State[N]) Merge(o *State[N]) {
-	s.lock.Lock()
-	defer s.lock.Unlock()
+func (h *Histogram[N]) Merge(o *Histogram[N]) {
+	h.lock.Lock()
+	defer h.lock.Unlock()
 
-	if s.count == 0 {
-		s.min = o.min
-		s.max = o.max
+	if h.count == 0 {
+		h.min = o.min
+		h.max = o.max
 	} else if o.count != 0 {
-		if o.min < s.min {
-			s.min = o.min
+		if o.min < h.min {
+			h.min = o.min
 		}
-		if o.max > s.max {
-			s.max = o.max
+		if o.max > h.max {
+			h.max = o.max
 		}
 	}
 
 	// Note: Not checking for overflow here. TODO.
-	s.sum += o.sum
-	s.count += o.count
-	s.zeroCount += o.zeroCount
+	h.sum += o.sum
+	h.count += o.count
+	h.zeroCount += o.zeroCount
 
-	minScale := int32min(s.Scale(), o.Scale())
+	minScale := int32min(h.Scale(), o.Scale())
 
-	hlp := s.highLowAtScale(&s.positive, minScale)
+	hlp := h.highLowAtScale(&h.positive, minScale)
 	hlp = hlp.with(o.highLowAtScale(&o.positive, minScale))
 
-	hln := s.highLowAtScale(&s.negative, minScale)
+	hln := h.highLowAtScale(&h.negative, minScale)
 	hln = hln.with(o.highLowAtScale(&o.negative, minScale))
 
 	minScale = int32min(
-		minScale-changeScale(hlp, s.maxSize),
-		minScale-changeScale(hln, s.maxSize),
+		minScale-changeScale(hlp, h.maxSize),
+		minScale-changeScale(hln, h.maxSize),
 	)
 
-	s.downscale(s.Scale() - minScale)
+	h.downscale(h.Scale() - minScale)
 
-	s.mergeBuckets(&s.positive, o, &o.positive, minScale)
-	s.mergeBuckets(&s.negative, o, &o.negative, minScale)
+	h.mergeBuckets(&h.positive, o, &o.positive, minScale)
+	h.mergeBuckets(&h.negative, o, &o.negative, minScale)
 }
 
 // mergeBuckets translates index values from another histogram into
 // the corresponding buckets of this histogram.
-func (s *State[N]) mergeBuckets(mine *buckets, other *State[N], theirs *buckets, scale int32) {
+func (h *Histogram[N]) mergeBuckets(mine *buckets, other *Histogram[N], theirs *buckets, scale int32) {
 	theirOffset := theirs.Offset()
 	theirChange := other.Scale() - scale
 
 	for i := uint32(0); i < theirs.Len(); i++ {
-		_, success := s.incrementIndexBy(
+		_, success := h.incrementIndexBy(
 			mine,
 			(theirOffset+int32(i))>>theirChange,
 			theirs.At(i),
@@ -601,14 +587,14 @@ func (s *State[N]) mergeBuckets(mine *buckets, other *State[N], theirs *buckets,
 }
 
 // highLowAtScale is an accessory for Merge() to calculate ideal combined scale.
-func (s *State[N]) highLowAtScale(b *buckets, scale int32) highLow {
+func (h *Histogram[N]) highLowAtScale(b *buckets, scale int32) highLow {
 	if b.Len() == 0 {
 		return highLow{
 			low:  0,
 			high: -1,
 		}
 	}
-	shift := s.Scale() - scale
+	shift := h.Scale() - scale
 	return highLow{
 		low:  b.indexStart >> shift,
 		high: b.indexEnd >> shift,

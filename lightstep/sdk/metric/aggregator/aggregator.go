@@ -77,7 +77,16 @@ type Config struct {
 
 // Valid returns true for valid configurations.
 func (c Config) Valid() bool {
-	return c.Histogram.Valid()
+	_, err := c.Validate()
+	return err == nil
+}
+
+// Valid returns a valid Configuration along with an error if there
+// were invalid settings.  Note that the empty state is considered valid and a correct
+func (c Config) Validate() (Config, error) {
+	var err error
+	c.Histogram, err = c.Histogram.Validate()
+	return c, err
 }
 
 // Methods implements a specific aggregation behavior for a specific

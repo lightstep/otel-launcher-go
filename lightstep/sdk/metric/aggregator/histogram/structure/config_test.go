@@ -28,4 +28,6 @@ func TestConfigValid(t *testing.T) {
 	require.True(t, NewConfig(WithMaxSize((MinSize+MaximumMaxSize)/2)).Valid())
 
 	require.False(t, NewConfig(WithMaxSize(-1)).Valid())
+	require.False(t, NewConfig(WithMaxSize(1<<20)).Valid())
+	require.False(t, NewConfig(WithMaxSize(1)).Valid())
 }
