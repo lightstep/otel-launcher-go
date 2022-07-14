@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package histogram // import "go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/histogram"
+package structure // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
 
 // DefaultMaxSize is the default maximum number of buckets per
 // positive or negative number range.  The value 160 is specified by
@@ -26,6 +26,9 @@ const DefaultMaxSize int32 = 160
 // enough to contain the entire normal floating point range at
 // MinScale.
 const MinSize = 2
+
+// MaximumMaxSize is an arbitrary limit.
+const MaximumMaxSize = 16384
 
 // Config contains configuration for exponential histogram creation.
 type Config struct {
@@ -65,5 +68,16 @@ func NewConfig(opts ...Option) Config {
 	if cfg.maxSize < MinSize {
 		cfg.maxSize = MinSize
 	}
+	if cfg.maxSize > MaximumMaxSize {
+		cfg.maxSize = MaximumMaxSize
+	}
 	return cfg
+}
+
+// Valid returns true for valid configurations.
+func (c Config) Valid() bool {
+	if c.maxSize == 0 {
+		return true
+	}
+	return c.maxSize >= MinSize && c.maxSize <= MaximumMaxSize
 }

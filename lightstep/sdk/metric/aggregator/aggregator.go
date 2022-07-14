@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
+	exponentialstructure "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
@@ -64,14 +65,19 @@ type HistogramConfig struct {
 	MaxSize int32 `json:"max_size"`
 }
 
+// JSONConfig supports the configuration for all aggregators in a single struct.
+type JSONConfig struct {
+	Histogram HistogramConfig `json:"histogram"`
+}
+
 // Config supports the configuration for all aggregators in a single struct.
 type Config struct {
-	Histogram HistogramConfig `json:"histogram"`
+	Histogram exponentialstructure.Config
 }
 
 // Valid returns true for valid configurations.
 func (c Config) Valid() bool {
-	return c.Histogram.MaxSize == 0 || c.Histogram.MaxSize >= 2
+	return c.Histogram.Valid()
 }
 
 // Methods implements a specific aggregation behavior for a specific

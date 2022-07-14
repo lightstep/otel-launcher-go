@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package histogram
+package structure // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
 
 import (
 	"fmt"
@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/exponent"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/logarithm"
@@ -722,48 +721,6 @@ func TestFullRange(t *testing.T) {
 	require.Equal(t, int32(-1), pos.Offset())
 	require.Equal(t, pos.At(0), uint64(1))
 	require.Equal(t, pos.At(1), uint64(2))
-}
-
-func TestAggregatorToFrom(t *testing.T) {
-	var mi Int64Methods
-	var mf Float64Methods
-	var hi Int64
-
-	hs, ok := mi.ToStorage(mi.ToAggregation(&hi))
-	require.Equal(t, &hi, hs)
-	require.True(t, ok)
-
-	_, ok = mf.ToStorage(mi.ToAggregation(&hi))
-	require.False(t, ok)
-}
-
-func requireEqualValues[N number.Any](t *testing.T, a, b *State[N]) {
-	require.Equal(t, a.Scale(), b.Scale())
-	require.Equal(t, a.Count(), b.Count())
-	require.Equal(t, a.Sum(), b.Sum())
-	requireEqualBuckets(t, a.Positive(), b.Positive())
-	requireEqualBuckets(t, a.Negative(), b.Negative())
-}
-
-func requireEqualBuckets(t *testing.T, a, b aggregation.Buckets) {
-	require.Equal(t, a.Len(), b.Len())
-	require.Equal(t, a.Offset(), b.Offset())
-	for i := uint32(0); i < a.Len(); i++ {
-		require.Equal(t, a.At(i), b.At(i))
-	}
-}
-
-func TestAggregatorCopyMove(t *testing.T) {
-	var mf Float64Methods
-
-	h1 := NewFloat64(NewConfig(), 1, 3, 5, 7, 9)
-	h2 := NewFloat64(NewConfig())
-	h3 := NewFloat64(NewConfig())
-
-	mf.Move(h1, h2)
-	mf.Copy(h2, h3)
-
-	requireEqualValues(t, h2, h3)
 }
 
 func TestAggregatorMinMax(t *testing.T) {
