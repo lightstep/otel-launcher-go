@@ -434,8 +434,8 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 	case aggregation.HistogramKind:
 		return newSyncView[
 			N,
-			histogram.State[N, Traits],
-			histogram.Methods[N, Traits, histogram.State[N, Traits]],
+			histogram.Histogram[N, Traits],
+			histogram.Methods[N, Traits],
 		](behavior)
 	case aggregation.MinMaxSumCountKind:
 		return newSyncView[

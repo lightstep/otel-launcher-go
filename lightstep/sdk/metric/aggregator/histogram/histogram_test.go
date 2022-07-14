@@ -17,28 +17,55 @@ package histogram // import "github.com/lightstep/otel-launcher-go/lightstep/sdk
 import (
 	"testing"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/test"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/stretchr/testify/require"
 )
 
-type Float64 = structure.Float64
-type Int64 = structure.Int64
+func NewFloat64(cfg structure.Config, fs ...float64) *Float64 {
+	return &Float64{*structure.NewFloat64(cfg, fs...)}
+}
 
-var NewFloat64 = structure.NewFloat64
-var NewInt64 = structure.NewInt64
+func NewInt64(cfg structure.Config, is ...int64) *Int64 {
+	return &Int64{*structure.NewInt64(cfg, is...)}
+}
+
 var NewConfig = structure.NewConfig
+
+func RequireEqualValues[N structure.ValueType, Traits number.Traits[N]](t *testing.T, a, b *Histogram[N, Traits]) {
+	require.Equal(t, a.Scale(), b.Scale())
+	require.Equal(t, a.Count(), b.Count())
+	require.Equal(t, a.Sum(), b.Sum())
+	require.Equal(t, a.Min(), b.Min())
+	require.Equal(t, a.Max(), b.Max())
+	requireEqualBuckets(t, a.Positive(), b.Positive())
+	requireEqualBuckets(t, a.Negative(), b.Negative())
+}
+
+func requireEqualBuckets(t *testing.T, a, b aggregation.Buckets) {
+	require.Equal(t, a.Len(), b.Len())
+	require.Equal(t, a.Offset(), b.Offset())
+	for i := uint32(0); i < a.Len(); i++ {
+		require.Equal(t, a.At(i), b.At(i))
+	}
+}
 
 func TestAggregatorCopyMove(t *testing.T) {
 	var mf Float64Methods
 
-	h1 := NewFloat64(NewConfig(), 1, 3, 5, 7, 9)
+	h1 := NewFloat64(NewConfig(), 1, 3, 5, 7, 9, -1, -3, -5)
 	h2 := NewFloat64(NewConfig())
 	h3 := NewFloat64(NewConfig())
+
+	require.Equal(t, -5, number.ToFloat64(h1.Min()))
+	require.Equal(t, 9, number.ToFloat64(h1.Max()))
 
 	mf.Move(h1, h2)
 	mf.Copy(h2, h3)
 
-	structure.RequireEqualValues(t, h2, h3)
+	RequireEqualValues(t, h2, h3)
 }
 
 func TestAggregatorToFrom(t *testing.T) {
@@ -52,4 +79,18 @@ func TestAggregatorToFrom(t *testing.T) {
 
 	_, ok = mf.ToStorage(mi.ToAggregation(&hi))
 	require.False(t, ok)
+}
+
+// Tests that the aggregation kind is correct.
+func TestAggregationKind(t *testing.T) {
+	require.Equal(t, aggregation.HistogramKind, NewInt64(NewConfig()).Kind())
+	require.Equal(t, aggregation.HistogramKind, NewFloat64(NewConfig()).Kind())
+}
+
+func TestInt64Histogram(t *testing.T) {
+	test.GenericAggregatorTest[int64, Int64, Int64Methods](t, number.ToInt64)
+}
+
+func TestFloat64Histogram(t *testing.T) {
+	test.GenericAggregatorTest[float64, Float64, Float64Methods](t, number.ToFloat64)
 }

@@ -23,7 +23,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/exponent"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/logarithm"
@@ -40,7 +39,7 @@ type printableBucket struct {
 	lower float64
 }
 
-func (h *Histogram[N]) printBuckets(b *buckets) (r []printableBucket) {
+func (h *Histogram[N]) printBuckets(b *Buckets) (r []printableBucket) {
 	for i := uint32(0); i < b.Len(); i++ {
 		lower, _ := h.mapping.LowerBoundary(b.Offset() + int32(i))
 		r = append(r, printableBucket{
@@ -52,7 +51,7 @@ func (h *Histogram[N]) printBuckets(b *buckets) (r []printableBucket) {
 	return r
 }
 
-func getCounts(b aggregation.Buckets) (r []uint64) {
+func getCounts(b *Buckets) (r []uint64) {
 	for i := uint32(0); i < b.Len(); i++ {
 		r = append(r, b.At(i))
 	}
@@ -66,7 +65,8 @@ func (b printableBucket) String() string {
 // requireEqual is a helper used to require that two aggregators
 // should have equal contents.  Because the backing array is cyclic,
 // the two may are expected to have different underlying
-// representations.
+// representations.  This method is more useful than RequireEqualValues
+// for debugging the internals, because it prints numeric boundaries.
 func requireEqual(t *testing.T, a, b *Histogram[float64]) {
 	aSum := a.Sum()
 	bSum := b.Sum()
@@ -79,7 +79,7 @@ func requireEqual(t *testing.T, a, b *Histogram[float64]) {
 	require.Equal(t, a.ZeroCount(), b.ZeroCount())
 	require.Equal(t, a.Scale(), b.Scale())
 
-	bstr := func(data *buckets) string {
+	bstr := func(data *Buckets) string {
 		var sb strings.Builder
 		sb.WriteString(fmt.Sprintln("[@", data.Offset()))
 		for i := uint32(0); i < data.Len(); i++ {
@@ -106,12 +106,6 @@ func centerVal(mapper mapping.Mapping, x int32) float64 {
 
 func options(opts ...Option) []Option {
 	return opts
-}
-
-// Tests that the aggregation kind is correct.
-func TestAggregationKind(t *testing.T) {
-	require.Equal(t, aggregation.HistogramKind, NewInt64(Config{}).Kind())
-	require.Equal(t, aggregation.HistogramKind, NewFloat64(Config{}).Kind())
 }
 
 // Tests insertion of [1, 2, 0.5].  The index of 1 (i.e., 0) becomes
@@ -526,10 +520,10 @@ func TestIntegerAggregation(t *testing.T) {
 	// = 2**8
 	require.Equal(t, int32(5), agg.Scale())
 
-	expect0 := func(b aggregation.Buckets) {
+	expect0 := func(b *Buckets) {
 		require.Equal(t, uint32(0), b.Len())
 	}
-	expect256 := func(b aggregation.Buckets, factor int) {
+	expect256 := func(b *Buckets, factor int) {
 		require.Equal(t, uint32(256), b.Len())
 		require.Equal(t, int32(0), b.Offset())
 		// Bucket 254 has 6 elements, bucket 255 has 5
@@ -723,10 +717,27 @@ func TestFullRange(t *testing.T) {
 	require.Equal(t, pos.At(1), uint64(2))
 }
 
+// TestAggregatorMinMax verifies the min and max values.
 func TestAggregatorMinMax(t *testing.T) {
-	h := NewFloat64(NewConfig(), 1, 3, 5, 7, 9)
-	require.Equal(t, 1.0, h.Min())
-	require.Equal(t, 9.0, h.Max())
+	h1 := NewFloat64(NewConfig(), 1, 3, 5, 7, 9)
+	require.Equal(t, 1.0, h1.Min())
+	require.Equal(t, 9.0, h1.Max())
+
+	h2 := NewFloat64(NewConfig(), -1, -3, -5, -7, -9)
+	require.Equal(t, -9.0, h2.Min())
+	require.Equal(t, -1.0, h2.Max())
+}
+
+// TestAggregatorCopyMove tests both Copy and Move.
+func TestAggregatorCopyMove(t *testing.T) {
+	h1 := NewFloat64(NewConfig(), 1, 3, 5, 7, 9, -1, -3, -5)
+	h2 := NewFloat64(NewConfig(), 5, 4, 3, 2)
+	h3 := NewFloat64(NewConfig())
+
+	h1.Move(h2)
+	h2.Copy(h3)
+
+	requireEqual(t, h2, h3)
 }
 
 // Benchmarks the Update() function for values in the range [1,2)
@@ -826,12 +837,3 @@ func TestBoundaryStatistics(t *testing.T) {
 		require.InEpsilon(t, 0.5, float64(below)/float64(total), 0.06)
 	}
 }
-
-//@@@
-// func TestInt64Histogram(t *testing.T) {
-// 	test.GenericAggregatorTest[int64, Int64, Int64Methods](t, number.ToInt64)
-// }
-
-// func TestFloat64Histogram(t *testing.T) {
-// 	test.GenericAggregatorTest[float64, Float64, Float64Methods](t, number.ToFloat64)
-// }

@@ -14,14 +14,6 @@
 
 package structure // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
 
-import (
-	"testing"
-
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
-	"github.com/stretchr/testify/require"
-)
-
 // Test helpers
 
 func NewFloat64(cfg Config, values ...float64) *Float64 {
@@ -32,7 +24,7 @@ func NewInt64(cfg Config, values ...int64) *Int64 {
 	return newHist[int64](cfg, values)
 }
 
-func newHist[N number.Any](cfg Config, values []N) *Histogram[N] {
+func newHist[N ValueType](cfg Config, values []N) *Histogram[N] {
 	state := &Histogram[N]{}
 
 	state.Init(cfg)
@@ -41,20 +33,4 @@ func newHist[N number.Any](cfg Config, values []N) *Histogram[N] {
 		state.Update(val)
 	}
 	return state
-}
-
-func RequireEqualValues[N number.Any](t *testing.T, a, b *Histogram[N]) {
-	require.Equal(t, a.Scale(), b.Scale())
-	require.Equal(t, a.Count(), b.Count())
-	require.Equal(t, a.Sum(), b.Sum())
-	RequireEqualBuckets(t, a.Positive(), b.Positive())
-	RequireEqualBuckets(t, a.Negative(), b.Negative())
-}
-
-func RequireEqualBuckets(t *testing.T, a, b aggregation.Buckets) {
-	require.Equal(t, a.Len(), b.Len())
-	require.Equal(t, a.Offset(), b.Offset())
-	for i := uint32(0); i < a.Len(); i++ {
-		require.Equal(t, a.At(i), b.At(i))
-	}
 }

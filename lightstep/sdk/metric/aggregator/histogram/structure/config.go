@@ -14,7 +14,9 @@
 
 package structure // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
 
-import "fmt" // DefaultMaxSize is the default maximum number of buckets per
+import "fmt"
+
+// DefaultMaxSize is the default maximum number of buckets per
 // positive or negative number range.  The value 160 is specified by
 // OpenTelemetry--yields a maximum relative error of less than 5% for
 // data with contrast 10**5 (e.g., latencies in the range 1ms to 100s).
