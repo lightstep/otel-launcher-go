@@ -71,54 +71,54 @@ func WithMaxSize(sz int32) Option {
 	return structure.WithMaxSize(sz)
 }
 
-func (h Histogram[N, Traits]) Kind() aggregation.Kind {
+func (h *Histogram[N, Traits]) Kind() aggregation.Kind {
 	return aggregation.HistogramKind
 }
 
-func (h Histogram[N, Traits]) Max() number.Number {
+func (h *Histogram[N, Traits]) Max() number.Number {
 	var traits Traits
 	return traits.ToNumber(h.Histogram.Max())
 }
 
-func (h Histogram[N, Traits]) Min() number.Number {
+func (h *Histogram[N, Traits]) Min() number.Number {
 	var traits Traits
 	return traits.ToNumber(h.Histogram.Min())
 }
 
-func (h Histogram[N, Traits]) Sum() number.Number {
+func (h *Histogram[N, Traits]) Sum() number.Number {
 	var traits Traits
 	return traits.ToNumber(h.Histogram.Sum())
 }
 
-func (h Histogram[N, Traits]) Count() uint64 {
+func (h *Histogram[N, Traits]) Count() uint64 {
 	return h.Histogram.Count()
 }
 
-func (h Histogram[N, Traits]) ZeroCount() uint64 {
+func (h *Histogram[N, Traits]) ZeroCount() uint64 {
 	return h.Histogram.ZeroCount()
 }
 
-func (h Histogram[N, Traits]) Negative() aggregation.Buckets {
+func (h *Histogram[N, Traits]) Negative() aggregation.Buckets {
 	return h.Histogram.Negative()
 }
 
-func (h Histogram[N, Traits]) Positive() aggregation.Buckets {
+func (h *Histogram[N, Traits]) Positive() aggregation.Buckets {
 	return h.Histogram.Positive()
 }
 
-func (h Histogram[N, Traits]) Copy(dest *Histogram[N, Traits]) {
-	h.Histogram.CopyInto(&dest.Histogram)
-}
-
-func (h Histogram[N, Traits]) Scale() int32 {
+func (h *Histogram[N, Traits]) Scale() int32 {
 	return h.Histogram.Scale()
 }
 
-func (h Histogram[N, Traits]) MoveInto(dest *Histogram[N, Traits]) {
+func (h *Histogram[N, Traits]) Copy(dest *Histogram[N, Traits]) {
+	h.Histogram.CopyInto(&dest.Histogram)
+}
+
+func (h *Histogram[N, Traits]) MoveInto(dest *Histogram[N, Traits]) {
 	h.Histogram.MoveInto(&dest.Histogram)
 }
 
-func (h Histogram[N, Traits]) MergeFrom(src *Histogram[N, Traits]) {
+func (h *Histogram[N, Traits]) MergeFrom(src *Histogram[N, Traits]) {
 	h.Histogram.MergeFrom(&src.Histogram)
 }
 

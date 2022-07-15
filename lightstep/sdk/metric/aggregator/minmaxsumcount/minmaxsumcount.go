@@ -32,7 +32,7 @@ import (
 // sum.
 
 type (
-	Methods[N number.Any, Traits number.Traits[N], Storage State[N, Traits]] struct{}
+	Methods[N number.Any, Traits number.Traits[N]] struct{}
 
 	fields[N number.Any, Traits number.Traits[N]] struct {
 		min   N
@@ -49,8 +49,8 @@ type (
 	Int64   = State[int64, number.Int64Traits]
 	Float64 = State[float64, number.Float64Traits]
 
-	Int64Methods   = Methods[int64, number.Int64Traits, Int64]
-	Float64Methods = Methods[float64, number.Float64Traits, Float64]
+	Int64Methods   = Methods[int64, number.Int64Traits]
+	Float64Methods = Methods[float64, number.Float64Traits]
 )
 
 var (
@@ -100,32 +100,32 @@ func (g *State[N, Traits]) Kind() aggregation.Kind {
 	return aggregation.MinMaxSumCountKind
 }
 
-func (Methods[N, Traits, Storage]) Kind() aggregation.Kind {
+func (Methods[N, Traits]) Kind() aggregation.Kind {
 	return aggregation.MinMaxSumCountKind
 }
 
-func (Methods[N, Traits, Storage]) Init(state *State[N, Traits], _ aggregator.Config) {
+func (Methods[N, Traits]) Init(state *State[N, Traits], _ aggregator.Config) {
 }
 
-func (Methods[N, Traits, Storage]) HasChange(ptr *State[N, Traits]) bool {
+func (Methods[N, Traits]) HasChange(ptr *State[N, Traits]) bool {
 	return ptr.count != 0
 }
 
-func (Methods[N, Traits, Storage]) Move(from, to *State[N, Traits]) {
+func (Methods[N, Traits]) Move(from, to *State[N, Traits]) {
 	from.lock.Lock()
 	defer from.lock.Unlock()
 
 	to.fields, from.fields = from.fields, fields[N, Traits]{}
 }
 
-func (Methods[N, Traits, Storage]) Copy(from, to *State[N, Traits]) {
+func (Methods[N, Traits]) Copy(from, to *State[N, Traits]) {
 	from.lock.Lock()
 	defer from.lock.Unlock()
 
 	to.fields = from.fields
 }
 
-func (Methods[N, Traits, Storage]) Update(state *State[N, Traits], number N) {
+func (Methods[N, Traits]) Update(state *State[N, Traits], number N) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
@@ -145,7 +145,7 @@ func (Methods[N, Traits, Storage]) Update(state *State[N, Traits], number N) {
 	state.count++
 }
 
-func (Methods[N, Traits, Storage]) Merge(from, to *State[N, Traits]) {
+func (Methods[N, Traits]) Merge(from, to *State[N, Traits]) {
 	to.lock.Lock()
 	defer to.lock.Unlock()
 
@@ -167,16 +167,16 @@ func (Methods[N, Traits, Storage]) Merge(from, to *State[N, Traits]) {
 	to.fields.count += from.fields.count
 }
 
-func (Methods[N, Traits, Storage]) ToAggregation(state *State[N, Traits]) aggregation.Aggregation {
+func (Methods[N, Traits]) ToAggregation(state *State[N, Traits]) aggregation.Aggregation {
 	return state
 }
 
-func (Methods[N, Traits, Storage]) ToStorage(aggr aggregation.Aggregation) (*State[N, Traits], bool) {
+func (Methods[N, Traits]) ToStorage(aggr aggregation.Aggregation) (*State[N, Traits], bool) {
 	r, ok := aggr.(*State[N, Traits])
 	return r, ok
 }
 
-func (Methods[N, Traits, Storage]) SubtractSwap(operand, argument *State[N, Traits]) {
+func (Methods[N, Traits]) SubtractSwap(operand, argument *State[N, Traits]) {
 	// This can't be called b/c histogram's are only used with synchronous instruments,
 	// which start as delta temporality and thus never subtract.
 	panic("impossible call")

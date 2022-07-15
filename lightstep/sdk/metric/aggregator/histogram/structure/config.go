@@ -73,7 +73,9 @@ func (c Config) Valid() bool {
 	return err == nil
 }
 
-// Validate returns true for valid configurations.
+// Validate returns the nearest valid Config object to th einput and a
+// boolean indicating whether the the input was a valid
+// configurations.
 func (c Config) Validate() (Config, error) {
 	if c.maxSize >= MinSize && c.maxSize <= MaximumMaxSize {
 		return c, nil

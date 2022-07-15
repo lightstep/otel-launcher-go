@@ -319,7 +319,7 @@ func TestMergeSimpleEven(t *testing.T) {
 	require.Equal(t, []uint64{1, 1, 1, 1}, getCounts(agg1.Positive()))
 	require.Equal(t, []uint64{2, 2, 2, 2}, getCounts(agg2.Positive()))
 
-	agg0.Merge(agg1)
+	agg0.MergeFrom(agg1)
 
 	require.Equal(t, int32(-1), agg0.Scale())
 	require.Equal(t, int32(-1), agg2.Scale())
@@ -359,7 +359,7 @@ func TestMergeSimpleOdd(t *testing.T) {
 	require.Equal(t, []uint64{1, 1, 1, 1}, getCounts(agg1.Positive()))
 	require.Equal(t, []uint64{1, 2, 3, 2}, getCounts(agg2.Positive()))
 
-	agg0.Merge(agg1)
+	agg0.MergeFrom(agg1)
 
 	require.Equal(t, int32(-1), agg0.Scale())
 	require.Equal(t, int32(-1), agg2.Scale())
@@ -437,7 +437,7 @@ func testMergeExhaustive(t *testing.T, a, b []float64, size int32, incr uint64) 
 		cHist.UpdateByIncr(bv, incr)
 	}
 
-	aHist.Merge(bHist)
+	aHist.MergeFrom(bHist)
 
 	// aHist and cHist should be equivalent
 	requireEqual(t, cHist, aHist)
@@ -537,15 +537,15 @@ func TestIntegerAggregation(t *testing.T) {
 	expect0(agg.Negative())
 
 	// Merge!
-	agg.Merge(alt)
+	agg.MergeFrom(alt)
 
 	expect256(agg.Positive(), 2)
 
 	require.Equal(t, 2*expect, agg.Sum())
 
 	// Reset!  Repeat with negative.
-	agg.Move(nil)
-	alt.Move(nil)
+	agg.MoveInto(nil)
+	alt.MoveInto(nil)
 
 	expect = int64(0)
 	for i := int64(1); i < 256; i++ {
@@ -561,7 +561,7 @@ func TestIntegerAggregation(t *testing.T) {
 	expect0(agg.Positive())
 
 	// Merge!
-	agg.Merge(alt)
+	agg.MergeFrom(alt)
 
 	expect256(agg.Negative(), 2)
 
@@ -585,7 +585,7 @@ func TestReset(t *testing.T) {
 		0x200000000,
 	} {
 		t.Run(fmt.Sprint(incr), func(t *testing.T) {
-			agg.Move(nil)
+			agg.MoveInto(nil)
 
 			// Note that scale is zero b/c no values
 			require.Equal(t, int32(0), agg.Scale())
@@ -617,7 +617,7 @@ func TestReset(t *testing.T) {
 }
 
 // Tests the move aspect of SynchronizedMove.
-func TestMove(t *testing.T) {
+func TestMoveInto(t *testing.T) {
 	agg := NewFloat64(NewConfig(WithMaxSize(256)))
 	cpy := NewFloat64(NewConfig(WithMaxSize(256)))
 
@@ -628,7 +628,7 @@ func TestMove(t *testing.T) {
 		agg.Update(0)
 	}
 
-	agg.Move(cpy)
+	agg.MoveInto(cpy)
 
 	// agg was reset
 	require.Equal(t, 0.0, agg.Sum())
@@ -729,13 +729,13 @@ func TestAggregatorMinMax(t *testing.T) {
 }
 
 // TestAggregatorCopyMove tests both Copy and Move.
-func TestAggregatorCopyMove(t *testing.T) {
+func TestAggregatorCopyMoveInto(t *testing.T) {
 	h1 := NewFloat64(NewConfig(), 1, 3, 5, 7, 9, -1, -3, -5)
 	h2 := NewFloat64(NewConfig(), 5, 4, 3, 2)
 	h3 := NewFloat64(NewConfig())
 
-	h1.Move(h2)
-	h2.Copy(h3)
+	h1.MoveInto(h2)
+	h2.CopyInto(h3)
 
 	requireEqual(t, h2, h3)
 }

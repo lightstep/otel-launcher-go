@@ -28,7 +28,7 @@ type (
 	Monotonic    struct{}
 	NonMonotonic struct{}
 
-	Methods[N number.Any, Traits number.Traits[N], M Monotonicity, Storage State[N, Traits, M]] struct{}
+	Methods[N number.Any, Traits number.Traits[N], M Monotonicity] struct{}
 
 	State[N number.Any, Traits number.Traits[N], M Monotonicity] struct {
 		value N
@@ -40,11 +40,11 @@ type (
 	MonotonicFloat64    = State[float64, number.Float64Traits, Monotonic]
 	NonMonotonicFloat64 = State[float64, number.Float64Traits, NonMonotonic]
 
-	MonotonicInt64Methods   = Methods[int64, number.Int64Traits, Monotonic, MonotonicInt64]
-	MonotonicFloat64Methods = Methods[float64, number.Float64Traits, Monotonic, MonotonicFloat64]
+	MonotonicInt64Methods   = Methods[int64, number.Int64Traits, Monotonic]
+	MonotonicFloat64Methods = Methods[float64, number.Float64Traits, Monotonic]
 
-	NonMonotonicInt64Methods   = Methods[int64, number.Int64Traits, NonMonotonic, NonMonotonicInt64]
-	NonMonotonicFloat64Methods = Methods[float64, number.Float64Traits, NonMonotonic, NonMonotonicFloat64]
+	NonMonotonicInt64Methods   = Methods[int64, number.Int64Traits, NonMonotonic]
+	NonMonotonicFloat64Methods = Methods[float64, number.Float64Traits, NonMonotonic]
 )
 
 func NewMonotonicInt64(x int64) *MonotonicInt64 {
@@ -72,10 +72,10 @@ func (NonMonotonic) kind() aggregation.Kind {
 }
 
 var (
-	_ aggregator.Methods[int64, MonotonicInt64]        = Methods[int64, number.Int64Traits, Monotonic, MonotonicInt64]{}
-	_ aggregator.Methods[float64, MonotonicFloat64]    = Methods[float64, number.Float64Traits, Monotonic, MonotonicFloat64]{}
-	_ aggregator.Methods[int64, NonMonotonicInt64]     = Methods[int64, number.Int64Traits, NonMonotonic, NonMonotonicInt64]{}
-	_ aggregator.Methods[float64, NonMonotonicFloat64] = Methods[float64, number.Float64Traits, NonMonotonic, NonMonotonicFloat64]{}
+	_ aggregator.Methods[int64, MonotonicInt64]        = Methods[int64, number.Int64Traits, Monotonic]{}
+	_ aggregator.Methods[float64, MonotonicFloat64]    = Methods[float64, number.Float64Traits, Monotonic]{}
+	_ aggregator.Methods[int64, NonMonotonicInt64]     = Methods[int64, number.Int64Traits, NonMonotonic]{}
+	_ aggregator.Methods[float64, NonMonotonicFloat64] = Methods[float64, number.Float64Traits, NonMonotonic]{}
 
 	_ aggregation.Sum = &MonotonicInt64{}
 	_ aggregation.Sum = &MonotonicFloat64{}
@@ -98,48 +98,48 @@ func (s *State[N, Traits, M]) IsMonotonic() bool {
 	return m.kind() == aggregation.MonotonicSumKind
 }
 
-func (Methods[N, Traits, M, Storage]) Kind() aggregation.Kind {
+func (Methods[N, Traits, M]) Kind() aggregation.Kind {
 	var m M
 	return m.kind()
 }
 
-func (Methods[N, Traits, M, Storage]) Init(state *State[N, Traits, M], _ aggregator.Config) {
+func (Methods[N, Traits, M]) Init(state *State[N, Traits, M], _ aggregator.Config) {
 	// Note: storage is zero to start
 }
 
-func (Methods[N, Traits, M, Storage]) Move(from, to *State[N, Traits, M]) {
+func (Methods[N, Traits, M]) Move(from, to *State[N, Traits, M]) {
 	var t Traits
 	to.value = t.SwapAtomic(&from.value, 0)
 }
 
-func (Methods[N, Traits, M, Storage]) HasChange(ptr *State[N, Traits, M]) bool {
+func (Methods[N, Traits, M]) HasChange(ptr *State[N, Traits, M]) bool {
 	return ptr.value != 0
 }
 
-func (Methods[N, Traits, M, Storage]) Update(state *State[N, Traits, M], value N) {
+func (Methods[N, Traits, M]) Update(state *State[N, Traits, M], value N) {
 	var t Traits
 	t.AddAtomic(&state.value, value)
 }
 
-func (Methods[N, Traits, M, Storage]) Copy(from, to *State[N, Traits, M]) {
+func (Methods[N, Traits, M]) Copy(from, to *State[N, Traits, M]) {
 	var t Traits
 	to.value = t.GetAtomic(&from.value)
 }
 
-func (Methods[N, Traits, M, Storage]) Merge(from, to *State[N, Traits, M]) {
+func (Methods[N, Traits, M]) Merge(from, to *State[N, Traits, M]) {
 	var t Traits
 	t.AddAtomic(&to.value, from.value)
 }
 
-func (Methods[N, Traits, M, Storage]) ToAggregation(state *State[N, Traits, M]) aggregation.Aggregation {
+func (Methods[N, Traits, M]) ToAggregation(state *State[N, Traits, M]) aggregation.Aggregation {
 	return state
 }
 
-func (Methods[N, Traits, M, Storage]) ToStorage(aggr aggregation.Aggregation) (*State[N, Traits, M], bool) {
+func (Methods[N, Traits, M]) ToStorage(aggr aggregation.Aggregation) (*State[N, Traits, M], bool) {
 	r, ok := aggr.(*State[N, Traits, M])
 	return r, ok
 }
 
-func (Methods[N, Traits, M, Storage]) SubtractSwap(operand, argument *State[N, Traits, M]) {
+func (Methods[N, Traits, M]) SubtractSwap(operand, argument *State[N, Traits, M]) {
 	operand.value = argument.value - operand.value
 }
