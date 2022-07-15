@@ -34,7 +34,7 @@ import (
 func TestSyncInsts(t *testing.T) {
 	cfg := aggregator.Config{}
 	// A histogram with size 4 ensures the test data has 3 buckets @ scale 0
-	cfg.Histogram.MaxSize = 4
+	cfg.Histogram = histogram.NewConfig(histogram.WithMaxSize(4))
 
 	ctx := context.Background()
 	rdr := NewManualReader("test")

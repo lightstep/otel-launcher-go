@@ -229,12 +229,13 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 		}
 	}
 
-	if hint.Config != (aggregator.Config{}) {
-		if hint.Config.Valid() {
-			acfg = hint.Config
-		} else {
-			otel.Handle(fmt.Errorf("hint invalid aggregator config: %v", hint.Config))
+	if hint.Config != (aggregator.JSONConfig{}) {
+		cfg := hint.Config.ToConfig()
+		cfg, err := cfg.Validate()
+		if err != nil {
+			otel.Handle(fmt.Errorf("hint invalid aggregator config: %w", err))
 		}
+		acfg = cfg
 	}
 
 	return instrument, akind, acfg, hinted

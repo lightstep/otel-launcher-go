@@ -24,16 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func NewFloat64(cfg structure.Config, fs ...float64) *Float64 {
-	return &Float64{*structure.NewFloat64(cfg, fs...)}
-}
-
-func NewInt64(cfg structure.Config, is ...int64) *Int64 {
-	return &Int64{*structure.NewInt64(cfg, is...)}
-}
-
-var NewConfig = structure.NewConfig
-
 func RequireEqualValues[N structure.ValueType, Traits number.Traits[N]](t *testing.T, a, b *Histogram[N, Traits]) {
 	require.Equal(t, a.Scale(), b.Scale())
 	require.Equal(t, a.Count(), b.Count())
@@ -52,20 +42,40 @@ func requireEqualBuckets(t *testing.T, a, b aggregation.Buckets) {
 	}
 }
 
-func TestAggregatorCopyMove(t *testing.T) {
+func TestCopyMove(t *testing.T) {
 	var mf Float64Methods
 
 	h1 := NewFloat64(NewConfig(), 1, 3, 5, 7, 9, -1, -3, -5)
 	h2 := NewFloat64(NewConfig())
 	h3 := NewFloat64(NewConfig())
 
-	require.Equal(t, -5, number.ToFloat64(h1.Min()))
-	require.Equal(t, 9, number.ToFloat64(h1.Max()))
+	require.Equal(t, -5.0, number.ToFloat64(h1.Min()))
+	require.Equal(t, 9.0, number.ToFloat64(h1.Max()))
 
 	mf.Move(h1, h2)
 	mf.Copy(h2, h3)
 
 	RequireEqualValues(t, h2, h3)
+}
+
+func TestMerge(t *testing.T) {
+	var mf Float64Methods
+
+	h1 := NewFloat64(NewConfig(), 1, 2, 3)
+	h2 := NewFloat64(NewConfig(), 4, 5, 6)
+	h3 := NewFloat64(NewConfig(), 7, 8, 9)
+	h4 := NewFloat64(NewConfig())
+
+	mf.Merge(h1, h4)
+	mf.Merge(h2, h4)
+	mf.Merge(h3, h4)
+
+	require.Equal(t, 1.0, number.ToFloat64(h4.Min()))
+	require.Equal(t, 9.0, number.ToFloat64(h4.Max()))
+
+	h5 := NewFloat64(NewConfig(), 1, 2, 3, 4, 5, 6, 7, 8, 9)
+
+	RequireEqualValues(t, h5, h4)
 }
 
 func TestAggregatorToFrom(t *testing.T) {

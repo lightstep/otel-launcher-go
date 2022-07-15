@@ -83,10 +83,11 @@ func (c Config) Validate() (Config, error) {
 		return c, nil
 	}
 	err := fmt.Errorf("invalid histogram size: %d", c.maxSize)
-	if c.maxSize < MinSize {
+	if c.maxSize < 0 {
+		c.maxSize = DefaultMaxSize
+	} else if c.maxSize < MinSize {
 		c.maxSize = MinSize
-	}
-	if c.maxSize > MaximumMaxSize {
+	} else if c.maxSize > MaximumMaxSize {
 		c.maxSize = MaximumMaxSize
 	}
 	return c, err

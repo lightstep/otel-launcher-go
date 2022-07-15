@@ -28,8 +28,11 @@ type (
 	Methods[N number.Any, Traits number.Traits[N]] struct{}
 
 	Histogram[N number.Any, Traits number.Traits[N]] struct {
-		structure.Histogram[N]
+		Histogram structure.Histogram[N]
 	}
+
+	Config = structure.Config
+	Option = structure.Option
 
 	Int64Methods   = Methods[int64, number.Int64Traits]
 	Float64Methods = Methods[float64, number.Float64Traits]
@@ -45,6 +48,28 @@ var (
 	_ aggregation.Histogram = &Histogram[int64, number.Int64Traits]{}
 	_ aggregation.Histogram = &Histogram[float64, number.Float64Traits]{}
 )
+
+const (
+	MinSize        = structure.MinSize
+	DefaultMaxSize = structure.DefaultMaxSize
+	MaximumMaxSize = structure.MaximumMaxSize
+)
+
+func NewFloat64(cfg Config, fs ...float64) *Float64 {
+	return &Float64{*structure.NewFloat64(cfg, fs...)}
+}
+
+func NewInt64(cfg Config, is ...int64) *Int64 {
+	return &Int64{*structure.NewInt64(cfg, is...)}
+}
+
+func NewConfig(opts ...Option) Config {
+	return structure.NewConfig(opts...)
+}
+
+func WithMaxSize(sz int32) Option {
+	return structure.WithMaxSize(sz)
+}
 
 func (h Histogram[N, Traits]) Kind() aggregation.Kind {
 	return aggregation.HistogramKind
@@ -65,6 +90,14 @@ func (h Histogram[N, Traits]) Sum() number.Number {
 	return traits.ToNumber(h.Histogram.Sum())
 }
 
+func (h Histogram[N, Traits]) Count() uint64 {
+	return h.Histogram.Count()
+}
+
+func (h Histogram[N, Traits]) ZeroCount() uint64 {
+	return h.Histogram.ZeroCount()
+}
+
 func (h Histogram[N, Traits]) Negative() aggregation.Buckets {
 	return h.Histogram.Negative()
 }
@@ -73,32 +106,48 @@ func (h Histogram[N, Traits]) Positive() aggregation.Buckets {
 	return h.Histogram.Positive()
 }
 
+func (h Histogram[N, Traits]) Copy(dest *Histogram[N, Traits]) {
+	h.Histogram.CopyInto(&dest.Histogram)
+}
+
+func (h Histogram[N, Traits]) Scale() int32 {
+	return h.Histogram.Scale()
+}
+
+func (h Histogram[N, Traits]) MoveInto(dest *Histogram[N, Traits]) {
+	h.Histogram.MoveInto(&dest.Histogram)
+}
+
+func (h Histogram[N, Traits]) MergeFrom(src *Histogram[N, Traits]) {
+	h.Histogram.MergeFrom(&src.Histogram)
+}
+
 func (Methods[N, Traits]) Kind() aggregation.Kind {
 	return aggregation.HistogramKind
 }
 
 func (Methods[N, Traits]) Init(state *Histogram[N, Traits], cfg aggregator.Config) {
-	state.Init(cfg.Histogram)
+	state.Histogram.Init(cfg.Histogram)
 }
 
 func (Methods[N, Traits]) HasChange(ptr *Histogram[N, Traits]) bool {
 	return ptr.Count() != 0
 }
 
+func (Methods[N, Traits]) Update(state *Histogram[N, Traits], number N) {
+	state.Histogram.Update(number)
+}
+
 func (Methods[N, Traits]) Move(from, to *Histogram[N, Traits]) {
-	from.Move(&to.Histogram)
+	from.Histogram.MoveInto(&to.Histogram)
 }
 
 func (Methods[N, Traits]) Copy(from, to *Histogram[N, Traits]) {
-	from.Copy(&to.Histogram)
-}
-
-func (Methods[N, Traits]) Update(state *Histogram[N, Traits], number N) {
-	state.Update(number)
+	from.Histogram.CopyInto(&to.Histogram)
 }
 
 func (Methods[N, Traits]) Merge(from, to *Histogram[N, Traits]) {
-	to.Merge(&from.Histogram)
+	to.Histogram.MergeFrom(&from.Histogram)
 }
 
 func (Methods[N, Traits]) ToAggregation(histo *Histogram[N, Traits]) aggregation.Aggregation {

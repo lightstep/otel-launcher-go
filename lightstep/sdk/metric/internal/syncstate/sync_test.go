@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
@@ -261,8 +260,8 @@ func TestSyncStatePartialNoopInstrument(t *testing.T) {
 	// the one we expect.  Merging creates a slightly different
 	// struct, despite identical value, so we merge to create the
 	// expected value:
-	expectHist := histogram.NewFloat64(aggregator.HistogramConfig{})
-	mergeIn := histogram.NewFloat64(aggregator.HistogramConfig{}, 1, 2, 3)
+	expectHist := histogram.NewFloat64(histogram.NewConfig())
+	mergeIn := histogram.NewFloat64(histogram.NewConfig(), 1, 2, 3)
 	expectHist.Merge(mergeIn)
 
 	test.RequireEqualMetrics(

@@ -107,9 +107,7 @@ func TestClauseProperties(t *testing.T) {
 		WithClause(WithKeys([]attribute.Key{})),
 		WithClause(WithAggregation(aggregation.DropKind)),
 		WithClause(WithAggregatorConfig(aggregator.Config{
-			Histogram: aggregator.HistogramConfig{
-				MaxSize: 177,
-			},
+			Histogram: histogram.NewConfig(histogram.WithMaxSize(177)),
 		})),
 	)
 
@@ -120,7 +118,7 @@ func TestClauseProperties(t *testing.T) {
 	require.Equal(t, []attribute.Key(nil), views.Clauses[2].Keys())
 	require.Equal(t, []attribute.Key{}, views.Clauses[3].Keys())
 	require.Equal(t, aggregation.DropKind, views.Clauses[4].Aggregation())
-	require.Equal(t, aggregator.Config{Histogram: aggregator.HistogramConfig{MaxSize: 177}}, views.Clauses[5].AggregatorConfig())
+	require.Equal(t, aggregator.Config{Histogram: histogram.NewConfig(histogram.WithMaxSize(177))}, views.Clauses[5].AggregatorConfig())
 }
 
 func TestNameAndRegexp(t *testing.T) {
@@ -220,9 +218,7 @@ func TestInvalidViewDefaults(t *testing.T) {
 		}),
 		WithDefaultAggregationConfigSelector(func(_ sdkinstrument.Kind) (aggregator.Config, aggregator.Config) {
 			inv := aggregator.Config{
-				Histogram: aggregator.HistogramConfig{
-					MaxSize: -3,
-				},
+				Histogram: histogram.NewConfig(histogram.WithMaxSize(-3)),
 			}
 			return inv, inv
 		}),
@@ -238,8 +234,9 @@ func TestInvalidViewDefaults(t *testing.T) {
 	for i := sdkinstrument.Kind(0); i < sdkinstrument.NumKinds; i++ {
 		icfg := views.Defaults.AggregationConfig(i, number.Int64Kind)
 		fcfg := views.Defaults.AggregationConfig(i, number.Float64Kind)
-		require.Equal(t, histogram.DefaultMaxSize, icfg.Histogram.MaxSize)
-		require.Equal(t, histogram.DefaultMaxSize, fcfg.Histogram.MaxSize)
+		defaultConfig := histogram.NewConfig(histogram.WithMaxSize(histogram.DefaultMaxSize))
+		require.Equal(t, defaultConfig, icfg.Histogram)
+		require.Equal(t, defaultConfig, fcfg.Histogram)
 	}
 
 	require.Contains(t, err.Error(), "invalid temporality")
@@ -262,9 +259,10 @@ func TestHintEncoding(t *testing.T) {
 	require.Equal(t, Hint{
 		Description: "lala",
 		Aggregation: "lolo",
-		Config: aggregator.Config{
-			Histogram: aggregator.HistogramConfig{
+		Config: aggregator.JSONConfig{
+			Histogram: aggregator.JSONHistogramConfig{
 				MaxSize: 199,
 			},
-		}}, hint)
+		},
+	}, hint)
 }

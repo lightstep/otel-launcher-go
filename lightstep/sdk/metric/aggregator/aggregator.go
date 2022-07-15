@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
-	exponentialstructure "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
+	histostruct "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
@@ -60,19 +60,26 @@ func RangeTest[N number.Any, Traits number.Traits[N]](num N, desc sdkinstrument.
 	return true
 }
 
-// HistogramConfig configures the exponential histogram.
-type HistogramConfig struct {
+// JSONHistogramConfig configures the exponential histogram.
+type JSONHistogramConfig struct {
 	MaxSize int32 `json:"max_size"`
 }
 
 // JSONConfig supports the configuration for all aggregators in a single struct.
 type JSONConfig struct {
-	Histogram HistogramConfig `json:"histogram"`
+	Histogram JSONHistogramConfig `json:"histogram"`
+}
+
+// ToConfig returns a Config from the fixed-JSON represented.
+func (jc JSONConfig) ToConfig() Config {
+	return Config{
+		Histogram: histostruct.NewConfig(histostruct.WithMaxSize(jc.Histogram.MaxSize)),
+	}
 }
 
 // Config supports the configuration for all aggregators in a single struct.
 type Config struct {
-	Histogram exponentialstructure.Config
+	Histogram histostruct.Config
 }
 
 // Valid returns true for valid configurations.

@@ -248,9 +248,9 @@ func newMapping(scale int32) (mapping.Mapping, error) {
 	return logarithm.NewMapping(scale)
 }
 
-// Move atomically copies and resets `s`.  The modification to `dest`
-// is not synchronized.
-func (h *Histogram[N]) Move(dest *Histogram[N]) {
+// Move atomically copies the contents of `h` into `dest` and
+// atomically resets `h`.
+func (h *Histogram[N]) MoveInto(dest *Histogram[N]) {
 	if dest != nil {
 		// Swap case: This is the ordinary case for a
 		// synchronous instrument, where the SDK allocates two
@@ -273,14 +273,13 @@ func (h *Histogram[N]) Move(dest *Histogram[N]) {
 	}
 }
 
-// Copy atomically copies `s`.  The modification to `dest` is not
-// synchronized.
-func (h *Histogram[N]) Copy(dest *Histogram[N]) {
+// CopyInto atomically copies `h` into `dest`.
+func (h *Histogram[N]) CopyInto(dest *Histogram[N]) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
 	dest.clearHistogram()
-	dest.Merge(h)
+	dest.MergeFrom(h)
 }
 
 // UpdateByIncr supports updating a histogram with a non-negative
@@ -522,8 +521,8 @@ func (b *Buckets) incrementBucket(bucketIndex int32, incr uint64) {
 	}
 }
 
-// Merge combines data from `o` into `s`.  The modification to `s` is synchronized.
-func (h *Histogram[N]) Merge(o *Histogram[N]) {
+// Merge combines data from `o` into `h`.
+func (h *Histogram[N]) MergeFrom(o *Histogram[N]) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 
