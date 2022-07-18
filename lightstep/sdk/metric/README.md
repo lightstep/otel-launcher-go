@@ -45,6 +45,12 @@ Moreover, Lightstep expects to make several optimizations in this SDK
 to further optimize the synchronous instrument fast path and continue
 improving memory performance.
 
+### Using the Lightstep Metrics SDK directly
+
+See the example in
+[examples/example_test.go](./examples/example_test.go) for an example
+using this SDK with minimum configuration.
+
 ### Metric instrument "Hints" API
 
 There is a standing feature request in OpenTelemetry for a "Hints" API

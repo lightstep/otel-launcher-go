@@ -22,7 +22,6 @@ import (
 	"log"
 	"net"
 	"sync"
-	"testing"
 
 	metricService "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	traceService "go.opentelemetry.io/proto/otlp/collector/trace/v1"
@@ -153,16 +152,16 @@ M8IRAQKBgHr3qpZqCFkqY97HxbT5Nc4YOVoNiUy+RJ7TIryS/pSAWhXuefyXXZEO
 	ErrUnsupported = fmt.Errorf("unsupported method")
 )
 
-func NewServer(t *testing.T) *Server {
+func NewServer() *Server {
 	certificate, err := tls.X509KeyPair([]byte(TestServerPublicCertificate), []byte(TestServerPrivateKey))
 	if err != nil {
-		t.Fatalf("test certificates: %v", err)
+		log.Fatalf("test certificates: %v", err)
 	}
 
 	certPool := x509.NewCertPool()
 	ok := certPool.AppendCertsFromPEM([]byte(TestCARootCertificate))
 	if !ok {
-		t.Fatalf("failed to append client certs")
+		log.Fatalf("failed to append client certs")
 	}
 
 	tlsConfig := &tls.Config{

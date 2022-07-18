@@ -32,7 +32,7 @@ import (
 )
 
 func TestInsecureTrace(t *testing.T) {
-	server := test.NewServer(t)
+	server := test.NewServer()
 	defer server.Stop()
 
 	shutdown, err := NewTracePipeline(PipelineConfig{
@@ -69,7 +69,7 @@ func TestInsecureTrace(t *testing.T) {
 }
 
 func TestSecureTrace(t *testing.T) {
-	server := test.NewServer(t)
+	server := test.NewServer()
 	defer server.Stop()
 
 	shutdown, err := NewTracePipeline(PipelineConfig{

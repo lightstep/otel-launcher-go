@@ -24,7 +24,7 @@ import (
 )
 
 func TestMinimumConfiguration(t *testing.T) {
-	server := test.NewServer(t)
+	server := test.NewServer()
 	defer server.Stop()
 
 	os.Setenv("LS_SERVICE_NAME", "test-service-name")

@@ -48,7 +48,7 @@ func newTLSConfig() *tls.Config {
 }
 
 func testInsecureMetrics(t *testing.T, lightstepSDK bool) {
-	server := test.NewServer(t)
+	server := test.NewServer()
 	defer server.Stop()
 
 	shutdown, err := NewMetricsPipeline(PipelineConfig{
@@ -86,7 +86,7 @@ func testInsecureMetrics(t *testing.T, lightstepSDK bool) {
 }
 
 func testSecureMetrics(t *testing.T, lightstepSDK bool) {
-	server := test.NewServer(t)
+	server := test.NewServer()
 	defer server.Stop()
 
 	shutdown, err := NewMetricsPipeline(PipelineConfig{

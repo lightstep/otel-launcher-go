@@ -51,7 +51,7 @@ type testSuite struct {
 }
 
 func (suite *testSuite) SetupSuite() {
-	suite.Server = test.NewServer(suite.T())
+	suite.Server = test.NewServer()
 }
 
 func (suite *testSuite) SetupTest() {
