@@ -104,10 +104,6 @@ func centerVal(mapper mapping.Mapping, x int32) float64 {
 	return (lb + ub) / 2
 }
 
-func options(opts ...Option) []Option {
-	return opts
-}
-
 // Tests insertion of [1, 2, 0.5].  The index of 1 (i.e., 0) becomes
 // `indexBase`, the "2" goes to its right and the "0.5" goes in the
 // last position of the backing array.  With 3 binary orders of
