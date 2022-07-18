@@ -262,7 +262,8 @@ func TestSyncStatePartialNoopInstrument(t *testing.T) {
 	// expected value:
 	expectHist := histogram.NewFloat64(histogram.NewConfig())
 	mergeIn := histogram.NewFloat64(histogram.NewConfig(), 1, 2, 3)
-	expectHist.MergeFrom(mergeIn)
+	var methods histogram.Float64Methods
+	methods.Copy(mergeIn, expectHist)
 
 	test.RequireEqualMetrics(
 		t,
