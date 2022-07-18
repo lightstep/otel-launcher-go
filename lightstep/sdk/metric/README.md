@@ -16,7 +16,7 @@ however it is not covered by any stability guarantee.
 
 Differences from the OpenTelemetry metrics SDK specification:
 
-1. [ExponentialHistogram](./aggregator/histogram/README.md) is the
+1. [ExponentialHistogram](./aggregator/histogram/structure/README.md) is the
    default aggregation for Histogram instruments.  The
    explicit-boundary histogram aggregation is not supported.
 2. [MinMaxSumCount](./aggregator/minmaxsumcount/README.md) is an

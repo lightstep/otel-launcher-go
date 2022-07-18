@@ -34,7 +34,7 @@ import (
 // colleciton path in this library.
 
 type (
-	Methods[N number.Any, Traits number.Traits[N], Storage State[N, Traits]] struct{}
+	Methods[N number.Any, Traits number.Traits[N]] struct{}
 
 	State[N number.Any, Traits number.Traits[N]] struct {
 		lock  sync.Mutex
@@ -45,8 +45,8 @@ type (
 	Int64   = State[int64, number.Int64Traits]
 	Float64 = State[float64, number.Float64Traits]
 
-	Int64Methods   = Methods[int64, number.Int64Traits, Int64]
-	Float64Methods = Methods[float64, number.Float64Traits, Float64]
+	Int64Methods   = Methods[int64, number.Int64Traits]
+	Float64Methods = Methods[float64, number.Float64Traits]
 )
 
 // initialSequence is the first assigned sequence number, also the
@@ -108,19 +108,19 @@ func (g *State[N, Traits]) SetSequenceForTesting() {
 	g.seq = initialSequence
 }
 
-func (Methods[N, Traits, Storage]) Kind() aggregation.Kind {
+func (Methods[N, Traits]) Kind() aggregation.Kind {
 	return aggregation.GaugeKind
 }
 
-func (Methods[N, Traits, Storage]) Init(state *State[N, Traits], _ aggregator.Config) {
+func (Methods[N, Traits]) Init(state *State[N, Traits], _ aggregator.Config) {
 	// Note: storage is zero to start
 }
 
-func (Methods[N, Traits, Storage]) HasChange(ptr *State[N, Traits]) bool {
+func (Methods[N, Traits]) HasChange(ptr *State[N, Traits]) bool {
 	return ptr.seq != 0
 }
 
-func (Methods[N, Traits, Storage]) Move(from, to *State[N, Traits]) {
+func (Methods[N, Traits]) Move(from, to *State[N, Traits]) {
 	from.lock.Lock()
 	defer from.lock.Unlock()
 
@@ -130,14 +130,14 @@ func (Methods[N, Traits, Storage]) Move(from, to *State[N, Traits]) {
 	from.seq = 0
 }
 
-func (Methods[N, Traits, Storage]) Copy(from, to *State[N, Traits]) {
+func (Methods[N, Traits]) Copy(from, to *State[N, Traits]) {
 	from.lock.Lock()
 	defer from.lock.Unlock()
 	to.value = from.value
 	to.seq = from.seq
 }
 
-func (Methods[N, Traits, Storage]) Update(state *State[N, Traits], number N) {
+func (Methods[N, Traits]) Update(state *State[N, Traits], number N) {
 	newSeq := atomic.AddUint64(&sequenceVar, 1)
 
 	state.lock.Lock()
@@ -147,7 +147,7 @@ func (Methods[N, Traits, Storage]) Update(state *State[N, Traits], number N) {
 	state.seq = newSeq
 }
 
-func (Methods[N, Traits, Storage]) Merge(from, to *State[N, Traits]) {
+func (Methods[N, Traits]) Merge(from, to *State[N, Traits]) {
 	to.lock.Lock()
 	defer to.lock.Unlock()
 
@@ -157,15 +157,15 @@ func (Methods[N, Traits, Storage]) Merge(from, to *State[N, Traits]) {
 	}
 }
 
-func (Methods[N, Traits, Storage]) ToAggregation(state *State[N, Traits]) aggregation.Aggregation {
+func (Methods[N, Traits]) ToAggregation(state *State[N, Traits]) aggregation.Aggregation {
 	return state
 }
 
-func (Methods[N, Traits, Storage]) ToStorage(aggr aggregation.Aggregation) (*State[N, Traits], bool) {
+func (Methods[N, Traits]) ToStorage(aggr aggregation.Aggregation) (*State[N, Traits], bool) {
 	r, ok := aggr.(*State[N, Traits])
 	return r, ok
 }
 
-func (Methods[N, Traits, Storage]) SubtractSwap(operand, argument *State[N, Traits]) {
+func (Methods[N, Traits]) SubtractSwap(operand, argument *State[N, Traits]) {
 	panic("not used for non-temporal metrics")
 }

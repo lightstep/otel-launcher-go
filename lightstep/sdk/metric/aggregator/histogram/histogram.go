@@ -15,301 +15,156 @@
 package histogram // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
 
 import (
-	"fmt"
 	"sync"
-
-	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping"
-	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/exponent"
-	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/logarithm"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 )
 
-var ErrNoSubtract = fmt.Errorf("histogram subtract not implemented")
-
-// Note: This code uses a Mutex to govern access to the exclusive
-// aggregator state.  This is in contrast to a lock-free approach
-// (as in the Go prometheus client) that was reverted here:
-// https://github.com/open-telemetry/opentelemetry-go/pull/669
+// The methods in this file adapt the basic structure in ./structure
+// to the Methods interface pattern used in this SDK.
 
 type (
-	// State observes counts observations in exponentially-spaced
-	// buckets.  It is configured with a maximum scale factor
-	// which determines resolution.  Scale is automatically
-	// adjusted to accommodate the range of input data.
-	State[N number.Any, Traits number.Traits[N]] struct {
-		lock    sync.Mutex
-		maxSize int32
-		data[N, Traits]
+	Methods[N number.Any, Traits number.Traits[N]] struct{}
+
+	Histogram[N number.Any, Traits number.Traits[N]] struct {
+		lock      sync.Mutex
+		Histogram structure.Histogram[N]
 	}
 
-	data[N number.Any, Traits number.Traits[N]] struct {
-		// sum is the sum of all Updates reflected in the
-		// aggregator.  It has the same type number as the
-		// corresponding sdkinstrument.Descriptor.
-		sum N
-		// count is incremented by 1 per Update.
-		count uint64
-		// zeroCount is incremented by 1 when the measured
-		// value is exactly 0.
-		zeroCount uint64
-		// min is set when count > 0
-		min N
-		// max is set when count > 0
-		max N
-		// positive holds the positive values
-		positive buckets
-		// negative holds the negative values in these buckets
-		// by their absolute value.
-		negative buckets
-		// mapping corresponds to the current scale, is shared
-		// by both positive and negative ranges.
-		mapping mapping.Mapping
-	}
+	Config = structure.Config
+	Option = structure.Option
 
-	Methods[N number.Any, Traits number.Traits[N], Storage State[N, Traits]] struct{}
+	Int64Methods   = Methods[int64, number.Int64Traits]
+	Float64Methods = Methods[float64, number.Float64Traits]
 
-	Int64   = State[int64, number.Int64Traits]
-	Float64 = State[float64, number.Float64Traits]
-
-	Int64Methods   = Methods[int64, number.Int64Traits, Int64]
-	Float64Methods = Methods[float64, number.Float64Traits, Float64]
+	Int64   = Histogram[int64, number.Int64Traits]
+	Float64 = Histogram[float64, number.Float64Traits]
 )
-
-// DefaultMaxSize is the default number of buckets.
-//
-// 256 is a good choice
-// 320 is a historical choice
-//
-// The OpenHistogram representation of the Prometheus default explicit
-// histogram boundaries (spanning 0.005 to 10) yields 320 base-10
-// 90-per-decade log-linear buckets.   NrSketch used 320.
-//
-// OTel settled on 160, which yields a maximum relative error of less
-// than 5% for data with contrast 10^5 (e.g., latencies in the range
-// 1ms to 100s).  See the derivation here: https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/sdk.md#exponential-histogram-aggregation
-const DefaultMaxSize int32 = 160
-
-// MinSize is the smallest reasonable configuration, which is small
-// enough to contain the entire normal floating point range at
-// MinScale.
-const MinSize = 2
 
 var (
 	_ aggregator.Methods[int64, Int64]     = Int64Methods{}
 	_ aggregator.Methods[float64, Float64] = Float64Methods{}
 
-	_ aggregation.Histogram = &Int64{}
-	_ aggregation.Histogram = &Float64{}
+	_ aggregation.Histogram = &Histogram[int64, number.Int64Traits]{}
+	_ aggregation.Histogram = &Histogram[float64, number.Float64Traits]{}
 )
 
-func NewFloat64(cfg aggregator.HistogramConfig, values ...float64) *Float64 {
-	return newHist[float64, number.Float64Traits](cfg, values...)
-}
+const (
+	MinSize        = structure.MinSize
+	DefaultMaxSize = structure.DefaultMaxSize
+	MaximumMaxSize = structure.MaximumMaxSize
+)
 
-func NewInt64(cfg aggregator.HistogramConfig, values ...int64) *Int64 {
-	return newHist[int64, number.Int64Traits](cfg, values...)
-}
-
-type Option func(aggregator.HistogramConfig) aggregator.HistogramConfig
-
-func WithMaxSize(maxSize int32) Option {
-	return func(cfg aggregator.HistogramConfig) aggregator.HistogramConfig {
-		cfg.MaxSize = maxSize
-		return cfg
+func NewFloat64(cfg Config, fs ...float64) *Float64 {
+	return &Float64{
+		Histogram: *structure.NewFloat64(cfg, fs...),
 	}
 }
 
-func NewConfig(opts ...Option) aggregator.HistogramConfig {
-	var cfg aggregator.HistogramConfig
-	for _, opt := range opts {
-		cfg = opt(cfg)
-	}
-	return cfg
-}
-
-func newHist[N number.Any, Traits number.Traits[N]](cfg aggregator.HistogramConfig, values ...N) *State[N, Traits] {
-	var methods Methods[N, Traits, State[N, Traits]]
-
-	state := &State[N, Traits]{}
-
-	methods.Init(state, aggregator.Config{
-		Histogram: cfg,
-	})
-
-	for _, val := range values {
-		methods.Update(state, val)
-	}
-	return state
-}
-
-// Sum implements aggregation.Histogram.
-func (h *State[N, Traits]) Sum() number.Number {
-	var t Traits
-	return t.ToNumber(h.sum)
-}
-
-// Min implements aggregation.Histogram.
-func (h *State[N, Traits]) Min() number.Number {
-	var t Traits
-	return t.ToNumber(h.min)
-}
-
-// Max implements aggregation.Histogram.
-func (h *State[N, Traits]) Max() number.Number {
-	var t Traits
-	return t.ToNumber(h.max)
-}
-
-// Count implements aggregation.Histogram.
-func (h *State[N, Traits]) Count() uint64 {
-	return h.count
-}
-
-// Scale implements aggregation.Histogram.
-func (h *State[N, Traits]) Scale() int32 {
-	if h.data.count == h.data.zeroCount {
-		// all zeros! scale doesn't matter, use zero.
-		return 0
-	}
-	return h.data.mapping.Scale()
-}
-
-// ZeroCount implements aggregation.Histogram.
-func (h *State[N, Traits]) ZeroCount() uint64 {
-	return h.data.zeroCount
-}
-
-// Positive implements aggregation.Histogram.
-func (h *State[N, Traits]) Positive() aggregation.Buckets {
-	return &h.data.positive
-}
-
-// Negative implements aggregation.Histogram.
-func (h *State[N, Traits]) Negative() aggregation.Buckets {
-	return &h.data.negative
-}
-
-// Offset implements aggregation.Bucket.
-func (b *buckets) Offset() int32 {
-	return b.indexStart
-}
-
-// Len implements aggregation.Bucket.
-func (b *buckets) Len() uint32 {
-	if b.backing == nil {
-		return 0
-	}
-	if b.indexEnd == b.indexStart && b.At(0) == 0 {
-		return 0
-	}
-	return uint32(b.indexEnd - b.indexStart + 1)
-}
-
-// At returns the count of the bucket at a position in the logical
-// array of counts.
-func (b *buckets) At(pos0 uint32) uint64 {
-	pos := pos0
-	bias := uint32(b.indexBase - b.indexStart)
-
-	if pos < bias {
-		pos += uint32(b.backing.size())
-	}
-	pos -= bias
-
-	return b.backing.countAt(pos)
-}
-
-// clearState resets a histogram to the empty state without changing
-// backing array.  Scale is reset if there are no range limits.
-func (h *State[N, Traits]) clearState() {
-	h.positive.clearState()
-	h.negative.clearState()
-	h.sum = 0
-	h.count = 0
-	h.zeroCount = 0
-	h.min = 0
-	h.max = 0
-	h.mapping, _ = newMapping(logarithm.MaxScale)
-}
-
-// clearState zeros the backing array.
-func (b *buckets) clearState() {
-	b.indexStart = 0
-	b.indexEnd = 0
-	b.indexBase = 0
-	if b.backing != nil {
-		b.backing.reset()
+func NewInt64(cfg Config, is ...int64) *Int64 {
+	return &Int64{
+		Histogram: *structure.NewInt64(cfg, is...),
 	}
 }
 
-func newMapping(scale int32) (mapping.Mapping, error) {
-	if scale <= 0 {
-		return exponent.NewMapping(scale)
-	}
-	return logarithm.NewMapping(scale)
+func NewConfig(opts ...Option) Config {
+	return structure.NewConfig(opts...)
 }
 
-func (h *State[N, Traits]) Kind() aggregation.Kind {
+func WithMaxSize(sz int32) Option {
+	return structure.WithMaxSize(sz)
+}
+
+func (h *Histogram[N, Traits]) Kind() aggregation.Kind {
 	return aggregation.HistogramKind
 }
 
-func (Methods[N, Traits, Storage]) Kind() aggregation.Kind {
+func (h *Histogram[N, Traits]) Max() number.Number {
+	var traits Traits
+	return traits.ToNumber(h.Histogram.Max())
+}
+
+func (h *Histogram[N, Traits]) Min() number.Number {
+	var traits Traits
+	return traits.ToNumber(h.Histogram.Min())
+}
+
+func (h *Histogram[N, Traits]) Sum() number.Number {
+	var traits Traits
+	return traits.ToNumber(h.Histogram.Sum())
+}
+
+func (h *Histogram[N, Traits]) Count() uint64 {
+	return h.Histogram.Count()
+}
+
+func (h *Histogram[N, Traits]) ZeroCount() uint64 {
+	return h.Histogram.ZeroCount()
+}
+
+func (h *Histogram[N, Traits]) Negative() aggregation.Buckets {
+	return h.Histogram.Negative()
+}
+
+func (h *Histogram[N, Traits]) Positive() aggregation.Buckets {
+	return h.Histogram.Positive()
+}
+
+func (h *Histogram[N, Traits]) Scale() int32 {
+	return h.Histogram.Scale()
+}
+
+func (Methods[N, Traits]) Kind() aggregation.Kind {
 	return aggregation.HistogramKind
 }
 
-func (Methods[N, Traits, Storage]) Init(state *State[N, Traits], cfg aggregator.Config) {
-	state.maxSize = cfg.Histogram.MaxSize
-
-	if state.maxSize == 0 {
-		state.maxSize = DefaultMaxSize
-	}
-	if state.maxSize < MinSize {
-		state.maxSize = MinSize
-	}
-
-	mapping, _ := newMapping(logarithm.MaxScale)
-	state.mapping = mapping
+func (Methods[N, Traits]) Init(agg *Histogram[N, Traits], cfg aggregator.Config) {
+	agg.Histogram.Init(cfg.Histogram)
 }
 
-func (Methods[N, Traits, Storage]) HasChange(ptr *State[N, Traits]) bool {
-	return ptr.count != 0
+func (Methods[N, Traits]) HasChange(ptr *Histogram[N, Traits]) bool {
+	return ptr.Count() != 0
 }
 
-func (Methods[N, Traits, Storage]) Move(from, to *State[N, Traits]) {
-	from.Move(to)
+func (Methods[N, Traits]) Update(agg *Histogram[N, Traits], number N) {
+	agg.lock.Lock()
+	defer agg.lock.Unlock()
+	agg.Histogram.Update(number)
 }
 
-func (Methods[N, Traits, Storage]) Copy(from, to *State[N, Traits]) {
+func (Methods[N, Traits]) Move(from, to *Histogram[N, Traits]) {
+	to.Histogram.Clear()
+
 	from.lock.Lock()
 	defer from.lock.Unlock()
-
-	to.clearState()
-	to.Merge(from)
+	from.Histogram.Swap(&to.Histogram)
 }
 
-// Update adds the recorded measurement to the current data set.
-func (Methods[N, Traits, Storage]) Update(state *State[N, Traits], number N) {
-	state.Update(number)
+func (Methods[N, Traits]) Copy(from, to *Histogram[N, Traits]) {
+	from.lock.Lock()
+	defer from.lock.Unlock()
+	from.Histogram.CopyInto(&to.Histogram)
 }
 
-// Merge combines two histograms that have the same buckets into a single one.
-func (Methods[N, Traits, Storage]) Merge(from, to *State[N, Traits]) {
-	to.Merge(from)
+func (Methods[N, Traits]) Merge(from, to *Histogram[N, Traits]) {
+	to.lock.Lock()
+	defer to.lock.Unlock()
+	to.Histogram.MergeFrom(&from.Histogram)
 }
 
-func (Methods[N, Traits, Storage]) ToAggregation(state *State[N, Traits]) aggregation.Aggregation {
-	return state
+func (Methods[N, Traits]) ToAggregation(histo *Histogram[N, Traits]) aggregation.Aggregation {
+	return histo
 }
 
-func (Methods[N, Traits, Storage]) ToStorage(aggr aggregation.Aggregation) (*State[N, Traits], bool) {
-	r, ok := aggr.(*State[N, Traits])
+func (Methods[N, Traits]) ToStorage(aggr aggregation.Aggregation) (*Histogram[N, Traits], bool) {
+	r, ok := aggr.(*Histogram[N, Traits])
 	return r, ok
 }
 
-func (Methods[N, Traits, Storage]) SubtractSwap(operand, argument *State[N, Traits]) {
+func (Methods[N, Traits]) SubtractSwap(operand, argument *Histogram[N, Traits]) {
 	// This can't be called b/c histogram's are only used with synchronous instruments,
 	// which start as delta temporality and thus never subtract.
 	panic("impossible call")

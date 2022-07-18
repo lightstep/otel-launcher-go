@@ -19,7 +19,6 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation" // Views is a configured set of view clauses with an associated Name
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.uber.org/multierr"
 )
@@ -58,9 +57,10 @@ func checkTemporality(err error, tempo *aggregation.Temporality, def aggregation
 }
 
 func checkAggConfig(err error, acfg *aggregator.Config) error {
-	if !acfg.Valid() {
-		err = multierr.Append(err, fmt.Errorf("invalid histogram size: %v", acfg.Histogram.MaxSize))
-		acfg.Histogram.MaxSize = histogram.DefaultMaxSize
+	var newErr error
+	*acfg, newErr = acfg.Validate()
+	if newErr != nil {
+		err = multierr.Append(err, newErr)
 	}
 	return err
 }

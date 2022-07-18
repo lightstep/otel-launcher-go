@@ -53,9 +53,7 @@ var (
 	defaultAggregatorConfig = aggregator.Config{}
 
 	altHistogramConfig = aggregator.Config{
-		Histogram: aggregator.HistogramConfig{
-			MaxSize: 15,
-		},
+		Histogram: histogram.NewConfig(histogram.WithMaxSize(15)),
 	}
 
 	fooToBarAltHistView = view.WithClause(
@@ -1455,9 +1453,7 @@ func TestViewHints(t *testing.T) {
 	test.RequireEqualMetrics(t, testCollectSequence(t, vc, seq),
 		test.Instrument(
 			test.Descriptor("histo", sdkinstrument.SyncCounter, number.Float64Kind),
-			test.Point(seq.Start, seq.Now, histogram.NewFloat64(aggregator.HistogramConfig{
-				MaxSize: 3,
-			}, inputs...), cumulative, set.ToSlice()...),
+			test.Point(seq.Start, seq.Now, histogram.NewFloat64(histogram.NewConfig(histogram.WithMaxSize(3)), inputs...), cumulative, set.ToSlice()...),
 		),
 		test.Instrument(
 			test.Descriptor("mmsc", sdkinstrument.SyncHistogram, number.Float64Kind, instrument.WithDescription("heyyy")),
@@ -1532,9 +1528,7 @@ func TestViewHintNoOverrideEmpty(t *testing.T) {
 		view.WithDefaultAggregationConfigSelector(
 			func(_ sdkinstrument.Kind) (int64Config, float64Config aggregator.Config) {
 				cfg := aggregator.Config{
-					Histogram: aggregator.HistogramConfig{
-						MaxSize: 127,
-					},
+					Histogram: histogram.NewConfig(histogram.WithMaxSize(127)),
 				}
 				return cfg, cfg
 			},
@@ -1574,9 +1568,7 @@ func TestViewHintNoOverrideEmpty(t *testing.T) {
 			test.Point(
 				seq.Start,
 				seq.Now,
-				histogram.NewFloat64(aggregator.HistogramConfig{
-					MaxSize: 127,
-				}, 1),
+				histogram.NewFloat64(histogram.NewConfig(histogram.WithMaxSize(127)), 1),
 				cumulative,
 				set.ToSlice()...),
 		),

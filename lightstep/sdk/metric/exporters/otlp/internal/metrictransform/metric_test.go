@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
@@ -193,9 +192,14 @@ func TestMetricTransform(t *testing.T) {
 					testScope1,
 					test.Instrument(
 						testInt64(),
-						test.Point(startTime, endTime, histogram.NewInt64(aggregator.HistogramConfig{
-							MaxSize: 3,
-						}, 1, 2, 4), testCumulative, testAttrs1...),
+						test.Point(
+							startTime, endTime,
+							histogram.NewInt64(
+								histogram.NewConfig(histogram.WithMaxSize(3)),
+								1, 2, 4,
+							),
+							testCumulative, testAttrs1...,
+						),
 					),
 				),
 			),
@@ -224,9 +228,14 @@ func TestMetricTransform(t *testing.T) {
 					testScope0,
 					test.Instrument(
 						testFloat64(),
-						test.Point(middleTime, endTime, histogram.NewFloat64(aggregator.HistogramConfig{
-							MaxSize: 3,
-						}, 2, 4, 8, 0, 0, -0.5, -1, -2), testDelta, testAttrs0...),
+						test.Point(
+							middleTime, endTime,
+							histogram.NewFloat64(
+								histogram.NewConfig(histogram.WithMaxSize(3)),
+								2, 4, 8, 0, 0, -0.5, -1, -2,
+							),
+							testDelta, testAttrs0...,
+						),
 					),
 				),
 			),

@@ -229,12 +229,13 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 		}
 	}
 
-	if hint.Config != (aggregator.Config{}) {
-		if hint.Config.Valid() {
-			acfg = hint.Config
-		} else {
-			otel.Handle(fmt.Errorf("hint invalid aggregator config: %v", hint.Config))
+	if hint.Config != (aggregator.JSONConfig{}) {
+		cfg := hint.Config.ToConfig()
+		cfg, err := cfg.Validate()
+		if err != nil {
+			otel.Handle(fmt.Errorf("hint invalid aggregator config: %w", err))
 		}
+		acfg = cfg
 	}
 
 	return instrument, akind, acfg, hinted
@@ -434,27 +435,27 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 	case aggregation.HistogramKind:
 		return newSyncView[
 			N,
-			histogram.State[N, Traits],
-			histogram.Methods[N, Traits, histogram.State[N, Traits]],
+			histogram.Histogram[N, Traits],
+			histogram.Methods[N, Traits],
 		](behavior)
 	case aggregation.MinMaxSumCountKind:
 		return newSyncView[
 			N,
 			minmaxsumcount.State[N, Traits],
-			minmaxsumcount.Methods[N, Traits, minmaxsumcount.State[N, Traits]],
+			minmaxsumcount.Methods[N, Traits],
 		](behavior)
 	case aggregation.NonMonotonicSumKind:
 		return newSyncView[
 			N,
 			sum.State[N, Traits, sum.NonMonotonic],
-			sum.Methods[N, Traits, sum.NonMonotonic, sum.State[N, Traits, sum.NonMonotonic]],
+			sum.Methods[N, Traits, sum.NonMonotonic],
 		](behavior)
 	case aggregation.GaugeKind:
 		// Note: off-spec synchronous gauge support
 		return newSyncView[
 			N,
 			gauge.State[N, Traits],
-			gauge.Methods[N, Traits, gauge.State[N, Traits]],
+			gauge.Methods[N, Traits],
 		](behavior)
 	default:
 		fallthrough
@@ -462,7 +463,7 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 		return newSyncView[
 			N,
 			sum.State[N, Traits, sum.Monotonic],
-			sum.Methods[N, Traits, sum.Monotonic, sum.State[N, Traits, sum.Monotonic]],
+			sum.Methods[N, Traits, sum.Monotonic],
 		](behavior)
 	}
 }
@@ -517,13 +518,13 @@ func compileAsync[N number.Any, Traits number.Traits[N]](behavior singleBehavior
 		return newAsyncView[
 			N,
 			sum.State[N, Traits, sum.Monotonic],
-			sum.Methods[N, Traits, sum.Monotonic, sum.State[N, Traits, sum.Monotonic]],
+			sum.Methods[N, Traits, sum.Monotonic],
 		](behavior)
 	case aggregation.NonMonotonicSumKind:
 		return newAsyncView[
 			N,
 			sum.State[N, Traits, sum.NonMonotonic],
-			sum.Methods[N, Traits, sum.NonMonotonic, sum.State[N, Traits, sum.NonMonotonic]],
+			sum.Methods[N, Traits, sum.NonMonotonic],
 		](behavior)
 	default:
 		fallthrough
@@ -531,7 +532,7 @@ func compileAsync[N number.Any, Traits number.Traits[N]](behavior singleBehavior
 		return newAsyncView[
 			N,
 			gauge.State[N, Traits],
-			gauge.Methods[N, Traits, gauge.State[N, Traits]],
+			gauge.Methods[N, Traits],
 		](behavior)
 	}
 }

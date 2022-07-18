@@ -32,5 +32,5 @@ type Hint struct {
 
 	// Config configures the aggregator selected in the
 	// Aggregation field.
-	Config aggregator.Config `json:"config"`
+	Config aggregator.JSONConfig `json:"config"`
 }
