@@ -17,7 +17,6 @@ package structure // import "github.com/lightstep/otel-launcher-go/lightstep/sdk
 import (
 	"fmt"
 	"math/bits"
-	"sync"
 
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/exponent"
@@ -30,12 +29,11 @@ type (
 	// which determines resolution.  Scale is automatically
 	// adjusted to accommodate the range of input data.
 	Histogram[N ValueType] struct {
-		lock    sync.Mutex
+		// maxSize is the maximum capacity of the positive and
+		// negative ranges.  it is set by Init(), preserved by
+		// Copy and Move.
 		maxSize int32
-		data[N]
-	}
 
-	data[N ValueType] struct {
 		// sum is the sum of all Updates reflected in the
 		// aggregator.  It has the same type number as the
 		// corresponding sdkinstrument.Descriptor.
@@ -166,26 +164,26 @@ func (h *Histogram[N]) Count() uint64 {
 
 // Scale implements aggregation.Histogram.
 func (h *Histogram[N]) Scale() int32 {
-	if h.data.count == h.data.zeroCount {
+	if h.count == h.zeroCount {
 		// all zeros! scale doesn't matter, use zero.
 		return 0
 	}
-	return h.data.mapping.Scale()
+	return h.mapping.Scale()
 }
 
 // ZeroCount implements aggregation.Histogram.
 func (h *Histogram[N]) ZeroCount() uint64 {
-	return h.data.zeroCount
+	return h.zeroCount
 }
 
 // Positive implements aggregation.Histogram.
 func (h *Histogram[N]) Positive() *Buckets {
-	return &h.data.positive
+	return &h.positive
 }
 
 // Negative implements aggregation.Histogram.
 func (h *Histogram[N]) Negative() *Buckets {
-	return &h.data.negative
+	return &h.negative
 }
 
 // Offset implements aggregation.Bucket.
@@ -218,11 +216,11 @@ func (b *Buckets) At(pos0 uint32) uint64 {
 	return b.backing.countAt(pos)
 }
 
-// clearHistogram resets a histogram to the empty state without changing
-// backing array.  Scale is reset if there are no range limits.
-func (h *Histogram[N]) clearHistogram() {
-	h.positive.clearHistogram()
-	h.negative.clearHistogram()
+// Clear resets a histogram to the empty state without changing
+// backing array.
+func (h *Histogram[N]) Clear() {
+	h.positive.clear()
+	h.negative.clear()
 	h.sum = 0
 	h.count = 0
 	h.zeroCount = 0
@@ -231,8 +229,8 @@ func (h *Histogram[N]) clearHistogram() {
 	h.mapping, _ = newMapping(logarithm.MaxScale)
 }
 
-// clearHistogram zeros the backing array.
-func (b *Buckets) clearHistogram() {
+// clear zeros the backing array.
+func (b *Buckets) clear() {
 	b.indexStart = 0
 	b.indexEnd = 0
 	b.indexBase = 0
@@ -248,37 +246,14 @@ func newMapping(scale int32) (mapping.Mapping, error) {
 	return logarithm.NewMapping(scale)
 }
 
-// Move atomically copies the contents of `h` into `dest` and
-// atomically resets `h`.
-func (h *Histogram[N]) MoveInto(dest *Histogram[N]) {
-	if dest != nil {
-		// Swap case: This is the ordinary case for a
-		// synchronous instrument, where the SDK allocates two
-		// Aggregators and lock contention is anticipated.
-		// Reset the target state before swapping it under the
-		// lock below.
-		dest.clearHistogram()
-	}
-
-	h.lock.Lock()
-	defer h.lock.Unlock()
-	if dest != nil {
-		dest.data, h.data = h.data, dest.data
-	} else {
-		// No swap case: This is the ordinary case for an
-		// asynchronous instrument, where the SDK allocates a
-		// single Aggregator and there is no anticipated lock
-		// contention.
-		h.clearHistogram()
-	}
+// Swap exchanges the contents of `h` and `dest`.
+func (h *Histogram[N]) Swap(dest *Histogram[N]) {
+	*dest, *h = *h, *dest
 }
 
-// CopyInto atomically copies `h` into `dest`.
+// CopyInto copies `h` into `dest`.
 func (h *Histogram[N]) CopyInto(dest *Histogram[N]) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
-
-	dest.clearHistogram()
+	dest.Clear()
 	dest.MergeFrom(h)
 }
 
@@ -291,9 +266,6 @@ func (h *Histogram[N]) Update(number N) {
 // UpdateByIncr supports updating a histogram with a non-negative
 // increment.
 func (h *Histogram[N]) UpdateByIncr(number N, incr uint64) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
-
 	value := float64(number)
 
 	// Maintain min and max
@@ -523,9 +495,6 @@ func (b *Buckets) incrementBucket(bucketIndex int32, incr uint64) {
 
 // Merge combines data from `o` into `h`.
 func (h *Histogram[N]) MergeFrom(o *Histogram[N]) {
-	h.lock.Lock()
-	defer h.lock.Unlock()
-
 	if h.count == 0 {
 		h.min = o.min
 		h.max = o.max

@@ -15,6 +15,8 @@
 package histogram // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
 
 import (
+	"sync"
+
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
@@ -28,6 +30,7 @@ type (
 	Methods[N number.Any, Traits number.Traits[N]] struct{}
 
 	Histogram[N number.Any, Traits number.Traits[N]] struct {
+		lock      sync.Mutex
 		Histogram structure.Histogram[N]
 	}
 
@@ -56,11 +59,15 @@ const (
 )
 
 func NewFloat64(cfg Config, fs ...float64) *Float64 {
-	return &Float64{*structure.NewFloat64(cfg, fs...)}
+	return &Float64{
+		Histogram: *structure.NewFloat64(cfg, fs...),
+	}
 }
 
 func NewInt64(cfg Config, is ...int64) *Int64 {
-	return &Int64{*structure.NewInt64(cfg, is...)}
+	return &Int64{
+		Histogram: *structure.NewInt64(cfg, is...),
+	}
 }
 
 func NewConfig(opts ...Option) Config {
@@ -110,43 +117,41 @@ func (h *Histogram[N, Traits]) Scale() int32 {
 	return h.Histogram.Scale()
 }
 
-func (h *Histogram[N, Traits]) Copy(dest *Histogram[N, Traits]) {
-	h.Histogram.CopyInto(&dest.Histogram)
-}
-
-func (h *Histogram[N, Traits]) MoveInto(dest *Histogram[N, Traits]) {
-	h.Histogram.MoveInto(&dest.Histogram)
-}
-
-func (h *Histogram[N, Traits]) MergeFrom(src *Histogram[N, Traits]) {
-	h.Histogram.MergeFrom(&src.Histogram)
-}
-
 func (Methods[N, Traits]) Kind() aggregation.Kind {
 	return aggregation.HistogramKind
 }
 
-func (Methods[N, Traits]) Init(state *Histogram[N, Traits], cfg aggregator.Config) {
-	state.Histogram.Init(cfg.Histogram)
+func (Methods[N, Traits]) Init(agg *Histogram[N, Traits], cfg aggregator.Config) {
+	agg.Histogram.Init(cfg.Histogram)
 }
 
 func (Methods[N, Traits]) HasChange(ptr *Histogram[N, Traits]) bool {
 	return ptr.Count() != 0
 }
 
-func (Methods[N, Traits]) Update(state *Histogram[N, Traits], number N) {
-	state.Histogram.Update(number)
+func (Methods[N, Traits]) Update(agg *Histogram[N, Traits], number N) {
+	agg.lock.Lock()
+	defer agg.lock.Unlock()
+	agg.Histogram.Update(number)
 }
 
 func (Methods[N, Traits]) Move(from, to *Histogram[N, Traits]) {
-	from.Histogram.MoveInto(&to.Histogram)
+	to.Histogram.Clear()
+
+	from.lock.Lock()
+	defer from.lock.Unlock()
+	from.Histogram.Swap(&to.Histogram)
 }
 
 func (Methods[N, Traits]) Copy(from, to *Histogram[N, Traits]) {
+	from.lock.Lock()
+	defer from.lock.Unlock()
 	from.Histogram.CopyInto(&to.Histogram)
 }
 
 func (Methods[N, Traits]) Merge(from, to *Histogram[N, Traits]) {
+	to.lock.Lock()
+	defer to.lock.Unlock()
 	to.Histogram.MergeFrom(&from.Histogram)
 }
 
