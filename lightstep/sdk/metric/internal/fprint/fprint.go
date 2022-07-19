@@ -7,7 +7,7 @@ import (
 	// Our use of farmhash is sort of arbitrary: we want a fast,
 	// fingerprint function and farmhash is familiar (to
 	// Lightstep).  We do not require a fixed (never-changing)
-	// hash function in this application, although this is.
+	// hash function here althought this is.
 	farm "github.com/dgryski/go-farm"
 )
 
@@ -34,12 +34,6 @@ func mix(x uint64, y uint64) uint64 {
 	return b
 }
 
-// ScrambleBits takes a uint64 key and deterministically mixes the bits
-// to produce another uint64 key.
-func ScrambleBits(key uint64) uint64 {
-	return mix(key, 0xff51afd7ed558ccd)
-}
-
 func Fingerprint64(s []byte) uint64 {
 	return farm.Fingerprint64(s)
 }
@@ -56,15 +50,18 @@ func FingerprintInt(i int) uint64 {
 	return uint64(i)
 }
 
+func FingerprintBool(b bool) uint64 {
+	if b {
+		return uint64(1)
+	}
+	return uint64(0)
+}
+
 func FingerprintFloat64(f float64) uint64 {
 	return math.Float64bits(f)
 }
 
-func fingerprintString64(s string) uint64 {
-	return Fingerprint64([]byte(s))
-}
-
-func unsafeFingerprintString64(s string) uint64 {
+func unsafeFingerprintString(s string) uint64 {
 	bs, err := unsafeStringToBytes(s)
 	if err != nil {
 		// Gnarly! There should be an attribute size limit before this happens.
@@ -73,12 +70,12 @@ func unsafeFingerprintString64(s string) uint64 {
 	return Fingerprint64(bs)
 }
 
-func FingerprintString64(s string) uint64 {
+func FingerprintString(s string) uint64 {
 	// We know that the go-farm implementation
 	// we use does not modify the []byte it is passed,
 	// so we use an unsafe conversion here from string to
 	// []byte to avoid a copy.
-	return unsafeFingerprintString64(s)
+	return unsafeFingerprintString(s)
 }
 
 func FingerprintTime64(t time.Time) uint64 {

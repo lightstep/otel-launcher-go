@@ -21,6 +21,7 @@ import (
 	"sync/atomic"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/fprint"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
@@ -225,7 +226,45 @@ func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Ins
 }
 
 func fingerprintAttributes(attrs []attribute.KeyValue) uint64 {
-	/// @@@
+	var fp uint64
+	for _, attr := range attrs {
+		fp += fprint.Mix(
+			fprint.FingerprintString(string(attr.Key)),
+			fingerprintValue(attr.Value),
+		)
+	}
+
+	return fp
+}
+
+func fingerprintSlice[T any](slice []T, f func(T) uint64) uint64 {
+	var fp uint64
+	for _, item := range slice {
+		fp += f(item)
+	}
+	return fp
+}
+
+func fingerprintValue(value attribute.Value) uint64 {
+	switch value.Type() {
+	case attribute.BOOL:
+		return fprint.FingerprintBool(value.AsBool())
+	case attribute.INT64:
+		return fprint.FingerprintInt64(value.AsInt64())
+	case attribute.FLOAT64:
+		return fprint.FingerprintFloat64(value.AsFloat64())
+	case attribute.STRING:
+		return fprint.FingerprintString(value.AsString())
+	case attribute.BOOLSLICE:
+		return fingerprintSlice(value.AsBoolSlice(), fprint.FingerprintBool)
+	case attribute.INT64SLICE:
+		return fingerprintSlice(value.AsInt64Slice(), fprint.FingerprintInt64)
+	case attribute.FLOAT64SLICE:
+		return fingerprintSlice(value.AsFloat64Slice(), fprint.FingerprintFloat64)
+	case attribute.STRINGSLICE:
+		return fingerprintSlice(value.AsStringSlice(), fprint.FingerprintString)
+	}
+
 	return 0
 }
 
