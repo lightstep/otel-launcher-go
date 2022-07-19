@@ -50,7 +50,7 @@ type Instrument struct {
 	lock sync.RWMutex
 
 	// current is protected by lock.
-	current map[attribute.Set]*record
+	current map[uint64]*record
 }
 
 // NewInstruments builds a new synchronous instrument given the
@@ -70,7 +70,7 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 	}
 	return &Instrument{
 		descriptor: desc,
-		current:    map[attribute.Set]*record{},
+		current:    map[uint64]*record{},
 
 		// Note that viewstate.Combine is used to eliminate
 		// the per-pipeline distinction that is useful in the
@@ -91,28 +91,62 @@ func (inst *Instrument) SnapshotAndProcess() {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
-	for key, rec := range inst.current {
-		if rec.conditionalSnapshotAndProcess(false) {
+	for key, reclist := range inst.current {
+		// reclist is a list of records for this fingerprint.
+		// keep is the first record that is still mapped
+		// last is the last record that is still mapped
+		var keep *record
+		var last *record
+
+		for rec := reclist; rec != nil; rec = rec.next {
+			if inst.singleSnapshotAndProcess(key, rec) {
+				if keep == nil {
+					keep = rec
+					last = rec
+				} else {
+					last.next = rec
+					last = rec
+				}
+			}
+		}
+
+		if keep == nil {
+			delete(inst.current, key)
 			continue
 		}
-		// Having no updates since last collection, try to unmap:
-		unmapped := rec.refMapped.tryUnmap()
 
-		// The first rec.conditionalSnapshotAndProcess
-		// returned false indicating no change, except:
-		// (a) it's now possible there was a race, the collector needs to
-		// see it.
-		// (b) if this is indeed the last reference, the collector needs the
-		// release signal.
-		_ = rec.conditionalSnapshotAndProcess(unmapped)
+		last.next = nil
 
-		if unmapped {
-			// If any other goroutines are now trying to re-insert this
-			// entry in the map, they are busy calling Gosched() awaiting
-			// this deletion:
-			delete(inst.current, key)
+		if keep != reclist {
+			inst.current[key] = keep
 		}
 	}
+}
+
+// singleSnapshotAndProcess
+func (inst *Instrument) singleSnapshotAndProcess(fp uint64, rec *record) bool {
+	if rec.conditionalSnapshotAndProcess(false) {
+		return true
+	}
+
+	// Having no updates since last collection, try to unmap:
+	unmapped := rec.refMapped.tryUnmap()
+
+	// The first rec.conditionalSnapshotAndProcess
+	// returned false indicating no change, except:
+	// (a) it's now possible there was a race, the collector needs to
+	// see it.
+	// (b) if this is indeed the last reference, the collector needs the
+	// release signal.
+	_ = rec.conditionalSnapshotAndProcess(unmapped)
+
+	if unmapped {
+		// If any other goroutines are now trying to re-insert this
+		// entry in the map, they are busy calling Gosched() waiting
+		// for this record to disappear.
+		return false
+	}
+	return true
 }
 
 // record consists of an accumulator, a reference count, the number of
@@ -135,6 +169,12 @@ type record struct {
 	// these distinctions are not relevant for synchronous
 	// instruments.
 	accumulator viewstate.Accumulator
+
+	// attributeSet is ordered and deduplicated
+	attributeSet attribute.Set
+
+	// attributeList is in user-specified order, may contain duplicates.
+	attributeList []attribute.KeyValue
 
 	// next is protected by the instrument's RWLock.
 	next *record
@@ -184,43 +224,107 @@ func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Ins
 	atomic.AddInt64(&rec.updateCount, 1)
 }
 
+func fingerprintAttributes(attrs []attribute.KeyValue) uint64 {
+	/// @@@
+	return 0
+}
+
+func sliceEqual[T comparable](a, b []T) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// attributesEqual returns true if two slices are exactly equal.
+func attributesEqual(a, b []attribute.KeyValue) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i].Key != b[i].Key {
+			return false
+		}
+		switch a[i].Value.Type() {
+		case attribute.INVALID, attribute.BOOL, attribute.INT64, attribute.FLOAT64, attribute.STRING:
+			if a[i].Value != b[i].Value {
+				return false
+			}
+		case attribute.BOOLSLICE:
+			if !sliceEqual(a[i].Value.AsBoolSlice(), b[i].Value.AsBoolSlice()) {
+				return false
+			}
+		case attribute.INT64SLICE:
+			if !sliceEqual(a[i].Value.AsInt64Slice(), b[i].Value.AsInt64Slice()) {
+				return false
+			}
+		case attribute.FLOAT64SLICE:
+			if !sliceEqual(a[i].Value.AsFloat64Slice(), b[i].Value.AsFloat64Slice()) {
+				return false
+			}
+		case attribute.STRINGSLICE:
+			if !sliceEqual(a[i].Value.AsStringSlice(), b[i].Value.AsStringSlice()) {
+				return false
+			}
+		}
+
+	}
+	return true
+}
+
 // acquireRead acquires the read lock and searches for a `*record`.
-func acquireRead(inst *Instrument, aset attribute.Set) *record {
+func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *record {
 	inst.lock.RLock()
 	defer inst.lock.RUnlock()
 
-	if rec, ok := inst.current[aset]; ok {
-		// Existing record case.
-		if rec.refMapped.ref() {
-			// At this moment it is guaranteed that the
-			// record is in the map and will not be removed.
-			return rec
-		}
+	rec, _ := inst.current[fp]
+
+	// Note: we could (optionally) allow collisions and not scan this list.
+	for rec != nil && !attributesEqual(attrs, rec.attributeList) {
+		rec = rec.next
 	}
+
+	// Existing record case.
+	if rec != nil && rec.refMapped.ref() {
+		// At this moment it is guaranteed that the
+		// record is in the map and will not be removed.
+		return rec
+	}
+
 	return nil
 }
 
 // acquireRecord gets or creates a `*record` corresponding to `attrs`,
 // the input attributes.
 func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *record {
-	aset := attribute.NewSet(attrs...)
+	fp := fingerprintAttributes(attrs)
 
-	rec := acquireRead(inst, aset)
+	rec := acquireRead(inst, fp, attrs)
 	if rec != nil {
 		return rec
 	}
 
-	// Record is not mapped.
+	// Build the attribute set.
+	acpy := make([]attribute.KeyValue, len(attrs))
+	copy(acpy, attrs)
+	aset := attribute.NewSet(acpy...)
 
 	// Note: the accumulator set below is created speculatively;
 	// it will be released if it is never returned.
 	newRec := &record{
-		refMapped:   newRefcountMapped(),
-		accumulator: inst.compiled.NewAccumulator(aset),
+		refMapped:     newRefcountMapped(),
+		accumulator:   inst.compiled.NewAccumulator(aset),
+		attributeList: attrs,
+		attributeSet:  aset,
 	}
 
 	for {
-		acquired, loaded := acquireWrite(inst, aset, newRec)
+		acquired, loaded := acquireWrite(inst, fp, newRec)
 
 		if !loaded {
 			// When this happens, we are waiting for the call to Delete()
@@ -239,19 +343,22 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *
 }
 
 // acquireWrite acquires the write lock and gets or sets a `*record`.
-func acquireWrite(inst *Instrument, aset attribute.Set, newRec *record) (*record, bool) {
+func acquireWrite(inst *Instrument, fp uint64, newRec *record) (*record, bool) {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
-	oldRec, loaded := inst.current[aset]
+	for oldRec := inst.current[fp]; oldRec != nil; oldRec = oldRec.next {
 
-	if loaded {
-		if oldRec.refMapped.ref() {
-			return oldRec, true
+		if attributesEqual(oldRec.attributeList, newRec.attributeList) {
+			if oldRec.refMapped.ref() {
+				return oldRec, true
+			}
+			// in which case, there's been a race
+			return nil, false
 		}
-		return nil, false
 	}
 
-	inst.current[aset] = newRec
+	newRec.next = inst.current[fp]
+	inst.current[fp] = newRec
 	return newRec, true
 }
