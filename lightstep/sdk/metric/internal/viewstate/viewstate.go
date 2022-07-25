@@ -202,7 +202,7 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 	)
 
 	// Check for required JSON symbols, empty strings, ...
-	if strings.Index(instrument.Description, "{") < 0 {
+	if !strings.Contains(instrument.Description, "{") {
 		return instrument, akind, acfg, hinted
 	}
 

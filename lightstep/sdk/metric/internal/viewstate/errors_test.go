@@ -36,8 +36,7 @@ var oneConflict = Conflict{
 }
 
 func TestViewConflictsError(t *testing.T) {
-	var err error
-	err = ViewConflictsError{}
+	err := ViewConflictsError{}
 	require.Equal(t, noConflictsString, err.Error())
 	require.True(t, errors.Is(err, ViewConflictsError{}))
 
