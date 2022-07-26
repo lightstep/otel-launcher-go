@@ -119,6 +119,14 @@ type statefulAsyncInstrument[N number.Any, Storage any, Methods aggregator.Metho
 	prior map[attribute.Set]*storageHolder[Storage, notUsed]
 }
 
+// Size (special case) reports the size of the prior map, since
+// data is emptied on Collect().
+func (p *statefulAsyncInstrument[N, Storage, Methods]) Size() int {
+	p.instLock.Lock()
+	defer p.instLock.Unlock()
+	return len(p.prior)
+}
+
 // Collect for asynchronous delta temporality.  Note this code path is
 // not used for Gauge instruments.
 func (p *statefulAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
@@ -144,6 +152,12 @@ func (p *statefulAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 		}
 		p.appendPoint(ioutput, set, &entry.storage, aggregation.DeltaTemporality, seq.Last, seq.Now, false)
 	}
+	// TODO: Values that are contained in prior but not in data
+	// should be copied so they are not forgotten and do not
+	// output spurious counts in the future when they reappear.
+	// This is only an issue for asynchronous instruments with
+	// delta temporality.
+
 	// Copy the current to the prior and reset.
 	p.prior = p.data
 	p.data = map[attribute.Set]*storageHolder[Storage, notUsed]{}

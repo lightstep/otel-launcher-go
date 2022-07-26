@@ -100,6 +100,13 @@ func TestSyncStateCumulativeConcurrencyFloatFiltered(t *testing.T) {
 }
 
 func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.T, update func(old, new N) N, vopts ...view.Option) {
+	// Note: prior to
+	// https://github.com/lightstep/otel-launcher-go/pull/206 this
+	// code was able to reproduce the race condition handled in
+	// this code.  The race condition still exists, but the test
+	// no longer covers the call to Gosched() in acquireRecord()
+	// or the return-nil branch in acquireWrite().  This is
+	// because with the RWMutex, the race is much less racey.
 	const (
 		numReaders  = 2
 		numRoutines = 10
@@ -543,4 +550,349 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 			),
 		),
 	)
+}
+
+func TestFingerprinting(t *testing.T) {
+	// Coverage
+	require.NotEqual(
+		t,
+		fingerprintAttributes([]attribute.KeyValue{attribute.Bool("B", true)}),
+		fingerprintAttributes([]attribute.KeyValue{attribute.Bool("B", false)}),
+	)
+	require.NotEqual(
+		t,
+		fingerprintAttributes([]attribute.KeyValue{attribute.Float64("F", 1.0)}),
+		fingerprintAttributes([]attribute.KeyValue{attribute.Float64("F", 2.0)}),
+	)
+	require.NotEqual(
+		t,
+		fingerprintAttributes([]attribute.KeyValue{attribute.BoolSlice("BS", []bool{true, false})}),
+		fingerprintAttributes([]attribute.KeyValue{attribute.BoolSlice("BS", []bool{true, true})}),
+	)
+	require.NotEqual(
+		t,
+		fingerprintAttributes([]attribute.KeyValue{attribute.Float64Slice("FS", []float64{1, 2})}),
+		fingerprintAttributes([]attribute.KeyValue{attribute.Float64Slice("FS", []float64{1, 4})}),
+	)
+	require.NotEqual(
+		t,
+		fingerprintAttributes([]attribute.KeyValue{attribute.StringSlice("SS", []string{"a", "b"})}),
+		fingerprintAttributes([]attribute.KeyValue{attribute.StringSlice("SS", []string{"a", "c"})}),
+	)
+	require.NotEqual(
+		t,
+		fingerprintAttributes([]attribute.KeyValue{attribute.Int64Slice("IS", []int64{10, 11})}),
+		fingerprintAttributes([]attribute.KeyValue{attribute.Int64Slice("IS", []int64{10, 12})}),
+	)
+	// Empty
+	require.Equal(
+		t,
+		uint64(0),
+		fingerprintAttributes([]attribute.KeyValue{}),
+	)
+	// Uninitialized key/value
+	require.NotEqual(
+		t,
+		uint64(0),
+		fingerprintAttributes([]attribute.KeyValue{{}}),
+	)
+	// Two uninitialized
+	require.Equal(
+		t,
+		fingerprintAttributes([]attribute.KeyValue{{}, {}}),
+		fingerprintAttributes([]attribute.KeyValue{{}, {}}),
+	)
+
+}
+
+func TestAttributesEqual(t *testing.T) {
+	// Note: these code paths are difficult to test indirectly, because
+	// of the difficult of finding hash collisions.  There is a single
+	// test case for the collision path, the other forms of attributesEqual
+	// are tested directly.
+	var (
+		kv = func(k attribute.Key, v attribute.Value) attribute.KeyValue {
+			return attribute.KeyValue{Key: k, Value: v}
+		}
+
+		attrs = func(as ...attribute.KeyValue) []attribute.KeyValue {
+			return as
+		}
+		values = []attribute.Value{
+			attribute.Float64Value(1),
+			attribute.Float64Value(2),
+			attribute.Int64Value(1),
+			attribute.Int64Value(2),
+			attribute.BoolValue(true),
+			attribute.BoolValue(false),
+			attribute.StringValue("s"),
+			attribute.StringValue("t"),
+			attribute.Float64SliceValue([]float64{1, 2, 3}),
+			attribute.Float64SliceValue([]float64{1, 2}),
+			attribute.Float64SliceValue([]float64{1, 3}),
+			attribute.Int64SliceValue([]int64{1, 2, 3}),
+			attribute.Int64SliceValue([]int64{1, 2}),
+			attribute.Int64SliceValue([]int64{1, 3}),
+			attribute.BoolSliceValue([]bool{true, false, true}),
+			attribute.BoolSliceValue([]bool{true, false}),
+			attribute.BoolSliceValue([]bool{true, true}),
+			attribute.StringSliceValue([]string{"a", "b", "c"}),
+			attribute.StringSliceValue([]string{"a", "b"}),
+			attribute.StringSliceValue([]string{"a", "c"}),
+		}
+		k1 = attribute.Key("Q")
+		k2 = attribute.Key("R")
+	)
+
+	for i := range values {
+		for j := range values {
+			if i == j {
+				require.True(t,
+					attributesEqual(
+						attrs(kv(k1, values[i])),
+						attrs(kv(k1, values[i])),
+					))
+				require.False(t,
+					attributesEqual(
+						attrs(kv(k1, values[i])),
+						attrs(kv(k2, values[i])),
+					))
+				continue
+			}
+			require.False(t,
+				attributesEqual(
+					attrs(kv(k1, values[i])),
+					attrs(kv(k1, values[j])),
+				))
+			require.False(t,
+				attributesEqual(
+					attrs(kv(k1, values[i]), kv(k2, values[j])),
+					attrs(kv(k1, values[j])),
+				))
+		}
+	}
+}
+
+const (
+	// These constants create a fingerprint collision verified and
+	// used in tests below.
+
+	fpKey  = "k"
+	fpInt1 = 7966407559257361274
+	fpInt2 = 2645356950517223448
+)
+
+func TestFingerprintCollision(t *testing.T) {
+	// To find this collision I ran the following program for
+	// about 18 hours. It would OOM and start again at around 2^30
+	// entries on an e2-highmem-16 machine.
+	// https://gist.github.com/jmacd/610dda1db6bfd2cde86d5395ce17334e
+	//
+	// According to https://en.wikipedia.org/wiki/Birthday_problem#Approximations,
+	// collisions would take place just before OOM with probability 3%.
+
+	require.Equal(t,
+		fingerprintAttributes([]attribute.KeyValue{attribute.Int(fpKey, fpInt1)}),
+		fingerprintAttributes([]attribute.KeyValue{attribute.Int(fpKey, fpInt2)}),
+	)
+}
+
+func TestDuplicateFingerprint(t *testing.T) {
+	ctx := context.Background()
+	lib := instrumentation.Library{
+		Name: "testlib",
+	}
+	vcs := make([]*viewstate.Compiler, 2)
+	vcs[0] = viewstate.New(lib, view.New(
+		"test",
+		deltaSelector,
+		view.WithClause(
+			view.WithKeys([]attribute.Key{fpKey}),
+		),
+	))
+	vcs[1] = viewstate.New(lib, view.New(
+		"test",
+		deltaSelector,
+		view.WithClause(
+			view.WithKeys([]attribute.Key{}),
+		),
+	))
+
+	desc := test.Descriptor("c", sdkinstrument.SyncCounter, number.Float64Kind)
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 2)
+	pipes[0], _ = vcs[0].Compile(desc)
+	pipes[1], _ = vcs[1].Compile(desc)
+
+	require.NotNil(t, pipes[0])
+	require.NotNil(t, pipes[1])
+
+	inst := NewInstrument(desc, nil, pipes)
+	require.NotNil(t, inst)
+
+	sg := NewCounter[float64, number.Float64Traits](inst)
+	require.NotNil(t, sg)
+
+	attr1 := attribute.Int(fpKey, fpInt1)
+	attr2 := attribute.Int(fpKey, fpInt2)
+
+	sg.Add(ctx, 1, attr1)
+	sg.Add(ctx, 2, attr2)
+
+	// collect reader 0
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			test.Point(middleTime, endTime,
+				sum.NewMonotonicFloat64(1),
+				aggregation.DeltaTemporality,
+				attr1,
+			),
+			test.Point(middleTime, endTime,
+				sum.NewMonotonicFloat64(2),
+				aggregation.DeltaTemporality,
+				attr2,
+			),
+		),
+	)
+
+	// There are 2 entries in memory
+	require.Equal(t, 2, vcs[0].Collectors()[0].Size())
+
+	// collect reader 0 again
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+		),
+	)
+
+	// There are 0 entries in memory
+	require.Equal(t, 0, vcs[0].Collectors()[0].Size())
+
+	// Use both again, collect reader 0 again
+	sg.Add(ctx, 5, attr1)
+	sg.Add(ctx, 6, attr2)
+
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			test.Point(middleTime, endTime,
+				sum.NewMonotonicFloat64(5),
+				aggregation.DeltaTemporality,
+				attr1,
+			),
+			test.Point(middleTime, endTime,
+				sum.NewMonotonicFloat64(6),
+				aggregation.DeltaTemporality,
+				attr2,
+			),
+		),
+	)
+
+	// There are 2 entries in memory again
+	require.Equal(t, 2, vcs[0].Collectors()[0].Size())
+
+	// Update attr1, collect reader 0
+	sg.Add(ctx, 25, attr1)
+
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			test.Point(middleTime, endTime,
+				sum.NewMonotonicFloat64(25),
+				aggregation.DeltaTemporality,
+				attr1,
+			),
+		),
+	)
+
+	// Only 1 entry in memory
+	require.Equal(t, 1, vcs[0].Collectors()[0].Size())
+
+	// Update attr2, collect reader 0
+	sg.Add(ctx, 32, attr2)
+
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			test.Point(middleTime, endTime,
+				sum.NewMonotonicFloat64(32),
+				aggregation.DeltaTemporality,
+				attr2,
+			),
+		),
+	)
+
+	// Only 1 entry in memory
+	require.Equal(t, 1, vcs[0].Collectors()[0].Size())
+
+	// No updates, clear memory
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+		),
+	)
+
+	require.Equal(t, 0, vcs[0].Collectors()[0].Size())
+
+	// collect reader 1
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[1].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			test.Point(middleTime, endTime,
+				// Attributes removed. 1+2+5+6+25+32
+				sum.NewMonotonicFloat64(71),
+				aggregation.DeltaTemporality,
+			),
+		),
+	)
+
 }

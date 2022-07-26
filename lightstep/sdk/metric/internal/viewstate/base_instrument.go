@@ -52,6 +52,13 @@ type instrumentBase[N number.Any, Storage, Auxiliary any, Methods aggregator.Met
 	keysFilter *attribute.Filter
 }
 
+// Size reports the size of the data map.
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) Size() int {
+	metric.instLock.Lock()
+	defer metric.instLock.Unlock()
+	return len(metric.data)
+}
+
 func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) Aggregation() aggregation.Kind {
 	var methods Methods
 	return methods.Kind()

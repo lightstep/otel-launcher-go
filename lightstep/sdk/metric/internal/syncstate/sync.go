@@ -366,7 +366,7 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *
 		acquired, loaded := acquireWrite(inst, fp, newRec)
 
 		if !loaded {
-			// When this happens, we are waiting for the call to Delete()
+			// When this happens, we are waiting for the call to delete()
 			// inside SnapshotAndProcess() to complete before inserting
 			// a new record.  This avoids busy-waiting.
 			runtime.Gosched()
