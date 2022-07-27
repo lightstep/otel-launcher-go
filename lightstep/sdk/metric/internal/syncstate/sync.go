@@ -29,6 +29,12 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
+var sortableAttributesPool = sync.Pool{
+	New: func() any {
+		return new(attribute.Sortable)
+	},
+}
+
 // Instrument maintains a mapping from attribute.Set to an internal
 // record type for a single API-level instrument.  This type is
 // organized so that a single attribute.Set lookup is performed
@@ -358,7 +364,9 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *
 	// Build the attribute set.
 	acpy := make([]attribute.KeyValue, len(attrs))
 	copy(acpy, attrs)
-	aset := attribute.NewSet(acpy...)
+	tmp := sortableAttributesPool.Get()
+	defer sortableAttributesPool.Put(tmp)
+	aset := attribute.NewSetWithSortable(acpy, tmp.(*attribute.Sortable))
 
 	// Note: the accumulator set below is created speculatively;
 	// it will be released if it is never returned.
