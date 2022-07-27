@@ -337,6 +337,7 @@ func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *recor
 	rec := inst.current[fp]
 
 	// Note: we could (optionally) allow collisions and not scan this list.
+	// The copied `attributeList` can be avoided in this case, as well.
 	for rec != nil && !attributesEqual(attrs, rec.attributeList) {
 		rec = rec.next
 	}
@@ -361,19 +362,20 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *
 		return rec
 	}
 
-	// Build the attribute set.
+	// Build the attribute set.  Make a copy of the attribute list
+	// because we are keeping a copy in the record.
 	acpy := make([]attribute.KeyValue, len(attrs))
 	copy(acpy, attrs)
-	tmp := sortableAttributesPool.Get()
+	tmp := sortableAttributesPool.Get().(*attribute.Sortable)
 	defer sortableAttributesPool.Put(tmp)
-	aset := attribute.NewSetWithSortable(acpy, tmp.(*attribute.Sortable))
+	aset := attribute.NewSetWithSortable(acpy, tmp)
 
 	// Note: the accumulator set below is created speculatively;
 	// it will be released if it is never returned.
 	newRec := &record{
 		refMapped:     newRefcountMapped(),
 		accumulator:   inst.compiled.NewAccumulator(aset),
-		attributeList: attrs,
+		attributeList: acpy,
 		attributeSet:  aset,
 	}
 
