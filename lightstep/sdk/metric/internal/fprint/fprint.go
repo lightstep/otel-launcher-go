@@ -24,8 +24,8 @@ import (
 	farm "github.com/dgryski/go-farm"
 )
 
-// Mix combines multiple fingerprints together.  Borrowed from
-// farmhash.
+// Mix combines two fingerprints together.  This function and the
+// constant multiplier are copied from farmhash source.
 func Mix(x uint64, y uint64) uint64 {
 	const mul uint64 = 0x9ddfea08eb382d69
 	a := (x ^ y) * mul

@@ -94,32 +94,42 @@ func (inst *Instrument) SnapshotAndProcess() {
 
 	for key, reclist := range inst.current {
 		// reclist is a list of records for this fingerprint.
-		// keep is the first record that is still mapped
-		// last is the last record that is still mapped
-		var keep *record
-		var last *record
+		var head *record
+		var tail *record
 
+		// Scan reclist and modify the list. We're holding the
+		// lock giving exclusive access to the head-of-list
+		// and each next field, so the process here builds a new
+		// linked list after filtering records that are no longer
+		// in use.
 		for rec := reclist; rec != nil; rec = rec.next {
 			if inst.singleSnapshotAndProcess(key, rec) {
-				if keep == nil {
-					keep = rec
-					last = rec
+				if head == nil {
+					// The first time a record will be kept,
+					// it becomes the head and tail.
+					head = rec
+					tail = rec
 				} else {
-					last.next = rec
-					last = rec
+					// Subsequently, update the
+					// tail of the list.
+					tail.next = rec
+					tail = rec
 				}
 			}
 		}
 
-		if keep == nil {
+		// When records are kept, delete the map entry.
+		if head == nil {
 			delete(inst.current, key)
 			continue
 		}
 
-		last.next = nil
+		// Otherwise, terminate the list that was built.
+		tail.next = nil
 
-		if keep != reclist {
-			inst.current[key] = keep
+		if head != reclist {
+			// If the head changes, update the map.
+			inst.current[key] = head
 		}
 	}
 }

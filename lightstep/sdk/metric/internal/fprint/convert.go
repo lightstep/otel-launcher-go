@@ -49,7 +49,7 @@ func unsafeStringToBytes(s string) ([]byte, error) {
 		// data). Practically speaking, it panics. So that's why we play this game.
 		return nil, nil
 	}
-	// type "string" is actually {uinptr, int}.
+	// type "string" is actually {uintptr, int}.
 	// Cast it to that here so we can access the fields.
 	//
 	// See unsafe.Pointer rule #1:
@@ -98,7 +98,7 @@ func unsafeStringToBytes(s string) ([]byte, error) {
 	//
 	// type "[]byte" (really, any slice) is actually {uintptr, int, int}.
 	// (which is data, length, capacity).
-	// So it needs to be {uinptr, len(s), len(s)}.
+	// So it needs to be {uintptr, len(s), len(s)}.
 	//
 	// Refer back to the three-index notation above, which is what
 	// we can use to synthesize the slice with those three fields.
