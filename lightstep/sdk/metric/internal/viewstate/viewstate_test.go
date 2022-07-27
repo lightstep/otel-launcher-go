@@ -1073,9 +1073,7 @@ func TestDeltaTemporalityAsyncGauge(t *testing.T) {
 	expectValues(11, seq)
 	tick()
 
-	fmt.Println("Second obs")
 	observe(11)
-	fmt.Println("What happ?")
 	expectValues(11, seq)
 	tick()
 
