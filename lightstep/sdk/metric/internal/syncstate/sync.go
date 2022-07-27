@@ -141,13 +141,10 @@ func (inst *Instrument) singleSnapshotAndProcess(fp uint64, rec *record) bool {
 	// release signal.
 	_ = rec.conditionalSnapshotAndProcess(unmapped)
 
-	if unmapped {
-		// If any other goroutines are now trying to re-insert this
-		// entry in the map, they are busy calling Gosched() waiting
-		// for this record to disappear.
-		return false
-	}
-	return true
+	// When `unmapped` is true, any other goroutines are now
+	// trying to re-insert this entry in the map, they are busy
+	// calling Gosched() waiting for this record to disappear.
+	return !unmapped
 }
 
 // record consists of an accumulator, a reference count, the number of
@@ -321,7 +318,7 @@ func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *recor
 	inst.lock.RLock()
 	defer inst.lock.RUnlock()
 
-	rec, _ := inst.current[fp]
+	rec := inst.current[fp]
 
 	// Note: we could (optionally) allow collisions and not scan this list.
 	for rec != nil && !attributesEqual(attrs, rec.attributeList) {
