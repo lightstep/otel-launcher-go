@@ -692,8 +692,8 @@ func TestFingerprintCollision(t *testing.T) {
 	// collisions would take place just before OOM with probability 3%.
 
 	require.Equal(t,
-		fingerprintAttributes([]attribute.KeyValue{attribute.Int(fpKey, fpInt1)}),
-		fingerprintAttributes([]attribute.KeyValue{attribute.Int(fpKey, fpInt2)}),
+		fingerprintAttributes([]attribute.KeyValue{attribute.Int64(fpKey, fpInt1)}),
+		fingerprintAttributes([]attribute.KeyValue{attribute.Int64(fpKey, fpInt2)}),
 	)
 }
 
@@ -733,8 +733,8 @@ func TestDuplicateFingerprint(t *testing.T) {
 	sg := NewCounter[float64, number.Float64Traits](inst)
 	require.NotNil(t, sg)
 
-	attr1 := attribute.Int(fpKey, fpInt1)
-	attr2 := attribute.Int(fpKey, fpInt2)
+	attr1 := attribute.Int64(fpKey, fpInt1)
+	attr2 := attribute.Int64(fpKey, fpInt2)
 
 	sg.Add(ctx, 1, attr1)
 	sg.Add(ctx, 2, attr2)
