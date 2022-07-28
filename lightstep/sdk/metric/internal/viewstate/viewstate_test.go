@@ -890,6 +890,114 @@ func TestDeltaTemporalityCounter(t *testing.T) {
 	}
 }
 
+// TestDeltaTemporalityAsyncCounter ensures that the asynchronous counter
+// is not reported when the value is unchanged and also when the instrument
+// is not used.  (This is different than async Gauge, since HasChange()
+// for _synchronous_ gauges asks whether the instrument was used.)
+func TestDeltaTemporalityAsyncCounter(t *testing.T) {
+	views := view.New(
+		"test",
+		view.WithDefaultAggregationTemporalitySelector(view.DeltaPreferredTemporality),
+	)
+
+	vc := New(testLib, views)
+
+	instF, err := testCompile(vc, "counterF", sdkinstrument.AsyncCounter, number.Float64Kind)
+	require.NoError(t, err)
+
+	instI, err := testCompile(vc, "counterI", sdkinstrument.AsyncCounter, number.Int64Kind)
+	require.NoError(t, err)
+
+	set := attribute.NewSet()
+
+	observe := func(x int) {
+		accI := instI.NewAccumulator(set)
+		accI.(Updater[int64]).Update(int64(x))
+		accI.SnapshotAndProcess(true)
+
+		accF := instF.NewAccumulator(set)
+		accF.(Updater[float64]).Update(float64(x))
+		accF.SnapshotAndProcess(true)
+	}
+
+	expectValues := func(x int, seq data.Sequence) {
+		test.RequireEqualMetrics(t,
+			testCollectSequence(t, vc, seq),
+			test.Instrument(
+				test.Descriptor("counterF", sdkinstrument.AsyncCounter, number.Float64Kind),
+				test.Point(seq.Last, seq.Now, sum.NewMonotonicFloat64(float64(x)), delta),
+			),
+			test.Instrument(
+				test.Descriptor("counterI", sdkinstrument.AsyncCounter, number.Int64Kind),
+				test.Point(seq.Last, seq.Now, sum.NewMonotonicInt64(int64(x)), delta),
+			),
+		)
+	}
+	expectNone := func(seq data.Sequence) {
+		test.RequireEqualMetrics(t,
+			testCollectSequence(t, vc, seq),
+			test.Instrument(
+				test.Descriptor("counterF", sdkinstrument.AsyncCounter, number.Float64Kind),
+			),
+			test.Instrument(
+				test.Descriptor("counterI", sdkinstrument.AsyncCounter, number.Int64Kind),
+			),
+		)
+	}
+	seq := testSequence
+	tick := func() {
+		// Update the test sequence
+		seq.Last = seq.Now
+		seq.Now = time.Now()
+	}
+
+	observe(10)
+	expectValues(10, seq)
+	tick()
+	require.Equal(t, 1, instF.(data.Collector).Size())
+
+	expectNone(seq)
+	tick()
+	require.Equal(t, 0, instF.(data.Collector).Size())
+
+	expectNone(seq)
+	tick()
+	require.Equal(t, 0, instF.(data.Collector).Size())
+
+	observe(11)
+	expectValues(11, seq)
+	tick()
+	require.Equal(t, 1, instF.(data.Collector).Size())
+
+	// No change here:
+	observe(11)
+	// This is different than what an async Gauge does in the
+	// following test., because the Gauge HasChange() is true at
+	// this point (because an observation happened) whereas a Sum
+	// HasChange() is false.
+	expectNone(seq)
+	tick()
+	// There is still a point mapped, even though it didn't output
+	// a value.
+	require.Equal(t, 1, instF.(data.Collector).Size())
+
+	expectNone(seq)
+	tick()
+	// TODO: This is ill-specified and probably not right, but
+	// putting this test here to document it.  Async-delta case
+	// after multiple periods of no observation should probably
+	// keep track of the last value, otherwise it will reappear as
+	// new (and impact any rate calculations on the data).  Same
+	// for the two cases above.
+	require.Equal(t, 0, instF.(data.Collector).Size())
+
+	observe(11)
+	expectValues(11, seq)
+	tick()
+
+	require.Equal(t, 1, instF.(data.Collector).Size())
+}
+
 // TestDeltaTemporalityAsyncGauge ensures that the asynchronous gauge
 // disregards delta temporalty.
 func TestDeltaTemporalityAsyncGauge(t *testing.T) {
@@ -1062,76 +1170,79 @@ func TestDeltaTemporalitySyncGauge(t *testing.T) {
 		seq.Now = time.Now()
 	}
 
-	compI := instI.(*statelessSyncInstrument[int64, gauge.Int64, gauge.Int64Methods])
-	compF := instF.(*statelessSyncInstrument[float64, gauge.Float64, gauge.Float64Methods])
+	instSize := func(inst Instrument) int {
+		// This only works for single-view configurations.  A
+		// multiInstrument will not satisfy this type assertion.
+		return inst.(data.Collector).Size()
+	}
 
 	// start with one observation, collect
 	makeAccums()
 	observe(false, 10)
 	expectValues(10, seq)
 	tick()
-	require.Equal(t, 1, len(compI.data))
-	require.Equal(t, 1, len(compF.data))
+	require.Equal(t, 1, instSize(instI))
+	require.Equal(t, 1, instSize(instF))
 
 	// no observation => collect releases the accumulators
 	noObserve()
 	expectNone(seq)
 	tick()
-	require.Equal(t, 0, len(compI.data))
-	require.Equal(t, 0, len(compF.data))
+	require.Equal(t, 0, instSize(instI))
+	require.Equal(t, 0, instSize(instF))
 
 	// new observation => new accumulators
 	makeAccums()
 	observe(false, 11)
 	expectValues(11, seq)
 	tick()
-	require.Equal(t, 1, len(compI.data))
-	require.Equal(t, 1, len(compF.data))
+	require.Equal(t, 1, instSize(instI))
+	require.Equal(t, 1, instSize(instF))
 
 	// observation races w/ collection, release w/ active ref
 	observe(true, 12)
 	expectValues(12, seq)
 	tick()
 
-	require.Equal(t, 1, len(compI.data))
-	require.Equal(t, 1, len(compF.data))
+	require.Equal(t, 1, instSize(instI))
+	require.Equal(t, 1, instSize(instF))
 
 	// repeat use
 	makeAccums()
 	observe(false, 10, 11, 10)
 	expectValues(10, seq)
 	tick()
-	require.Equal(t, 1, len(compI.data))
-	require.Equal(t, 1, len(compF.data))
+	require.Equal(t, 1, instSize(instI))
+	require.Equal(t, 1, instSize(instF))
 
 	observe(false, 11, 12, 13)
 	expectValues(13, seq)
 	tick()
-	require.Equal(t, 1, len(compI.data))
-	require.Equal(t, 1, len(compF.data))
+	require.Equal(t, 1, instSize(instI))
+	require.Equal(t, 1, instSize(instF))
 
 	observe(false, 9)
 	expectValues(9, seq)
 	tick()
-	require.Equal(t, 1, len(compI.data))
-	require.Equal(t, 1, len(compF.data))
+	require.Equal(t, 1, instSize(instI))
+	require.Equal(t, 1, instSize(instF))
 
 	// repeat no observations
 	noObserve()
 	expectNone(seq)
 	tick()
-	require.Equal(t, 0, len(compI.data))
-	require.Equal(t, 0, len(compF.data))
+	require.Equal(t, 0, instSize(instI))
+	require.Equal(t, 0, instSize(instF))
 
 	expectNone(seq)
 	tick()
-	require.Equal(t, 0, len(compI.data))
-	require.Equal(t, 0, len(compF.data))
+	require.Equal(t, 0, instSize(instI))
+	require.Equal(t, 0, instSize(instF))
 
 	expectNone(seq)
 	tick()
-	require.Equal(t, 0, len(compI.data))
-	require.Equal(t, 0, len(compF.data))
+	require.Equal(t, 0, instSize(instI))
+	require.Equal(t, 0, instSize(instF))
 }
 
 // TestSyncDeltaTemporalityCounter ensures that counter and updowncounter

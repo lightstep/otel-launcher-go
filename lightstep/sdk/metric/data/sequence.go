@@ -33,9 +33,13 @@ type Sequence struct {
 	Now time.Time
 }
 
-// Collector is an interface for things that produce Instrument data.
-// One instrument may output more than one Instrument data by
-// appending to `output`.
+// Collector is an interface for producing a single Instrument of data.
 type Collector interface {
+	// Collect gathers data points from processed accumulator
+	// snapshots into output.
 	Collect(sequence Sequence, output *[]Instrument)
+
+	// Size returns the number of entries held in memory.  Size()
+	// is meant to be called following Collect().
+	Size() int
 }
