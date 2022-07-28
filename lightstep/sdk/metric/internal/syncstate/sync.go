@@ -116,8 +116,10 @@ func (inst *Instrument) SnapshotAndProcess() {
 					head = rec
 					tail = rec
 				} else {
-					// Subsequently, update the
-					// tail of the list.
+					// Subsequently, update the tail of the
+					// list.  Note that this creates a
+					// temporarily invalid list will be
+					// repaired outside the loop, below.
 					tail.next = rec
 					tail = rec
 				}
