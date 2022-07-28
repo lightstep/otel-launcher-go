@@ -8,6 +8,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.8.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.8.1) - 2022-07-28
+
+### 💡 Enhancements
+
+- Optimize the synchronous instrument fast path [#226](https://github.com/lightstep/otel-launcher-go/pull/226)
+- Exponential histogram package is externally-usable [#222](https://github.com/lightstep/otel-launcher-go/pull/222)
+- Add an example for stand-alone use of Lightstep metrics SDK [#219](https://github.com/lightstep/otel-launcher-go/pull/219)
+
 ## [1.8.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.8.0) - 2022-07-13
 
 ### 💡 Enhancements
