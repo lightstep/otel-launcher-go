@@ -8,7 +8,7 @@ require (
 
 	// Host and runtime instrumentation
 	go.opentelemetry.io/contrib/instrumentation/host v0.33.0
-	go.opentelemetry.io/contrib/instrumentation/runtime v0.33.0
+	go.opentelemetry.io/contrib/instrumentation/runtime v0.34.0
 
 	// b3 and opentracing propagators
 	go.opentelemetry.io/contrib/propagators/b3 v1.9.0
