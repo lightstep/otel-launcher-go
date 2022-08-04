@@ -8,9 +8,9 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.8
 	github.com/stretchr/testify v1.7.1
-	go.opentelemetry.io/otel v1.8.0
+	go.opentelemetry.io/otel v1.9.0
 	go.opentelemetry.io/otel/metric v0.31.0
-	go.opentelemetry.io/otel/sdk v1.8.0
+	go.opentelemetry.io/otel/sdk v1.9.0
 	go.opentelemetry.io/otel/sdk/metric v0.31.0
 	go.opentelemetry.io/proto/otlp v0.18.0
 	go.uber.org/multierr v1.8.0
@@ -26,7 +26,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	go.opentelemetry.io/otel/trace v1.8.0 // indirect
+	go.opentelemetry.io/otel/trace v1.9.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	golang.org/x/net v0.0.0-20220111093109-d55c255bac03 // indirect
 	golang.org/x/sys v0.0.0-20220319134239-a9b59b0215f8 // indirect
