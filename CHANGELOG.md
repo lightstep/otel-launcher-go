@@ -8,6 +8,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.9.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.9.0) - 2022-08-04
+
+### 💡 Enhancements
+
+- Update to OpenTelemetry 1.9.0
+
+### 🧰 Bug fixes 🧰
+
+- Exponential histogram correctly counts the zero-bucket when increment > 1 [#238](https://github.com/lightstep/otel-launcher-go/pull/238)
+
 ## [1.8.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.8.1) - 2022-07-28
 
 ### 💡 Enhancements
