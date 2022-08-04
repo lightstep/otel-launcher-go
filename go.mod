@@ -32,8 +32,8 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opentelemetry.io/contrib/instrumentation/host v0.33.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.33.0 // indirect
-	go.opentelemetry.io/contrib/propagators/b3 v1.8.0 // indirect
-	go.opentelemetry.io/contrib/propagators/ot v1.8.0 // indirect
+	go.opentelemetry.io/contrib/propagators/b3 v1.9.0 // indirect
+	go.opentelemetry.io/contrib/propagators/ot v1.9.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.9.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.31.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.31.0 // indirect
