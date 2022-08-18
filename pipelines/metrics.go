@@ -146,8 +146,12 @@ type dropSummary struct {
 	Dropped struct {
 		Points  int `json:"points,omitempty"`
 		Metrics int `json:"metrics,omitempty"`
-	} `json:"dropped"`
+	} `json:"dropped,omitempty"`
 	Examples []dropExample `json:"examples,omitempty"`
+}
+
+func (ds *dropSummary) Empty() bool {
+	return len(ds.Examples) == 0 && ds.Dropped.Points == 0 && ds.Dropped.Metrics == 0
 }
 
 func interceptor(
@@ -187,8 +191,10 @@ func interceptor(
 				})
 			}
 		}
-		data, _ := json.Marshal(ds)
-		otel.Handle(fmt.Errorf("metrics partial failure: %v", string(data)))
+		if !ds.Empty() {
+			data, _ := json.Marshal(ds)
+			otel.Handle(fmt.Errorf("metrics partial failure: %v", string(data)))
+		}
 	}
 	return err
 }
