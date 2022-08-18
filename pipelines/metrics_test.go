@@ -27,6 +27,7 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 
 	"github.com/lightstep/otel-launcher-go/pipelines/test"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	metricglobal "go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -48,6 +49,11 @@ func newTLSConfig() *tls.Config {
 }
 
 func testInsecureMetrics(t *testing.T, lightstepSDK bool) {
+	var errors []error
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		errors = append(errors, err)
+	}))
+
 	server := test.NewServer()
 	defer server.Stop()
 
@@ -83,6 +89,9 @@ func testInsecureMetrics(t *testing.T, lightstepSDK bool) {
 	require.Contains(t, string(txt), "test-library")
 
 	require.Equal(t, []string{"test-value"}, server.MetricsMDs()[0]["test-header"])
+
+	// There should be no partial errors reported.
+	require.Equal(t, 0, len(errors))
 }
 
 func testSecureMetrics(t *testing.T, lightstepSDK bool) {
