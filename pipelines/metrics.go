@@ -98,7 +98,7 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 		}
 		sdk := controller.New(
 			processor.NewFactory(
-				selector.NewWithInexpensiveDistribution(),
+				selector.NewWithHistogramDistribution(),
 				metricExporter,
 			),
 			controller.WithExporter(metricExporter),

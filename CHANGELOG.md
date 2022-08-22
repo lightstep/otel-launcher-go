@@ -12,6 +12,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 - Partial error handling: avoid printing spurious messages when there is no error. [#247](https://github.com/lightstep/otel-launcher-go/pull/247)
 
+### Changed
+
+- Histogram instruments now select the explicit-boundary histogram for
+  the otel-go SDK, which is a breaking change for Lightstep users, but
+  as the Lightstep SDK is using exopnential histograms this is the
+  matching default which allows upgrade and downgrade between these
+  SDKs.  Users who encounter errors related to histogram instruments
+  (e.g,. `process.runtime.go.gc.pause_ns`) please contact a Lightstep
+  representative. [#249](https://github.com/lightstep/otel-launcher-go/pull/249)
+
 ## [1.9.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.9.0) - 2022-08-04
 
 ### 💡 Enhancements
