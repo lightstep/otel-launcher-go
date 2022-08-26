@@ -375,11 +375,11 @@ func (suite *testSuite) TestDefaultConfig() {
 		MetricExporterEndpointInsecure:      false,
 		MetricReportingPeriod:               "30s",
 		MetricsEnabled:                      true,
-		MetricExporterTemporalityPreference: "cumulative",
+		MetricExporterTemporalityPreference: "stateless",
 		LogLevel:                            "info",
 		Propagators:                         []string{"b3"},
 		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		UseLightstepMetricsSDK:              false,
+		UseLightstepMetricsSDK:              true,
 		logger:                              &suite.testLogger,
 		errorHandler:                        &suite.testErrorHandler,
 	}

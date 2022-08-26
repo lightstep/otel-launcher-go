@@ -239,6 +239,12 @@ func tempoOptions(c PipelineConfig) (view.Option, oldaggregation.TemporalitySele
 		syncPref = aggregation.DeltaTemporality
 		asyncPref = aggregation.DeltaTemporality
 
+		// Note: the following is incorrect for UpDownCounter
+		// and async UpDownCounter, which the OTel
+		// specification stipulates are not affected by the
+		// preference setting.  We WILL NOT FIX this defect.
+		// Instead, as otel-launcher-go v1.10.x will use the
+		// Lightstep metrics SDK by default.
 		oldSelector = oldaggregation.DeltaTemporalitySelector()
 	case "stateless":
 		// asyncPref set above.
