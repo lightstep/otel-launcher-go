@@ -21,6 +21,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   SDKs.  Users who encounter errors related to histogram instruments
   (e.g,. `process.runtime.go.gc.pause_ns`) please contact a Lightstep
   representative. [#249](https://github.com/lightstep/otel-launcher-go/pull/249)
+- Exponential histogram changes boundary inclusivity from lower-inclusive to
+  upper-inclusive. This is defined as a non-breaking change because implementations
+  have not required exactness.  With this change, exact powers-of-two are
+  treated as exact special cases.  [#254](https://github.com/lightstep/otel-launcher-go/pull/254)
+- Lightstep metrics SDK is enabled by default.  We are now confident in this
+  SDK even as we have discovered new issues with the old one. [#258](https://github.com/lightstep/otel-launcher-go/pull/258)
+- Stateless temporality preference is used by default; we are intentionally
+  combining a number of potentially breaking changes into this release, to avoid
+  repeated breakage.  This is especially important for exponential histogram
+  data quality. [#258](https://github.com/lightstep/otel-launcher-go/pull/258)
 
 ## [1.9.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.9.0) - 2022-08-04
 
