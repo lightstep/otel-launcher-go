@@ -36,19 +36,34 @@ bucketsNeeded(minValue, maxValue, scale) <= maxSize`.  This
 implementation maintains the best scale by rescaling as needed to stay
 within the maximum size.
 
-### UpdateByIncr interface
+## Layout
 
-The OpenTelemetry metrics SDK `Aggregator` type supports an `Update()`
-interface which implies updating the histogram by a count of 1.  This
-implementation also supports `UpdateByIncr()`, which makes it possible
-to support counting multiple observations in a single API call.  This
-extension is useful in applying `Histogram` aggregation to _sampled_
-metric events (e.g. in the [OpenTelemetry statsd
-receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/statsdreceiver)).
+### Mapping function
 
-Another use for `UpdateByIncr` is in a Span-to-metrics pipeline
-following [probability sampling in OpenTelemetry tracing
-(WIP)](https://github.com/open-telemetry/opentelemetry-specification/pull/2047).
+The `mapping` sub-package contains the equations specified in the [data
+model for Exponential Histogram data
+points](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/data-model.md#exponentialhistogram).
+
+There are two mapping functions used, depending on the sign of the
+scale.  Negative and zero scales use the `mapping/exponent` mapping
+function, which computes the bucket index directly from the bits of
+the `float64` exponent.  This mapping function is used with scale `-10
+<= scale <= 0`.  Scales smaller than -10 map the entire normal
+`float64` number range into a single bucket, thus are not considered
+useful.
+
+The `mapping/logarithm` mapping function uses `math.Log(value)` times
+the scaling factor `math.Ldexp(math.Log2E, scale)`.  This mapping
+function is used with `0 < scale <= 20`.  The maximum scale is
+selected because at scale 21, simply, it becomes difficult to test
+correctness--at this point `math.MaxFloat64` maps to index
+`math.MaxInt32` and the `math/big` logic used in testing breaks down.
+
+### Data structure
+
+The `structure` sub-package contains a Histogram aggregator for use by
+the OpenTelemetry-Go Metrics SDK as well as OpenTelemetry Collector
+receivers, processors, and exporters.
 
 ## Implementation
 
@@ -83,7 +98,7 @@ histogram to maintain the ideal scale without shifting values inside
 the array.
 
 The `indexStart` and `indexEnd` fields store the current minimum and
-maximum bucket number.  The initial conditition is `indexBase ==
+maximum bucket number.  The initial condition is `indexBase ==
 indexStart == indexEnd`, representing a single bucket.
 
 Following the first observation, new observations may fall into a
@@ -92,30 +107,13 @@ adjusting either `indexEnd` or `indexStart` as long as the constraint
 `indexEnd-indexStart < size` remains true.
 
 Bucket numbers in the range `[indexBase, indexEnd]` are stored in the
-interval `[0, indexEnd-indexBase+1]` of the backing array.  Buckets in
+interval `[0, indexEnd-indexBase]` of the backing array.  Buckets in
 the range `[indexStart, indexBase-1]` are stored in the interval
 `[size+indexStart-indexBase, size-1]` of the backing array.
 
 Considering the `aggregation.Buckets` interface, `Offset()` returns
 `indexStart`, `Len()` returns `indexEnd-indexStart+1`, and `At()`
 locates the correct bucket in the circular array.
-
-### Mapping function
-
-There are two mapping functions used, depending on the sign of the
-scale.  Negative and zero scales use the `mapping/exponent` mapping
-function, which computes the bucket index directly from the bits of
-the `float64` exponent.  This mapping function is used with scale `-10
-<= scale <= 0`.  Scales smaller than -10 map the entire normal
-`float64` number range into a single bucket, thus are not considered
-useful.
-
-The `mapping/logarithm` mapping function uses `math.Log(value)` times
-the scaling factor `math.Ldexp(math.Log2E, scale)`.  This mapping
-function is used with `0 < scale <= 20`.  The maximum scale is
-selected because at scale 21, simply, it becomes difficult to test
-correctness--at this point `math.MaxFloat64` maps to index
-`math.MaxInt32` and the `math/big` logic used in testing breaks down.
 
 ### Determining change of scale
 
@@ -191,6 +189,20 @@ maximum bucket index have similar magnitude, which helps support
 greater maximum scale.  Supporting numbers smaller than 0x1p-1022
 would mean changing the valid scale interval to [-11,19] compared with
 [-10,20].
+
+### UpdateByIncr interface
+
+The OpenTelemetry metrics SDK `Aggregator` type supports an `Update()`
+interface which implies updating the histogram by a count of 1.  This
+implementation also supports `UpdateByIncr()`, which makes it possible
+to support counting multiple observations in a single API call.  This
+extension is useful in applying `Histogram` aggregation to _sampled_
+metric events (e.g. in the [OpenTelemetry statsd
+receiver](https://github.com/open-telemetry/opentelemetry-collector-contrib/tree/main/receiver/statsdreceiver)).
+
+Another use for `UpdateByIncr` is in a Span-to-metrics pipeline
+following [probability sampling in OpenTelemetry tracing
+(WIP)](https://github.com/open-telemetry/opentelemetry-specification/pull/2047).
 
 ## Acknowledgements
 
