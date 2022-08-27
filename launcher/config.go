@@ -212,12 +212,12 @@ type Config struct {
 	Headers                             map[string]string `env:"OTEL_EXPORTER_OTLP_HEADERS"`
 	MetricExporterEndpoint              string            `env:"OTEL_EXPORTER_OTLP_METRIC_ENDPOINT,default=ingest.lightstep.com:443"`
 	MetricExporterEndpointInsecure      bool              `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
-	MetricExporterTemporalityPreference string            `env:"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE,default=cumulative"`
+	MetricExporterTemporalityPreference string            `env:"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE,default=stateless"`
 	MetricsEnabled                      bool              `env:"LS_METRICS_ENABLED,default=true"`
 	LogLevel                            string            `env:"OTEL_LOG_LEVEL,default=info"`
 	Propagators                         []string          `env:"OTEL_PROPAGATORS,default=b3"`
 	MetricReportingPeriod               string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
-	UseLightstepMetricsSDK              bool              `env:"LS_METRICS_SDK,default=false"`
+	UseLightstepMetricsSDK              bool              `env:"LS_METRICS_SDK,default=true"`
 	ResourceAttributes                  map[string]string
 	Resource                            *resource.Resource
 	logger                              Logger
