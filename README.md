@@ -61,14 +61,14 @@ Additional options
 | WithSpanExporterInsecure                | OTEL_EXPORTER_OTLP_SPAN_INSECURE                 | n        | false                    |
 | WithMetricExporterEndpoint              | OTEL_EXPORTER_OTLP_METRIC_ENDPOINT               | n        | ingest.lightstep.com:443 |
 | WithMetricExporterInsecure              | OTEL_EXPORTER_OTLP_METRIC_INSECURE               | n        | false                    |
-| WithMetricExporterTemporalityPreference | OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE | n        | false                    |
+| WithMetricExporterTemporalityPreference | OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE | n        | stateless                    |
 | WithAccessToken                         | LS_ACCESS_TOKEN                                  | n        | -                        |
 | WithLogLevel                            | OTEL_LOG_LEVEL                                   | n        | info                     |
 | WithPropagators                         | OTEL_PROPAGATORS                                 | n        | b3                       |
 | WithResourceAttributes                  | OTEL_RESOURCE_ATTRIBUTES                         | n        | -                        |
 | WithMetricReportingPeriod               | OTEL_EXPORTER_OTLP_METRIC_PERIOD                 | n        | 30s                      |
-| WithMetricsEnabled                      | LS_METRICS_ENABLED                               | n        | True                     |
-| WithLightstepMetricsSDK                 | LS_METRICS_SDK                                   | n        | False                    |
+| WithMetricsEnabled                      | LS_METRICS_ENABLED                               | n        | true                     |
+| WithLightstepMetricsSDK                 | LS_METRICS_SDK                                   | n        | true                    |
 
 ### Principles behind Launcher
 
