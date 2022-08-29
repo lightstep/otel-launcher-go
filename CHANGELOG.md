@@ -8,13 +8,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.10.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.10.0) - 2022-08-28
+
 ### 🧰 Bug fixes 🧰
 
 - Partial error handling: avoid printing spurious messages when there is no error. [#247](https://github.com/lightstep/otel-launcher-go/pull/247)
 
 ### Changed
 
-- Histogram instruments now select the explicit-boundary histogram for
+We have intentionally combined a number of potentially breaking
+changes into this release,
+
+- 🛑 [BREAKING] Histogram instruments now select the explicit-boundary histogram for
   the otel-go SDK, which is a breaking change for Lightstep users, but
   as the Lightstep SDK is using exopnential histograms this is the
   matching default which allows upgrade and downgrade between these
@@ -27,8 +32,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   treated as exact special cases.  [#254](https://github.com/lightstep/otel-launcher-go/pull/254)
 - Lightstep metrics SDK is enabled by default.  We are now confident in this
   SDK even as we have discovered new issues with the old one. [#258](https://github.com/lightstep/otel-launcher-go/pull/258)
-- Stateless temporality preference is used by default; we are intentionally
-  combining a number of potentially breaking changes into this release, to avoid
+- 🛑 [BREAKING] Stateless temporality preference is used by default; Counter and
+  Histogram instruments will begin reporting with delta temporality.  To avoid
   repeated breakage.  This is especially important for exponential histogram
   data quality. [#258](https://github.com/lightstep/otel-launcher-go/pull/258)
 
