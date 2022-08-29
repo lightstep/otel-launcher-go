@@ -55,3 +55,8 @@ require (
 replace github.com/lightstep/otel-launcher-go/pipelines => ./pipelines
 
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/metric => ./lightstep/sdk/metric
+
+// The 1.10.0 release included an unneccessary breaking change of
+// default temporality preference; use 1.10.1 instead or consider
+// upgrading to a 2.x release.
+retract v1.10.0

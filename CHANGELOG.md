@@ -8,7 +8,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.10.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.10.1) - 2022-08-29
+
+- Revert the default change of temporality to "cumulative" from #258.
+  New users are recommended to configure
+  `WithMetricExporterTemporalityPreference("stateless")` temporality
+  preference if possible.
+
 ## [1.10.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.10.0) - 2022-08-28
+
+This version was retracted because of the change of temporality preference.
 
 ### 🧰 Bug fixes 🧰
 

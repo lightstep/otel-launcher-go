@@ -61,7 +61,7 @@ Additional options
 | WithSpanExporterInsecure                | OTEL_EXPORTER_OTLP_SPAN_INSECURE                 | n        | false                    |
 | WithMetricExporterEndpoint              | OTEL_EXPORTER_OTLP_METRIC_ENDPOINT               | n        | ingest.lightstep.com:443 |
 | WithMetricExporterInsecure              | OTEL_EXPORTER_OTLP_METRIC_INSECURE               | n        | false                    |
-| WithMetricExporterTemporalityPreference | OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE | n        | stateless                    |
+| WithMetricExporterTemporalityPreference | OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE | n        | cumulative               |
 | WithAccessToken                         | LS_ACCESS_TOKEN                                  | n        | -                        |
 | WithLogLevel                            | OTEL_LOG_LEVEL                                   | n        | info                     |
 | WithPropagators                         | OTEL_PROPAGATORS                                 | n        | b3                       |
@@ -124,19 +124,17 @@ to be maintained.  The temporality preference is configured by calling
 `OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE` environment
 variable.
 
-The launcher supports an experimental "stateless" temporality
-preference.  This selection configures the ideal behavior for
-Lightstep by mixing temporality setings.  This setting uses delta
-temporality for synchronous Counter and Histogram instruments, while
-using cumulative temporality for asynchronous Counters.  Note that
-synchronous and asynchronous UpDownCounter instruments are specified
-to use cumulative temporality in OpenTelemetry metrics SDKs
-independent of the temporality preference.
+The launcher supports a "stateless" temporality preference.  This
+selection configures the ideal behavior for Lightstep by mixing
+temporality setings.
 
-The exporter temporality preference is set to "stateless" by default,
-which is not specified presently in OpenTelemetry.  The OpenTelemetry
-specified "delta" temporality preference is not recommended for
-Lightstep users.
+The 1.x launcher release series configures the "cumulative"
+temporality preference by default.  The next major release of launcher
+will configure the "stateless" temporality preference.
+
+Lightstep users are recommended to select either the "cumulative" or
+"stateless" preference.  The OpenTelemetry-specified "delta"
+temporality preference is not recommended for Lightstep users.
 
 ### Metrics validation errors
 

@@ -375,7 +375,7 @@ func (suite *testSuite) TestDefaultConfig() {
 		MetricExporterEndpointInsecure:      false,
 		MetricReportingPeriod:               "30s",
 		MetricsEnabled:                      true,
-		MetricExporterTemporalityPreference: "stateless",
+		MetricExporterTemporalityPreference: "cumulative",
 		LogLevel:                            "info",
 		Propagators:                         []string{"b3"},
 		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
