@@ -3,8 +3,8 @@ module github.com/lightstep/otel-launcher-go
 go 1.18
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.10.0
-	github.com/lightstep/otel-launcher-go/pipelines v1.10.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.10.1
+	github.com/lightstep/otel-launcher-go/pipelines v1.10.1
 	github.com/sethvargo/go-envconfig v0.8.2
 	github.com/stretchr/testify v1.8.0
 	go.opentelemetry.io/otel v1.9.0
