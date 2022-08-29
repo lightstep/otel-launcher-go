@@ -3,7 +3,7 @@ module github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/example
 go 1.18
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.10.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.10.1
 	github.com/lightstep/otel-launcher-go/pipelines v1.8.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.31.0
 	go.opentelemetry.io/proto/otlp v0.18.0
