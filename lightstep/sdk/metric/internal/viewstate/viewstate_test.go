@@ -1685,3 +1685,65 @@ func TestViewHintNoOverrideEmpty(t *testing.T) {
 		),
 	)
 }
+
+// TestEmptyKeyFilter ensures no empty keys are used (w/o view config).
+func TestEmptyKeyFilter(t *testing.T) {
+	views := view.New("test")
+
+	vc := New(testLib, views)
+
+	inst, err := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
+	require.NoError(t, err)
+
+	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "1")))
+	acc1.(Updater[float64]).Update(1)
+	acc1.SnapshotAndProcess(false)
+
+	acc2 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "2")))
+	acc2.(Updater[float64]).Update(1)
+	acc2.SnapshotAndProcess(false)
+
+	output := testCollect(t, vc)
+
+	test.RequireEqualMetrics(t, output,
+		test.Instrument(
+			test.Descriptor("foo", sdkinstrument.SyncCounter, number.Float64Kind),
+			test.Point(
+				startTime, endTime, sum.NewMonotonicFloat64(2), cumulative,
+			),
+		),
+	)
+}
+
+// TestEmptyKeyFilterAndView ensures no empty keys are used (with a view config).
+func TestEmptyKeyFilterAndView(t *testing.T) {
+	views := view.New("test",
+		view.WithClause(
+			view.WithKeys([]attribute.Key{"a"}),
+		),
+	)
+
+	vc := New(testLib, views)
+
+	inst, err := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
+	require.NoError(t, err)
+
+	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("a", "1"), attribute.String("", "empty")))
+	acc1.(Updater[float64]).Update(1)
+	acc1.SnapshotAndProcess(false)
+
+	acc2 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "different"), attribute.String("a", "1")))
+	acc2.(Updater[float64]).Update(1)
+	acc2.SnapshotAndProcess(false)
+
+	output := testCollect(t, vc)
+
+	test.RequireEqualMetrics(t, output,
+		test.Instrument(
+			test.Descriptor("foo", sdkinstrument.SyncCounter, number.Float64Kind),
+			test.Point(
+				startTime, endTime, sum.NewMonotonicFloat64(2), cumulative, attribute.String("a", "1"),
+			),
+		),
+	)
+}
