@@ -35,6 +35,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
@@ -1692,14 +1693,21 @@ func TestEmptyKeyFilter(t *testing.T) {
 
 	vc := New(testLib, views)
 
+	// Note: this has to be the first test that uses an empty key,
+	// so the doevery logic triggers.
+	errs := new([]error)
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		*errs = append(*errs, err)
+	}))
+
 	inst, err := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
-	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "1")))
+	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "1value")))
 	acc1.(Updater[float64]).Update(1)
 	acc1.SnapshotAndProcess(false)
 
-	acc2 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "2")))
+	acc2 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "2value")))
 	acc2.(Updater[float64]).Update(1)
 	acc2.SnapshotAndProcess(false)
 
@@ -1713,6 +1721,9 @@ func TestEmptyKeyFilter(t *testing.T) {
 			),
 		),
 	)
+
+	require.Equal(t, 1, len(*errs))
+	require.Equal(t, "use of empty attribute key, e.g., with value \"1value\"", (*errs)[0].Error())
 }
 
 // TestEmptyKeyFilterAndView ensures no empty keys are used (with a view config).
