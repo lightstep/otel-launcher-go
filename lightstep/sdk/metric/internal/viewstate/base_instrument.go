@@ -15,14 +15,17 @@
 package viewstate // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/doevery"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -93,10 +96,21 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) mergeDescription(d
 	}
 }
 
-func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) applyKeysFilter(kvs attribute.Set) attribute.Set {
-	if metric.keysFilter != nil {
-		kvs, _ = attribute.NewSetWithFiltered(kvs.ToSlice(), *metric.keysFilter)
+func attributeFilter(viewf *attribute.Filter) attribute.Filter {
+	return func(kv attribute.KeyValue) bool {
+		if kv.Key == "" {
+			doevery.TimePeriod(time.Minute, func() {
+				otel.Handle(fmt.Errorf("use of empty attribute key, e.g., with value %q", kv.Value.Emit()))
+			})
+			return false
+		}
+
+		return viewf == nil || (*viewf)(kv)
 	}
+}
+
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) applyKeysFilter(kvs attribute.Set) attribute.Set {
+	kvs, _ = attribute.NewSetWithFiltered(kvs.ToSlice(), attributeFilter(metric.keysFilter))
 	return kvs
 }
 
