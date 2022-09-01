@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"runtime/metrics"
 	"strings"
-	"time"
 
 	"github.com/hashicorp/go-multierror"
 
@@ -36,20 +35,6 @@ const LibraryName = "otel-launcher-go/runtime"
 
 // config contains optional settings for reporting runtime metrics.
 type config struct {
-	// UseGoRuntimeMetrics indicates to use the metric names
-	// directly reported from the Go-1.16+ runtime/metrics API.
-	//
-	// UseGoRuntimeMetrics will become the default behavior
-	// no sooner than January 2023.
-	UseGoRuntimeMetrics bool
-
-	// MinimumReadMemStatsInterval sets the mininum interval
-	// between calls to runtime.ReadMemStats().  Negative values
-	// are ignored.
-	//
-	// Deprecated: This setting only has effect when UseGoRuntimeMetrics==false.
-	MinimumReadMemStatsInterval time.Duration
-
 	// MeterProvider sets the metric.MeterProvider.  If nil, the global
 	// Provider will be used.
 	MeterProvider metric.MeterProvider
@@ -58,27 +43,6 @@ type config struct {
 // Option supports configuring optional settings for runtime metrics.
 type Option interface {
 	apply(*config)
-}
-
-// DefaultMinimumReadMemStatsInterval is the default minimum interval
-// between calls to runtime.ReadMemStats().  Use the
-// WithMinimumReadMemStatsInterval() option to modify this setting in
-// Start().
-const DefaultMinimumReadMemStatsInterval time.Duration = 15 * time.Second
-
-// WithMinimumReadMemStatsInterval sets a minimum interval between calls to
-// runtime.ReadMemStats(), which is a relatively expensive call to make
-// frequently.  This setting is ignored when `d` is negative.
-func WithMinimumReadMemStatsInterval(d time.Duration) Option {
-	return minimumReadMemStatsIntervalOption(d)
-}
-
-type minimumReadMemStatsIntervalOption time.Duration
-
-func (o minimumReadMemStatsIntervalOption) apply(c *config) {
-	if o >= 0 {
-		c.MinimumReadMemStatsInterval = time.Duration(o)
-	}
 }
 
 // WithMeterProvider sets the Metric implementation to use for
@@ -96,25 +60,10 @@ func (o metricProviderOption) apply(c *config) {
 	}
 }
 
-// WithUseGoRuntimeMetrics enables direct use of the Go-1.16+
-// runtime/metrics instead of the original implementation found
-// in this package.
-func WithUseGoRuntimeMetrics(use bool) Option {
-	return useGoRuntimeMetrics{use}
-}
-
-type useGoRuntimeMetrics struct{ use bool }
-
-func (o useGoRuntimeMetrics) apply(c *config) {
-	c.UseGoRuntimeMetrics = o.use
-}
-
 // newConfig computes a config from the supplied Options.
 func newConfig(opts ...Option) config {
 	c := config{
-		UseGoRuntimeMetrics:         false,
-		MeterProvider:               global.MeterProvider(),
-		MinimumReadMemStatsInterval: DefaultMinimumReadMemStatsInterval,
+		MeterProvider: global.MeterProvider(),
 	}
 	for _, opt := range opts {
 		opt.apply(&c)
@@ -125,9 +74,6 @@ func newConfig(opts ...Option) config {
 // Start initializes reporting of runtime metrics using the supplied config.
 func Start(opts ...Option) error {
 	c := newConfig(opts...)
-	if c.MinimumReadMemStatsInterval < 0 {
-		c.MinimumReadMemStatsInterval = DefaultMinimumReadMemStatsInterval
-	}
 	if c.MeterProvider == nil {
 		c.MeterProvider = global.MeterProvider()
 	}

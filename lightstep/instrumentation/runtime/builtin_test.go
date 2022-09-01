@@ -41,10 +41,7 @@ var expectLib = metrictest.Library{
 func TestBuiltinRuntimeMetrics(t *testing.T) {
 	provider, exp := metrictest.NewTestMeterProvider()
 
-	err := Start(
-		WithUseGoRuntimeMetrics(true),
-		WithMeterProvider(provider),
-	)
+	err := Start(WithMeterProvider(provider))
 
 	require.NoError(t, err)
 
