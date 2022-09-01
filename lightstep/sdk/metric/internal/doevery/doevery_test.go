@@ -1,7 +1,6 @@
 package doevery
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -129,6 +128,6 @@ func BenchmarkDoEvery(b *testing.B) {
 		})
 	}
 	if invocations != b.N {
-		b.Fatal(fmt.Sprintf("incorrectness: %v != %v", invocations, b.N))
+		b.Fatalf("incorrectness: %v != %v", invocations, b.N)
 	}
 }
