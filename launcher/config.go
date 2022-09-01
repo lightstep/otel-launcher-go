@@ -150,10 +150,18 @@ func WithMetricExporterTemporalityPreference(prefName string) Option {
 	}
 }
 
-// WithMetricEnabled configures whether metrics should be enabled
+// WithMetricEnabled configures whether metrics should be enabled.
 func WithMetricsEnabled(enabled bool) Option {
 	return func(c *Config) {
 		c.MetricsEnabled = enabled
+	}
+}
+
+// WithMetricBuiltinsEnabled configures whether builtin metrics should
+// be enabled.  This has no effect when MetricsEnabled is false.
+func WithMetricsBuiltinsEnabled(builtinsEnabled bool) Option {
+	return func(c *Config) {
+		c.MetricsBuiltinsEnabled = builtinsEnabled
 	}
 }
 
@@ -387,6 +395,7 @@ func setupMetrics(c Config) (func() error, error) {
 		Resource:               c.Resource,
 		ReportingPeriod:        c.MetricReportingPeriod,
 		TemporalityPreference:  c.MetricExporterTemporalityPreference,
+		MetricsBuiltinsEnabled: c.MetricsBuiltinsEnabled,
 		UseLightstepMetricsSDK: c.UseLightstepMetricsSDK,
 	})
 }

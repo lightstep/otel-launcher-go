@@ -68,7 +68,7 @@ func testInsecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 			attribute.String("test-r1", "test-v1"),
 		),
 		ReportingPeriod:        "24h",
-		EnableMetricsBuiltins:  builtins,
+		MetricsBuiltinsEnabled: builtins,
 		UseLightstepMetricsSDK: lightstepSDK,
 	})
 	assert.NoError(t, err)
@@ -116,7 +116,7 @@ func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 		),
 		ReportingPeriod:        "24h",
 		Credentials:            credentials.NewTLS(newTLSConfig()),
-		EnableMetricsBuiltins:  builtins,
+		MetricsBuiltinsEnabled: builtins,
 		UseLightstepMetricsSDK: lightstepSDK,
 	})
 	assert.NoError(t, err)

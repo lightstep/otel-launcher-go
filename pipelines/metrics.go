@@ -116,7 +116,7 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 		}
 	}
 
-	if c.EnableMetricsBuiltins {
+	if c.MetricsBuiltinsEnabled {
 		if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(provider)); err != nil {
 			return nil, fmt.Errorf("failed to start runtime metrics: %v", err)
 		}
