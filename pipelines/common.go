@@ -30,6 +30,10 @@ type PipelineConfig struct {
 	ReportingPeriod string
 	Propagators     []string
 
+	// EnableMetricsBuiltins indicates whether to automatically start
+	// standard host and runtime metrics.
+	EnableMetricsBuiltins bool
+
 	// TemporalityPreference is one of "cumulative", "delta", or "stateless"
 	TemporalityPreference string
 
