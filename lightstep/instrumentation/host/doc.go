@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package hostprocess provides the conventional host metrics
+// Package host provides the conventional host metrics
 // specified by OpenTelemetry.  Host metric events are sometimes
 // collected through the OpenTelemetry Collector "hostmetrics"
 // receiver running as an agent; this instrumentation is an
@@ -25,19 +25,12 @@
 //
 // ----------------------------------------------------------------------
 //
-//	process.cpu.time           state=user|system
 //	system.cpu.time            state=user|system|other|idle
 //	system.memory.usage        state=used|available
 //	system.memory.utilization  state=used|available
 //	system.network.io          direction=transmit|receive
 //
-// These are runtime metrics that are not currently provided by the
-// runtime/metrics package:
-//
-//      process.runtime.uptime
-//      process.runtime.go.gc.cpu.time (see https://github.com/open-telemetry/opentelemetry-go-contrib/issues/316)
-//
 // See https://github.com/open-telemetry/oteps/blob/main/text/0119-standard-system-metrics.md
 // for the definition of these metric instruments.
 
-package hostprocess // import "github.com/lightstep/otel-launcher-go/lightstep/instrumentation/hostprocess"
+package host // import "github.com/lightstep/otel-launcher-go/lightstep/instrumentation/host"

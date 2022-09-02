@@ -12,14 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package hostprocess
+package host
 
 import (
 	"context"
 	"fmt"
 	gonet "net"
 	"os"
-	"runtime"
 	"testing"
 	"time"
 
@@ -85,8 +84,6 @@ func TestHostCPU(t *testing.T) {
 	require.NoError(t, err)
 
 	ctx := context.Background()
-	processBefore, err := proc.TimesWithContext(ctx)
-	require.NoError(t, err)
 
 	hostBefore, err := cpu.TimesWithContext(ctx, false)
 	require.NoError(t, err)
@@ -102,28 +99,11 @@ func TestHostCPU(t *testing.T) {
 
 	require.NoError(t, exp.Collect(ctx))
 
-	processUser := getMetric(exp, "process.cpu.time", AttributeCPUTimeUser[0])
-	processSystem := getMetric(exp, "process.cpu.time", AttributeCPUTimeSystem[0])
-
 	hostUser := getMetric(exp, "system.cpu.time", AttributeCPUTimeUser[0])
 	hostSystem := getMetric(exp, "system.cpu.time", AttributeCPUTimeSystem[0])
 
-	processAfter, err := proc.TimesWithContext(ctx)
-	require.NoError(t, err)
-
 	hostAfter, err := cpu.TimesWithContext(ctx, false)
 	require.NoError(t, err)
-
-	// Validate process times:
-	// User times are in range
-	require.LessOrEqual(t, processBefore.User, processUser)
-	require.GreaterOrEqual(t, processAfter.User, processUser)
-	// System times are in range
-	require.LessOrEqual(t, processBefore.System, processSystem)
-	require.GreaterOrEqual(t, processAfter.System, processSystem)
-	// Ranges are not empty
-	require.NotEqual(t, processAfter.System, processBefore.System)
-	require.NotEqual(t, processAfter.User, processBefore.User)
 
 	// Validate host times:
 	// Correct assumptions:
@@ -248,60 +228,4 @@ func TestHostNetwork(t *testing.T) {
 	// Check that the recorded measurements reflect the same change:
 	require.LessOrEqual(t, uint64(howMuch), uint64(hostTransmit)-hostBefore[0].BytesSent)
 	require.LessOrEqual(t, uint64(howMuch), uint64(hostReceive)-hostBefore[0].BytesRecv)
-}
-
-func TestProcessUptime(t *testing.T) {
-	ctx := context.Background()
-	y2k, err := time.Parse(time.RFC3339, "2000-01-01T00:00:00Z")
-	require.NoError(t, err)
-	expectUptime := time.Since(y2k).Seconds()
-
-	var save time.Time
-	processStartTime, save = y2k, processStartTime
-	defer func() {
-		processStartTime = save
-	}()
-
-	provider, exp := metrictest.NewTestMeterProvider()
-	h := newHost(config{
-		MeterProvider: provider,
-	})
-	require.NoError(t, h.register())
-
-	require.NoError(t, exp.Collect(ctx))
-	procUptime := getMetric(exp, "process.uptime", attribute.KeyValue{})
-
-	require.LessOrEqual(t, expectUptime, procUptime)
-}
-
-func TestProcessGCCPUTime(t *testing.T) {
-	ctx := context.Background()
-
-	provider, exp := metrictest.NewTestMeterProvider()
-	h := newHost(config{
-		MeterProvider: provider,
-	})
-	require.NoError(t, h.register())
-
-	require.NoError(t, exp.Collect(ctx))
-	initialUtime := getMetric(exp, "process.cpu.time", AttributeCPUTimeUser[0])
-	initialStime := getMetric(exp, "process.cpu.time", AttributeCPUTimeSystem[0])
-	initialGCtime := getMetric(exp, "process.runtime.go.gc.cpu.time", attribute.KeyValue{})
-
-	// Make garabge
-	for i := 0; i < 2; i++ {
-		var garbage []struct{}
-		for start := time.Now(); time.Since(start) < time.Second/16; {
-			garbage = append(garbage, struct{}{})
-		}
-		garbage = nil
-		runtime.GC()
-
-		require.NoError(t, exp.Collect(ctx))
-		utime := -initialUtime + getMetric(exp, "process.cpu.time", AttributeCPUTimeUser[0])
-		stime := -initialStime + getMetric(exp, "process.cpu.time", AttributeCPUTimeSystem[0])
-		gctime := -initialGCtime + getMetric(exp, "process.runtime.go.gc.cpu.time", attribute.KeyValue{})
-
-		require.LessOrEqual(t, gctime, utime+stime)
-	}
 }
