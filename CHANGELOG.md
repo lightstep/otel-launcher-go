@@ -8,6 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+### Added
+
+- New "cputime" instrumentation package combines several related timing metrics,
+  process.cpu.time, process.uptime, and process.runtime.go.gc.cpu.time [#269](https://github.com/lightstep/otel-launcher-go/pull/269)
+
 ## [1.10.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.10.1) - 2022-08-29
 
 - Revert the default change of temporality to "cumulative" from #258.
