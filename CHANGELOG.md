@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+### Changed
+
+- Remove Lightstep-specific partial-success error handling, now using upstream. [#250](https://github.com/lightstep/otel-launcher-go/pull/250)
+
 ## [1.10.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.10.1) - 2022-08-29
 
 - Revert the default change of temporality to "cumulative" from #258.
