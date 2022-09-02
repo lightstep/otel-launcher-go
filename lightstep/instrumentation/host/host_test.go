@@ -73,10 +73,6 @@ func TestHostCPU(t *testing.T) {
 	)
 	assert.NoError(t, err)
 
-	// Burn some CPU to be sure we're testing something below.
-	for start := time.Now(); time.Since(start) < time.Second/2; {
-	}
-
 	// Note: we use a different library
 	// ("github.com/shirou/gopsutil/v3/process") to verify process
 	// CPU times computed from syscall.Getrusage().
