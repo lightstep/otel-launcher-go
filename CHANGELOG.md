@@ -18,9 +18,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   [host](https://github.com/open-telemetry/opentelemetry-go-contrib/tree/main/instrumentation/host)
   metrics instrumentation will be reported automatically.
   [#265](https://github.com/lightstep/otel-launcher-go/pull/265)
-- Proposed replacement for go-contrib instrumentation/runtime added as lightstep/instrumentation/runtime. 
+- Proposed replacement for go-contrib instrumentation/runtime added as lightstep/instrumentation/runtime.
   [#267](https://github.com/lightstep/otel-launcher-go/pull/267)
-- Avoid repetitive calls to `otel.Handle()` with error conditions caused by 
+- Avoid repetitive calls to `otel.Handle()` with error conditions caused by
   out-of-range metrics input values, includ NaN, Inf, and some negative values.
   These will be handled no more than once per 30 seconds per condition.
   [#272](https://github.com/lightstep/otel-launcher-go/pull/272)
