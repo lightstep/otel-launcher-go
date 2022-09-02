@@ -76,7 +76,8 @@ func TestProcessCPU(t *testing.T) {
 
 	// Note: we use a different library
 	// ("github.com/shirou/gopsutil/v3/process") to verify process
-	// CPU times computed from syscall.Getrusage().
+	// CPU times computed from syscall.Getrusage().  Because of this
+	// we do not use a direct equality test below.
 	proc, err := process.NewProcess(int32(os.Getpid()))
 	require.NoError(t, err)
 
@@ -126,10 +127,8 @@ func TestProcessUptime(t *testing.T) {
 	}()
 
 	provider, exp := metrictest.NewTestMeterProvider()
-	h := newHost(config{
-		MeterProvider: provider,
-	})
-	require.NoError(t, h.register())
+	c := newCputime(config{MeterProvider: provider})
+	require.NoError(t, c.register())
 
 	require.NoError(t, exp.Collect(ctx))
 	procUptime := getMetric(exp, "process.uptime", attribute.KeyValue{})
@@ -141,10 +140,10 @@ func TestProcessGCCPUTime(t *testing.T) {
 	ctx := context.Background()
 
 	provider, exp := metrictest.NewTestMeterProvider()
-	h := newHost(config{
+	c := newCputime(config{
 		MeterProvider: provider,
 	})
-	require.NoError(t, h.register())
+	require.NoError(t, c.register())
 
 	require.NoError(t, exp.Collect(ctx))
 	initialUtime := getMetric(exp, "process.cpu.time", AttributeCPUTimeUser[0])
