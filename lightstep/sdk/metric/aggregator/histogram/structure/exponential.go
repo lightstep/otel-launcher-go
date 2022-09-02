@@ -16,7 +16,6 @@ package structure // import "github.com/lightstep/otel-launcher-go/lightstep/sdk
 
 import (
 	"fmt"
-	"math/bits"
 
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping"
 	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/exponent"
@@ -28,6 +27,10 @@ type (
 	// buckets.  It is configured with a maximum scale factor
 	// which determines resolution.  Scale is automatically
 	// adjusted to accommodate the range of input data.
+	//
+	// Note that the generic type `N` determines the type of the
+	// Sum, Min, and Max fields.  Bucket boundaries are handled in
+	// floating point regardless of the type of N.
 	Histogram[N ValueType] struct {
 		// maxSize is the maximum capacity of the positive and
 		// negative ranges.  it is set by Init(), preserved by
@@ -63,9 +66,22 @@ type (
 		// backing is a slice of nil, []uint8, []uint16, []uint32, or []uint64
 		backing bucketsBacking
 
+		// The term "index" refers to the number of the
+		// histogram bucket used to determine its boundaries.
+		// The lower-boundary of a bucket is determined by
+		// formula base**index and the upper-boundary of a
+		// bucket is base**(index+1).  Index values are signed
+		// to account for values less than or equal to 1.
+		//
+		// Note that the width of this field is determined by
+		// the field being stated as int32 in the OTLP
+		// protocol.  The meaning of this field can be
+		// extended to wider types, however this it would
+		// would be an extremely high-resolution histogram.
+
 		// indexBase is index of the 0th position in the
-		// backing array, i.e., backing[0] is the count associated with
-		// indexBase which is in [indexStart, indexEnd]
+		// backing array, i.e., backing[0] is the count
+		// in the bucket with index `indexBase`.
 		indexBase int32
 
 		// indexStart is the smallest index value represented
@@ -97,16 +113,23 @@ type (
 	bucketsBacking interface {
 		// size returns the physical size of the backing
 		// array, which is >= buckets.Len() the number allocated.
+		//
+		// Note this is logically an unsigned quantity,
+		// however it creates fewer type conversions in the
+		// code with this as int32, because: (a) this is not
+		// allowed to grow to outside the range of a signed
+		// int32, and (b) this is frequently involved in
+		// arithmetic with signed index values.
 		size() int32
-		// growTo grows a backing array and copies old enties
+		// growTo grows a backing array and copies old entries
 		// into their correct new positions.
 		growTo(newSize, oldPositiveLimit, newPositiveLimit int32)
 		// reverse reverse the items in a backing array in the
 		// range [from, limit).
 		reverse(from, limit int32)
-		// moveCount empies the count from a bucket, for
+		// emptyBucket empties the count from a bucket, for
 		// moving into another.
-		moveCount(src int32) uint64
+		emptyBucket(src int32) uint64
 		// tryIncrement increments a bucket by `incr`, returns
 		// false if the result would overflow the current
 		// backing width.
@@ -125,10 +148,10 @@ type (
 		high int32
 	}
 
-	// Int64 is an integer histogram.
+	// Int64 is an integer-valued histogram.
 	Int64 = Histogram[int64]
 
-	// Float64 is an integer histogram.
+	// Float64 is a float64-valued histogram.
 	Float64 = Histogram[float64]
 )
 
@@ -138,8 +161,8 @@ func (h *Histogram[N]) Init(cfg Config) {
 
 	h.maxSize = cfg.maxSize
 
-	mapping, _ := newMapping(logarithm.MaxScale)
-	h.mapping = mapping
+	m, _ := newMapping(logarithm.MaxScale)
+	h.mapping = m
 }
 
 // Sum implements aggregation.Histogram.
@@ -257,8 +280,7 @@ func (h *Histogram[N]) CopyInto(dest *Histogram[N]) {
 	dest.MergeFrom(h)
 }
 
-// UpdateByIncr supports updating a histogram with a non-negative
-// increment.
+// Update supports updating a histogram with a single count.
 func (h *Histogram[N]) Update(number N) {
 	h.UpdateByIncr(number, 1)
 }
@@ -305,6 +327,9 @@ func (h *Histogram[N]) UpdateByIncr(number N, incr uint64) {
 
 // downscale subtracts `change` from the current mapping scale.
 func (h *Histogram[N]) downscale(change int32) {
+	if change == 0 {
+		return
+	}
 	if change < 0 {
 		panic(fmt.Sprint("impossible change of scale", change))
 	}
@@ -349,7 +374,7 @@ func (h *Histogram[N]) update(b *Buckets, value float64, incr uint64) {
 	}
 }
 
-// increment determines if the index lies inside the current range
+// incrementIndexBy determines if the index lies inside the current range
 // [indexStart, indexEnd] and, if not, returns the minimum size (up to
 // maxSize) will satisfy the new value.
 func (h *Histogram[N]) incrementIndexBy(b *Buckets, index int32, incr uint64) (highLow, bool) {
@@ -401,6 +426,26 @@ func (h *Histogram[N]) incrementIndexBy(b *Buckets, index int32, incr uint64) (h
 	return highLow{}, true
 }
 
+// powTwoRoundedUp computes the next largest power-of-two, which
+// ensures power-of-two slices are allocated.
+func powTwoRoundedUp(v int32) int32 {
+	// The following expression computes the least power-of-two
+	// that is >= v.  There are a number of tricky ways to
+	// do this, see https://stackoverflow.com/questions/466204/rounding-up-to-next-power-of-2
+	//
+	// One equivalent expression:
+	//
+	// v = int32(1) << (32 - bits.LeadingZeros32(uint32(v-1)))
+	v--
+	v |= v >> 1
+	v |= v >> 2
+	v |= v >> 4
+	v |= v >> 8
+	v |= v >> 16
+	v++
+	return v
+}
+
 // grow resizes the backing array by doubling in size up to maxSize.
 // this extends the array with a bunch of zeros and copies the
 // existing counts to the same position.
@@ -408,7 +453,7 @@ func (h *Histogram[N]) grow(b *Buckets, needed int32) {
 	size := b.backing.size()
 	bias := b.indexBase - b.indexStart
 	oldPositiveLimit := size - bias
-	newSize := int32(1) << (32 - bits.LeadingZeros32(uint32(needed)))
+	newSize := powTwoRoundedUp(needed)
 	if newSize > h.maxSize {
 		newSize = h.maxSize
 	}
@@ -416,7 +461,7 @@ func (h *Histogram[N]) grow(b *Buckets, needed int32) {
 	b.backing.growTo(newSize, oldPositiveLimit, newPositiveLimit)
 }
 
-// downscale first rotates, then collapses 2**`by`-to-1 buckets
+// downscale first rotates, then collapses 2**`by`-to-1 buckets.
 func (b *Buckets) downscale(by int32) {
 	b.rotate()
 
@@ -467,7 +512,7 @@ func (b *Buckets) relocateBucket(dest, src int32) {
 		return
 	}
 
-	b.incrementBucket(dest, b.backing.moveCount(src))
+	b.incrementBucket(dest, b.backing.emptyBucket(src))
 }
 
 // incrementBucket increments the backing array index by `incr`.
@@ -578,7 +623,7 @@ func (h *highLow) with(o highLow) highLow {
 	}
 }
 
-// empty indicates whether there are any values in a highLow
+// empty indicates whether there are any values in a highLow.
 func (h *highLow) empty() bool {
 	return h.low > h.high
 }
@@ -630,7 +675,7 @@ func (b *bucketsVarwidth[N]) reverse(from, limit int32) {
 	}
 }
 
-func (b *bucketsVarwidth[N]) moveCount(src int32) uint64 {
+func (b *bucketsVarwidth[N]) emptyBucket(src int32) uint64 {
 	tmp := b.counts[src]
 	b.counts[src] = 0
 	return uint64(tmp)

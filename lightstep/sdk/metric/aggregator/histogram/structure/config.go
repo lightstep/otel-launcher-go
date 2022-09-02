@@ -21,7 +21,7 @@ import "fmt"
 // OpenTelemetry--yields a maximum relative error of less than 5% for
 // data with contrast 10**5 (e.g., latencies in the range 1ms to 100s).
 // See the derivation here:
-// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/sdk.md#exponential-histogram-aggregation
+// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/sdk.md#exponential-bucket-histogram-aggregation
 const DefaultMaxSize int32 = 160
 
 // MinSize is the smallest reasonable configuration, which is small
@@ -29,7 +29,8 @@ const DefaultMaxSize int32 = 160
 // MinScale.
 const MinSize = 2
 
-// MaximumMaxSize is an arbitrary limit.
+// MaximumMaxSize is an arbitrary limit meant to limit accidental use
+// of giant histograms.
 const MaximumMaxSize = 16384
 
 // Config contains configuration for exponential histogram creation.
@@ -43,7 +44,8 @@ type Option interface {
 	apply(Config) Config
 }
 
-// WithMaxSize sets
+// WithMaxSize sets the maximum size of each range (positive and/or
+// negative) in the histogram.
 func WithMaxSize(size int32) Option {
 	return maxSize(size)
 }
@@ -73,7 +75,7 @@ func (c Config) Valid() bool {
 	return err == nil
 }
 
-// Validate returns the nearest valid Config object to th einput and a
+// Validate returns the nearest valid Config object to the input and a
 // boolean indicating whether the the input was a valid
 // configurations.
 func (c Config) Validate() (Config, error) {

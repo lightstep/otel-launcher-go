@@ -11,7 +11,7 @@ require (
 	go.opentelemetry.io/otel v1.9.0
 	go.opentelemetry.io/otel/metric v0.31.0
 	go.opentelemetry.io/otel/sdk v1.9.0
-	go.opentelemetry.io/otel/sdk/metric v0.31.0
+	go.opentelemetry.io/otel/sdk/metric v0.31.1-0.20220826135333-55b49c407e07
 	go.opentelemetry.io/proto/otlp v0.18.0
 	go.uber.org/multierr v1.8.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c

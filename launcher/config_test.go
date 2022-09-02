@@ -379,7 +379,7 @@ func (suite *testSuite) TestDefaultConfig() {
 		LogLevel:                            "info",
 		Propagators:                         []string{"b3"},
 		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		UseLightstepMetricsSDK:              false,
+		UseLightstepMetricsSDK:              true,
 		logger:                              &suite.testLogger,
 		errorHandler:                        &suite.testErrorHandler,
 	}

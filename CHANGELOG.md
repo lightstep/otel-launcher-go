@@ -8,19 +8,43 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.10.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.10.1) - 2022-08-29
+
+- Revert the default change of temporality to "cumulative" from #258.
+  New users are recommended to configure
+  `WithMetricExporterTemporalityPreference("stateless")` temporality
+  preference if possible.  [#261](https://github.com/lightstep/otel-launcher-go/pull/261)
+
+## [1.10.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.10.0) - 2022-08-28
+
+This version was retracted because of the change of temporality preference.
+
 ### 🧰 Bug fixes 🧰
 
 - Partial error handling: avoid printing spurious messages when there is no error. [#247](https://github.com/lightstep/otel-launcher-go/pull/247)
 
 ### Changed
 
-- Histogram instruments now select the explicit-boundary histogram for
+We have intentionally combined a number of potentially breaking
+changes into this release,
+
+- 🛑 [BREAKING] Histogram instruments now select the explicit-boundary histogram for
   the otel-go SDK, which is a breaking change for Lightstep users, but
   as the Lightstep SDK is using exopnential histograms this is the
   matching default which allows upgrade and downgrade between these
   SDKs.  Users who encounter errors related to histogram instruments
   (e.g,. `process.runtime.go.gc.pause_ns`) please contact a Lightstep
   representative. [#249](https://github.com/lightstep/otel-launcher-go/pull/249)
+- Exponential histogram changes boundary inclusivity from lower-inclusive to
+  upper-inclusive. This is defined as a non-breaking change because implementations
+  have not required exactness.  With this change, exact powers-of-two are
+  treated as exact special cases.  [#254](https://github.com/lightstep/otel-launcher-go/pull/254)
+- Lightstep metrics SDK is enabled by default.  We are now confident in this
+  SDK even as we have discovered new issues with the old one. [#258](https://github.com/lightstep/otel-launcher-go/pull/258)
+- 🛑 [BREAKING] Stateless temporality preference is used by default; Counter and
+  Histogram instruments will begin reporting with delta temporality.  To avoid
+  repeated breakage.  This is especially important for exponential histogram
+  data quality. [#258](https://github.com/lightstep/otel-launcher-go/pull/258)
 
 ## [1.9.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.9.0) - 2022-08-04
 

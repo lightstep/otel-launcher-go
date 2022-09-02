@@ -3,8 +3,8 @@ module github.com/lightstep/otel-launcher-go
 go 1.18
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.9.0
-	github.com/lightstep/otel-launcher-go/pipelines v1.9.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.10.1
+	github.com/lightstep/otel-launcher-go/pipelines v1.10.1
 	github.com/sethvargo/go-envconfig v0.8.2
 	github.com/stretchr/testify v1.8.0
 	go.opentelemetry.io/otel v1.9.0
@@ -39,7 +39,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.31.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.9.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.9.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v0.31.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v0.31.1-0.20220826135333-55b49c407e07 // indirect
 	go.opentelemetry.io/proto/otlp v0.18.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
@@ -55,3 +55,8 @@ require (
 replace github.com/lightstep/otel-launcher-go/pipelines => ./pipelines
 
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/metric => ./lightstep/sdk/metric
+
+// The 1.10.0 release included an unneccessary breaking change of
+// default temporality preference; use 1.10.1 instead or consider
+// upgrading to a 2.x release.
+retract v1.10.0

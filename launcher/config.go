@@ -217,7 +217,7 @@ type Config struct {
 	LogLevel                            string            `env:"OTEL_LOG_LEVEL,default=info"`
 	Propagators                         []string          `env:"OTEL_PROPAGATORS,default=b3"`
 	MetricReportingPeriod               string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
-	UseLightstepMetricsSDK              bool              `env:"LS_METRICS_SDK,default=false"`
+	UseLightstepMetricsSDK              bool              `env:"LS_METRICS_SDK,default=true"`
 	ResourceAttributes                  map[string]string
 	Resource                            *resource.Resource
 	logger                              Logger
