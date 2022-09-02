@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"sync"
-	"time"
 
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/mem"
@@ -33,9 +32,6 @@ import (
 	"go.opentelemetry.io/otel/metric/instrument/asyncint64"
 	"go.opentelemetry.io/otel/metric/unit"
 )
-
-// processStartTime should be initialized before the first GC, ideally.
-var processStartTime = time.Now()
 
 // Host reports the work-in-progress conventional host metrics specified by OpenTelemetry.
 type host struct {
