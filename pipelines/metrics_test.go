@@ -48,7 +48,7 @@ func newTLSConfig() *tls.Config {
 	}
 }
 
-func testInsecureMetrics(t *testing.T, lightstepSDK bool) {
+func testInsecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 	var errors []error
 	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
 		errors = append(errors, err)
@@ -68,6 +68,7 @@ func testInsecureMetrics(t *testing.T, lightstepSDK bool) {
 			attribute.String("test-r1", "test-v1"),
 		),
 		ReportingPeriod:        "24h",
+		MetricsBuiltinsEnabled: builtins,
 		UseLightstepMetricsSDK: lightstepSDK,
 	})
 	assert.NoError(t, err)
@@ -90,11 +91,17 @@ func testInsecureMetrics(t *testing.T, lightstepSDK bool) {
 
 	require.Equal(t, []string{"test-value"}, server.MetricsMDs()[0]["test-header"])
 
+	if builtins {
+		require.Contains(t, string(txt), "runtime.uptime")
+	} else {
+		require.NotContains(t, string(txt), "runtime.uptime")
+	}
+
 	// There should be no partial errors reported.
 	require.Equal(t, 0, len(errors))
 }
 
-func testSecureMetrics(t *testing.T, lightstepSDK bool) {
+func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 	server := test.NewServer()
 	defer server.Stop()
 
@@ -109,6 +116,7 @@ func testSecureMetrics(t *testing.T, lightstepSDK bool) {
 		),
 		ReportingPeriod:        "24h",
 		Credentials:            credentials.NewTLS(newTLSConfig()),
+		MetricsBuiltinsEnabled: builtins,
 		UseLightstepMetricsSDK: lightstepSDK,
 	})
 	assert.NoError(t, err)
@@ -129,21 +137,43 @@ func testSecureMetrics(t *testing.T, lightstepSDK bool) {
 	require.Contains(t, string(txt), "test-v1")
 	require.Contains(t, string(txt), "test-library")
 
+	if builtins {
+		require.Contains(t, string(txt), "runtime.uptime")
+	} else {
+		require.NotContains(t, string(txt), "runtime.uptime")
+	}
+
 	require.Equal(t, []string{"test-value"}, server.MetricsMDs()[0]["test-header"])
 }
 
 func TestSecureMetricsAltSDK(t *testing.T) {
-	testSecureMetrics(t, true)
+	testSecureMetrics(t, true, true)
 }
 
 func TestSecureMetricsOldSDK(t *testing.T) {
-	testSecureMetrics(t, false)
+	testSecureMetrics(t, false, true)
 }
 
 func TestInsecureMetricsAltSDK(t *testing.T) {
-	testInsecureMetrics(t, true)
+	testInsecureMetrics(t, true, true)
 }
 
 func TestInsecureMetricsOldSDK(t *testing.T) {
-	testInsecureMetrics(t, false)
+	testInsecureMetrics(t, false, true)
+}
+
+func TestSecureMetricsAltSDKNoBuiltins(t *testing.T) {
+	testSecureMetrics(t, true, false)
+}
+
+func TestSecureMetricsOldSDKNoBuiltins(t *testing.T) {
+	testSecureMetrics(t, false, false)
+}
+
+func TestInsecureMetricsAltSDKNoBuiltins(t *testing.T) {
+	testInsecureMetrics(t, true, false)
+}
+
+func TestInsecureMetricsOldSDKNoBuiltins(t *testing.T) {
+	testInsecureMetrics(t, false, false)
 }

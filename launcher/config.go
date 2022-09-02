@@ -150,10 +150,18 @@ func WithMetricExporterTemporalityPreference(prefName string) Option {
 	}
 }
 
-// WithMetricEnabled configures whether metrics should be enabled
+// WithMetricEnabled configures whether metrics should be enabled.
 func WithMetricsEnabled(enabled bool) Option {
 	return func(c *Config) {
 		c.MetricsEnabled = enabled
+	}
+}
+
+// WithMetricBuiltinsEnabled configures whether builtin metrics should
+// be enabled.  This has no effect when MetricsEnabled is false.
+func WithMetricsBuiltinsEnabled(builtinsEnabled bool) Option {
+	return func(c *Config) {
+		c.MetricsBuiltinsEnabled = builtinsEnabled
 	}
 }
 
@@ -214,6 +222,7 @@ type Config struct {
 	MetricExporterEndpointInsecure      bool              `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
 	MetricExporterTemporalityPreference string            `env:"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE,default=cumulative"`
 	MetricsEnabled                      bool              `env:"LS_METRICS_ENABLED,default=true"`
+	MetricsBuiltinsEnabled              bool              `env:"LS_METRICS_BUILTINS_ENABLED,default=true"`
 	LogLevel                            string            `env:"OTEL_LOG_LEVEL,default=info"`
 	Propagators                         []string          `env:"OTEL_PROPAGATORS,default=b3"`
 	MetricReportingPeriod               string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
@@ -386,6 +395,7 @@ func setupMetrics(c Config) (func() error, error) {
 		Resource:               c.Resource,
 		ReportingPeriod:        c.MetricReportingPeriod,
 		TemporalityPreference:  c.MetricExporterTemporalityPreference,
+		MetricsBuiltinsEnabled: c.MetricsBuiltinsEnabled,
 		UseLightstepMetricsSDK: c.UseLightstepMetricsSDK,
 	})
 }

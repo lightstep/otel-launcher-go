@@ -10,7 +10,16 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
-- Proposed replacement for go-contrib instrumentation/runtime added as lightstep/instrumentation/runtime. [#267](https://github.com/lightstep/otel-launcher-go/pull/267)
+- Add `WithMetricsBuiltinsEnabled()` option and environment variable
+  `LS_METRICS_BUILTINS_ENABLED`, which defaults to true.  When metrics
+  builtins are enabled,
+  [runtime](https://github.com/open-telemetry/opentelemetry-go-contrib/tree/main/instrumentation/runtime)
+  and
+  [host](https://github.com/open-telemetry/opentelemetry-go-contrib/tree/main/instrumentation/host)
+  metrics instrumentation will be reported automatically.
+  [#265](https://github.com/lightstep/otel-launcher-go/pull/265)
+- Proposed replacement for go-contrib instrumentation/runtime added as lightstep/instrumentation/runtime. 
+  [#267](https://github.com/lightstep/otel-launcher-go/pull/267)
 
 ## [1.10.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.10.1) - 2022-08-29
 
