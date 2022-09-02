@@ -157,7 +157,7 @@ func TestProcessGCCPUTime(t *testing.T) {
 		for start := time.Now(); time.Since(start) < time.Second/16; {
 			garbage = append(garbage, struct{}{})
 		}
-		garbage = nil
+		require.Less(t, 0, len(garbage))
 		runtime.GC()
 
 		require.NoError(t, exp.Collect(ctx))
