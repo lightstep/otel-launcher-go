@@ -29,7 +29,7 @@ import (
 // prefix is mandatory for this library, however the "go." part is not.
 const expectPrefix = "process.runtime.go."
 
-var expectLib = metrictest.Library{
+var expectLib = metrictest.Scope{
 	InstrumentationName:    "otel-launcher-go/runtime",
 	InstrumentationVersion: "",
 	SchemaURL:              "",

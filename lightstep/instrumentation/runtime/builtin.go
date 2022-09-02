@@ -164,7 +164,7 @@ func (r *builtinRuntime) register() error {
 
 		// Remove any ".total" suffix, this is redundant for Prometheus.
 		var totalAttrVal string
-		for totalize, _ := range totals {
+		for totalize := range totals {
 			if strings.HasPrefix(n, totalize) {
 				// Units is unchanged.
 				// Name becomes the overall prefix.
