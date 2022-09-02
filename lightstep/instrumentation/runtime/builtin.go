@@ -20,8 +20,6 @@ import (
 	"runtime/metrics"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
-
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
@@ -147,7 +145,6 @@ func (r *builtinRuntime) register() error {
 	var instruments []instrument.Asynchronous
 	var totalAttrs [][]attribute.KeyValue
 
-	var rerr error
 	for _, m := range all {
 		n, statedUnits := toName(m.Name)
 
@@ -234,7 +231,7 @@ func (r *builtinRuntime) register() error {
 			}
 		}
 		if err != nil {
-			rerr = multierror.Append(rerr, err)
+			return err
 		}
 
 		samp := metrics.Sample{
@@ -270,7 +267,7 @@ func (r *builtinRuntime) register() error {
 			}
 		}
 	}); err != nil {
-		rerr = multierror.Append(rerr, err)
+		return err
 	}
-	return rerr
+	return nil
 }

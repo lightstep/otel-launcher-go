@@ -3,7 +3,6 @@ module github.com/lightstep/otel-launcher-go
 go 1.18
 
 require (
-	github.com/hashicorp/go-multierror v1.1.1
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.10.1
 	github.com/lightstep/otel-launcher-go/pipelines v1.10.1
 	github.com/sethvargo/go-envconfig v0.8.2
@@ -24,7 +23,6 @@ require (
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
-	github.com/hashicorp/errwrap v1.0.0 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
