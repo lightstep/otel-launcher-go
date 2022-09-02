@@ -16,9 +16,11 @@ package aggregator // import "github.com/lightstep/otel-launcher-go/lightstep/sd
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	histostruct "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/structure"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/doevery"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
@@ -39,12 +41,16 @@ func RangeTest[N number.Any, Traits number.Traits[N]](num N, desc sdkinstrument.
 	var traits Traits
 
 	if traits.IsInf(num) {
-		otel.Handle(fmt.Errorf("%s: %w", desc.Name, ErrInfInput))
+		doevery.TimePeriod(30*time.Second, func() {
+			otel.Handle(fmt.Errorf("%s: %w", desc.Name, ErrInfInput))
+		})
 		return false
 	}
 
 	if traits.IsNaN(num) {
-		otel.Handle(fmt.Errorf("%s: %w", desc.Name, ErrNaNInput))
+		doevery.TimePeriod(30*time.Second, func() {
+			otel.Handle(fmt.Errorf("%s: %w", desc.Name, ErrNaNInput))
+		})
 		return false
 	}
 
@@ -53,7 +59,9 @@ func RangeTest[N number.Any, Traits number.Traits[N]](num N, desc sdkinstrument.
 	case sdkinstrument.SyncCounter,
 		sdkinstrument.SyncHistogram:
 		if num < 0 {
-			otel.Handle(fmt.Errorf("%s: %w", desc.Name, ErrNegativeInput))
+			doevery.TimePeriod(30*time.Second, func() {
+				otel.Handle(fmt.Errorf("%s: %w", desc.Name, ErrNegativeInput))
+			})
 			return false
 		}
 	}
