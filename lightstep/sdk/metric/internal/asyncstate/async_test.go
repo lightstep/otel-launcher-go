@@ -405,11 +405,18 @@ func TestOutOfRangeValues(t *testing.T) {
 	// one per class.
 	require.LessOrEqual(t, 2, len(*otelErrs))
 
+	haveNaN := false
+	haveInf := false
 	for _, err := range *otelErrs {
 		isNaN := errors.Is(err, aggregator.ErrNaNInput)
 		isInf := errors.Is(err, aggregator.ErrInfInput)
 
 		require.True(t, isNaN || isInf)
 		require.True(t, strings.HasPrefix(err.Error(), "testPattern"))
+
+		haveNaN = haveNaN || isNaN
+		haveInf = haveInf || isInf
 	}
+	require.True(t, haveNaN)
+	require.True(t, haveInf)
 }
