@@ -8,7 +8,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+### Added
+
+- Proposed replacement for go-contrib instrumentation/host added as lightstep/instrumentation/hostprocess. [#268](https://github.com/lightstep/otel-launcher-go/pull/268)
+
 ## [1.10.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.10.1) - 2022-08-29
+
+### Changed
 
 - Revert the default change of temporality to "cumulative" from #258.
   New users are recommended to configure
