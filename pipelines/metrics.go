@@ -116,12 +116,14 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 		}
 	}
 
-	if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(provider)); err != nil {
-		return nil, fmt.Errorf("failed to start runtime metrics: %v", err)
-	}
+	if c.MetricsBuiltinsEnabled {
+		if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(provider)); err != nil {
+			return nil, fmt.Errorf("failed to start runtime metrics: %v", err)
+		}
 
-	if err = hostMetrics.Start(hostMetrics.WithMeterProvider(provider)); err != nil {
-		return nil, fmt.Errorf("failed to start host metrics: %v", err)
+		if err = hostMetrics.Start(hostMetrics.WithMeterProvider(provider)); err != nil {
+			return nil, fmt.Errorf("failed to start host metrics: %v", err)
+		}
 	}
 
 	metricglobal.SetMeterProvider(provider)

@@ -375,6 +375,7 @@ func (suite *testSuite) TestDefaultConfig() {
 		MetricExporterEndpointInsecure:      false,
 		MetricReportingPeriod:               "30s",
 		MetricsEnabled:                      true,
+		MetricsBuiltinsEnabled:              true,
 		MetricExporterTemporalityPreference: "cumulative",
 		LogLevel:                            "info",
 		Propagators:                         []string{"b3"},
@@ -676,6 +677,7 @@ func setEnvironment() {
 	os.Setenv("OTEL_RESOURCE_ATTRIBUTES", "service.name=test-service-name-b")
 	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE", "delta")
 	os.Setenv("LS_METRICS_ENABLED", "false")
+	os.Setenv("LS_METRICS_BUILTINS_ENABLED", "false")
 	os.Setenv("LS_METRICS_SDK", "true")
 }
 
@@ -694,6 +696,7 @@ func unsetEnvironment() {
 		"OTEL_EXPORTER_OTLP_METRIC_PERIOD",
 		"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE",
 		"LS_METRICS_ENABLED",
+		"LS_METRICS_BUILTINS_ENABLED",
 		"LS_METRICS_SDK",
 	}
 	for _, envvar := range vars {

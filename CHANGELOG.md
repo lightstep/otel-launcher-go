@@ -10,6 +10,21 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Added
 
+- Add `WithMetricsBuiltinsEnabled()` option and environment variable
+  `LS_METRICS_BUILTINS_ENABLED`, which defaults to true.  When metrics
+  builtins are enabled,
+  [runtime](https://github.com/open-telemetry/opentelemetry-go-contrib/tree/main/instrumentation/runtime)
+  and
+  [host](https://github.com/open-telemetry/opentelemetry-go-contrib/tree/main/instrumentation/host)
+  metrics instrumentation will be reported automatically.
+  [#265](https://github.com/lightstep/otel-launcher-go/pull/265)
+- Proposed replacement for go-contrib instrumentation/runtime added as lightstep/instrumentation/runtime.
+  [#267](https://github.com/lightstep/otel-launcher-go/pull/267)
+- Avoid repetitive calls to `otel.Handle()` with error conditions
+  caused by out-of-range metrics input values, including NaN, Inf, and
+  in some cases negative values.  These will be handled no more than
+  once per 30 seconds per condition.
+  [#272](https://github.com/lightstep/otel-launcher-go/pull/272)
 - Reduced replacement for go-contrib instrumentation/host added as
   lightstep/instrumentation/host; same code but removes process metrics
   [#268](https://github.com/lightstep/otel-launcher-go/pull/268)
