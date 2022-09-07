@@ -25,8 +25,13 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   in some cases negative values.  These will be handled no more than
   once per 30 seconds per condition.
   [#272](https://github.com/lightstep/otel-launcher-go/pull/272)
+- Reduced replacement for go-contrib instrumentation/host added as
+  lightstep/instrumentation/host; same code but removes process metrics
+  [#268](https://github.com/lightstep/otel-launcher-go/pull/268)
 
 ## [1.10.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.10.1) - 2022-08-29
+
+### Changed
 
 - Revert the default change of temporality to "cumulative" from #258.
   New users are recommended to configure
