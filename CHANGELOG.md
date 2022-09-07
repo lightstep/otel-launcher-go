@@ -25,6 +25,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   in some cases negative values.  These will be handled no more than
   once per 30 seconds per condition.
   [#272](https://github.com/lightstep/otel-launcher-go/pull/272)
+- New "cputime" instrumentation package combines several related timing metrics,
+  process.cpu.time, process.uptime, and process.runtime.go.gc.cpu.time [#269](https://github.com/lightstep/otel-launcher-go/pull/269)
 - Reduced replacement for go-contrib instrumentation/host added as
   lightstep/instrumentation/host; same code but removes process metrics
   [#268](https://github.com/lightstep/otel-launcher-go/pull/268)
