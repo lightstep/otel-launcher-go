@@ -16,12 +16,14 @@ package syncstate
 
 import (
 	"context"
+	"errors"
 	"math"
 	"math/rand"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
@@ -329,6 +331,8 @@ func TestSyncStateFullNoopInstrument(t *testing.T) {
 }
 
 func TestOutOfRangeValues(t *testing.T) {
+	otelErrs := test.OTelErrors()
+
 	for _, desc := range []sdkinstrument.Descriptor{
 		test.Descriptor("cf", sdkinstrument.SyncCounter, number.Float64Kind),
 		test.Descriptor("uf", sdkinstrument.SyncUpDownCounter, number.Float64Kind),
@@ -392,6 +396,29 @@ func TestOutOfRangeValues(t *testing.T) {
 			),
 		)
 	}
+
+	// Errors are rate limited, but this is the only test in this
+	// package that uses invalid values.  We should have at least
+	// one per class.
+	require.LessOrEqual(t, 3, len(*otelErrs))
+
+	haveNaN := false
+	haveInf := false
+	haveNeg := false
+	for _, err := range *otelErrs {
+		isNaN := errors.Is(err, aggregator.ErrNaNInput)
+		isInf := errors.Is(err, aggregator.ErrInfInput)
+		isNeg := errors.Is(err, aggregator.ErrNegativeInput)
+
+		require.True(t, isNaN || isInf || isNeg)
+
+		haveNaN = haveNaN || isNaN
+		haveInf = haveInf || isInf
+		haveNeg = haveNeg || isNeg
+	}
+	require.True(t, haveNaN)
+	require.True(t, haveInf)
+	require.True(t, haveNeg)
 }
 
 func TestSyncGaugeDeltaInstrument(t *testing.T) {
