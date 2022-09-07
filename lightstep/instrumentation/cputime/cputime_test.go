@@ -132,7 +132,7 @@ func TestProcessGCCPUTime(t *testing.T) {
 	initialStime := getMetric(exp, "process.cpu.time", AttributeCPUTimeSystem[0])
 	initialGCtime := getMetric(exp, "process.runtime.go.gc.cpu.time", attribute.KeyValue{})
 
-	// Make garabge
+	// Make garbage
 	for i := 0; i < 2; i++ {
 		var garbage []struct{}
 		for start := time.Now(); time.Since(start) < time.Second/16; {
