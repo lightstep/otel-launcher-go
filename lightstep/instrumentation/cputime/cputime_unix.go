@@ -17,6 +17,7 @@
 package cputime // import "github.com/lightstep/otel-launcher-go/lightstep/instrumentation/cputime"
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"runtime"
@@ -24,13 +25,30 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
 )
+
+// cputime reports the work-in-progress conventional cputime metrics specified by OpenTelemetry.
+type cputime struct {
+	meter metric.Meter
+}
+
+func newCputime(c config) (*cputime, error) {
+	// a trial, just to see if we get errors
+	var ru syscall.Rusage
+	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &ru); err != nil {
+		return nil, fmt.Errorf("cannot getrusage: %w", err)
+	}
+	return &cputime{
+		meter: c.MeterProvider.Meter("otel_launcher_go/cputime"),
+	}, nil
+}
 
 // getProcessTimes calls ReadMemStats() for GCCPUFraction because as
 // of Go-1.19 there is no such runtime metric.  User and system sum to
 // 100% of CPU time; gc is an independent, comparable metric value.
 // These are correlated with uptime.
-func getProcessTimes() (userSeconds, systemSeconds, gcSeconds, uptimeSeconds float64) {
+func (_ *cputime) getProcessTimes(ctx context.Context) (userSeconds, systemSeconds, gcSeconds, uptimeSeconds float64) {
 	// Would really be better if runtime/metrics exposed this,
 	// making an expensive call for a single field that is not
 	// exposed via ReadMemStats().

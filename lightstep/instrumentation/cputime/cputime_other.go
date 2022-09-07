@@ -17,20 +17,41 @@
 package cputime // import "github.com/lightstep/otel-launcher-go/lightstep/instrumentation/cputime"
 
 import (
+	"context"
 	"fmt"
 	"math"
+	"os"
 	"runtime"
-	"syscall"
 	"time"
 
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric"
+
+	"github.com/shirou/gopsutil/v3/process"
 )
+
+// cputime reports the work-in-progress conventional cputime metrics specified by OpenTelemetry.
+type cputime struct {
+	meter    metric.Meter
+	selfProc *process.Process
+}
+
+func newCputime(c config) (*cputime, error) {
+	selfProc, err := process.NewProcess(int32(os.Getpid()))
+	if err != nil {
+		return nil, err
+	}
+	return &cputime{
+		meter:    c.MeterProvider.Meter("otel_launcher_go/cputime"),
+		selfProc: selfProc,
+	}, nil
+}
 
 // getProcessTimes calls ReadMemStats() for GCCPUFraction because as
 // of Go-1.19 there is no such runtime metric.  User and system sum to
 // 100% of CPU time; gc is an independent, comparable metric value.
 // These are correlated with uptime.
-func getProcessTimes() (userSeconds, systemSeconds, gcSeconds, uptimeSeconds float64) {
+func (c *cputime) getProcessTimes(ctx context.Context) (userSeconds, systemSeconds, gcSeconds, uptimeSeconds float64) {
 	// Would really be better if runtime/metrics exposed this,
 	// making an expensive call for a single field that is not
 	// exposed via ReadMemStats().
@@ -42,18 +63,15 @@ func getProcessTimes() (userSeconds, systemSeconds, gcSeconds, uptimeSeconds flo
 	uptimeSeconds = time.Since(processStartTime).Seconds()
 	gcSeconds = memStats.GCCPUFraction * uptimeSeconds * gomaxprocs
 
-	var ru syscall.Rusage
-	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &ru); err != nil {
+	processTimes, err := c.selfProc.TimesWithContext(ctx)
+	if err != nil {
 		userSeconds = math.NaN()
 		systemSeconds = math.NaN()
-		otel.Handle(fmt.Errorf("getrusage: %w", err))
+		otel.Handle(fmt.Errorf("could not find this process: %w", err))
 		return
 	}
 
-	utime := time.Duration(ru.Utime.Sec)*time.Second + time.Duration(ru.Utime.Usec)*time.Microsecond
-	stime := time.Duration(ru.Stime.Sec)*time.Second + time.Duration(ru.Stime.Usec)*time.Microsecond
-
-	userSeconds = utime.Seconds()
-	systemSeconds = stime.Seconds()
+	userSeconds = processTimes.User
+	systemSeconds = processTimes.System
 	return
 }

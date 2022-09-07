@@ -28,11 +28,6 @@ import (
 // processStartTime should be initialized before the first GC, ideally.
 var processStartTime = time.Now()
 
-// cputime reports the work-in-progress conventional cputime metrics specified by OpenTelemetry.
-type cputime struct {
-	meter metric.Meter
-}
-
 // config contains optional settings for reporting host metrics.
 type config struct {
 	// MeterProvider sets the metric.MeterProvider.  If nil, the global
@@ -85,14 +80,11 @@ func Start(opts ...Option) error {
 	if cfg.MeterProvider == nil {
 		cfg.MeterProvider = global.MeterProvider()
 	}
-	c := newCputime(cfg)
-	return c.register()
-}
-
-func newCputime(c config) *cputime {
-	return &cputime{
-		meter: c.MeterProvider.Meter("otel_launcher_go/cputime"),
+	c, err := newCputime(cfg)
+	if err != nil {
+		return err
 	}
+	return c.register()
 }
 
 func (c *cputime) register() error {
@@ -132,14 +124,14 @@ func (c *cputime) register() error {
 		return err
 	}
 
-	err = c.meter.RegisterCallback(
+	return c.meter.RegisterCallback(
 		[]instrument.Asynchronous{
 			processCPUTime,
 			processUptime,
 			processGCCPUTime,
 		},
 		func(ctx context.Context) {
-			processUser, processSystem, processGC, uptime := getProcessTimes()
+			processUser, processSystem, processGC, uptime := c.getProcessTimes(ctx)
 
 			// Uptime
 			processUptime.Observe(ctx, uptime)
@@ -150,11 +142,6 @@ func (c *cputime) register() error {
 
 			// Process GC CPU time
 			processGCCPUTime.Observe(ctx, processGC)
-		})
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+		},
+	)
 }

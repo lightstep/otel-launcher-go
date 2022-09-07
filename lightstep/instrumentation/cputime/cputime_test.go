@@ -21,7 +21,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -66,26 +65,35 @@ func TestProcessCPU(t *testing.T) {
 	err := Start(
 		WithMeterProvider(provider),
 	)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	ctx := context.Background()
+
+	// This is a second copy of the same source of information.
+	// We ultimately have to trust the information source, the
+	// test here is to be sure the information is correctly
+	// translated into metrics.
+	c, err := newCputime(config{
+		MeterProvider: provider,
+	})
+	require.NoError(t, err)
 
 	start := time.Now()
 	for time.Since(start) < time.Second {
 		// This has a mix of user and system time, so serves
 		// the purpose of advancing both process and host,
 		// user and system CPU usage.
-		_, _, _, _ = getProcessTimes()
+		_, _, _, _ = c.getProcessTimes(ctx)
 	}
 
-	beforeUser, beforeSystem, _, _ := getProcessTimes()
+	beforeUser, beforeSystem, _, _ := c.getProcessTimes(ctx)
 
 	require.NoError(t, exp.Collect(ctx))
 
 	processUser := getMetric(exp, "process.cpu.time", AttributeCPUTimeUser[0])
 	processSystem := getMetric(exp, "process.cpu.time", AttributeCPUTimeSystem[0])
 
-	afterUser, afterSystem, _, _ := getProcessTimes()
+	afterUser, afterSystem, _, _ := c.getProcessTimes(ctx)
 
 	// Validate process times:
 	// User times are in range
@@ -109,7 +117,8 @@ func TestProcessUptime(t *testing.T) {
 	}()
 
 	provider, exp := metrictest.NewTestMeterProvider()
-	c := newCputime(config{MeterProvider: provider})
+	c, err := newCputime(config{MeterProvider: provider})
+	require.NoError(t, err)
 	require.NoError(t, c.register())
 
 	require.NoError(t, exp.Collect(ctx))
@@ -122,9 +131,10 @@ func TestProcessGCCPUTime(t *testing.T) {
 	ctx := context.Background()
 
 	provider, exp := metrictest.NewTestMeterProvider()
-	c := newCputime(config{
+	c, err := newCputime(config{
 		MeterProvider: provider,
 	})
+	require.NoError(t, err)
 	require.NoError(t, c.register())
 
 	require.NoError(t, exp.Collect(ctx))
