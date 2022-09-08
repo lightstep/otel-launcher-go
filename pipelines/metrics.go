@@ -22,16 +22,23 @@ import (
 	"strings"
 	"time"
 
+	// The Lightstep SDK
 	sdkmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	otlpmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 
-	hostMetrics "go.opentelemetry.io/contrib/instrumentation/host"
-	runtimeMetrics "go.opentelemetry.io/contrib/instrumentation/runtime"
-	"go.opentelemetry.io/otel"
+	// The v1 instrumentation
+	lightstepCputime "github.com/lightstep/otel-launcher-go/lightstep/instrumentation/cputime"
+	lightstepHost "github.com/lightstep/otel-launcher-go/lightstep/instrumentation/host"
+	lightstepRuntime "github.com/lightstep/otel-launcher-go/lightstep/instrumentation/runtime"
 
+	// The v0 instrumentation
+	contribHost "go.opentelemetry.io/contrib/instrumentation/host"
+	contribRuntime "go.opentelemetry.io/contrib/instrumentation/runtime"
+
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/metric"
 	metricglobal "go.opentelemetry.io/otel/metric/global"
@@ -47,6 +54,54 @@ import (
 	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
 )
+
+func prestableHostMetrics(provider metric.MeterProvider) error {
+	return contribHost.Start(contribHost.WithMeterProvider(provider))
+}
+
+func prestableRuntimeMetrics(provider metric.MeterProvider) error {
+	return contribRuntime.Start(contribRuntime.WithMeterProvider(provider))
+}
+
+func stableHostMetrics(provider metric.MeterProvider) error {
+	return lightstepHost.Start(lightstepHost.WithMeterProvider(provider))
+}
+
+func stableRuntimeMetrics(provider metric.MeterProvider) error {
+	return lightstepRuntime.Start(lightstepRuntime.WithMeterProvider(provider))
+}
+
+func stableCputimeMetrics(provider metric.MeterProvider) error {
+	return lightstepCputime.Start(lightstepCputime.WithMeterProvider(provider))
+}
+
+type initFunc func(metric.MeterProvider) error
+
+func libraries(inits ...initFunc) []initFunc {
+	return inits
+}
+
+const prestableVersion = "prestable"
+const defaultVersion = "stable"
+
+var builtinMetricsVersions = map[string]map[string][]initFunc{
+	"all": {
+		defaultVersion:   libraries(stableHostMetrics, stableRuntimeMetrics, stableCputimeMetrics),
+		prestableVersion: libraries(prestableHostMetrics, prestableRuntimeMetrics),
+	},
+	"cputime": {
+		defaultVersion:   libraries(stableCputimeMetrics),
+		prestableVersion: libraries(),
+	},
+	"host": {
+		defaultVersion:   libraries(stableHostMetrics),
+		prestableVersion: libraries(prestableHostMetrics),
+	},
+	"runtime": {
+		defaultVersion:   libraries(stableRuntimeMetrics),
+		prestableVersion: libraries(prestableRuntimeMetrics),
+	},
+}
 
 func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 	var err error
@@ -117,12 +172,28 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 	}
 
 	if c.MetricsBuiltinsEnabled {
-		if err = runtimeMetrics.Start(runtimeMetrics.WithMeterProvider(provider)); err != nil {
-			return nil, fmt.Errorf("failed to start runtime metrics: %v", err)
-		}
+		for _, lib := range c.MetricsBuiltinLibraries {
+			name, version, _ := strings.Cut(lib, ":")
 
-		if err = hostMetrics.Start(hostMetrics.WithMeterProvider(provider)); err != nil {
-			return nil, fmt.Errorf("failed to start host metrics: %v", err)
+			if version == "" {
+				version = defaultVersion
+			}
+
+			vm, has := builtinMetricsVersions[name]
+			if !has {
+				otel.Handle(fmt.Errorf("unrecognized builtin: %q", name))
+				continue
+			}
+			fs, has := vm[version]
+			if !has {
+				otel.Handle(fmt.Errorf("unrecognized builtin version: %v: %q", name, version))
+				continue
+			}
+			for _, f := range fs {
+				if err := f(provider); err != nil {
+					otel.Handle(fmt.Errorf("failed to start %v instrumentation: %w", name, err))
+				}
+			}
 		}
 	}
 

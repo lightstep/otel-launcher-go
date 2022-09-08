@@ -8,28 +8,45 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+🛑 [BREAKING] The set of builtin, automatic metrics instrumentation
+libraries configured by the Launcher is new and improved in this
+release  To configure the behavior in Launcher versions 1.10.x and
+prior, use `WithMetricsBuiltinLibraries("all:prestable")` or set
+`LS_METRICS_BUILTIN_LIBRARIES=all:prestable`.
+
 ### Added
 
 - Add `WithMetricsBuiltinsEnabled()` option and environment variable
-  `LS_METRICS_BUILTINS_ENABLED`, which defaults to true.  When metrics
-  builtins are enabled,
+  `LS_METRICS_BUILTINS_ENABLED`, which defaults to true.
+  [#265](https://github.com/lightstep/otel-launcher-go/pull/265)
+- New replacement for go-contrib instrumentation/runtime added as lightstep/instrumentation/runtime.
+  [#267](https://github.com/lightstep/otel-launcher-go/pull/267)
+- New "cputime" instrumentation package combines several related timing metrics,
+  process.cpu.time, process.uptime, and process.runtime.go.gc.cpu.time [#269](https://github.com/lightstep/otel-launcher-go/pull/269)
+- New replacement for go-contrib instrumentation/host added as
+  lightstep/instrumentation/host; same code but removes process metrics
+  [#268](https://github.com/lightstep/otel-launcher-go/pull/268)
+- When metrics builtin libraries are enabled, the
+  `WithMetricsBuiltinLibraries()` option and environment variable
+  `LS_METRICS_BUILTIN_LIBRARIES` control which libraries are enabled.
+  By default, the libraries in
+  [`./lightstep/instrumentation`](https://github.com/lightstep/otel-launcher-go/tree/main/lightstep/instrumentation)
+  are selected as stable builtin instrumentation.  To configure the
+  former-default builtin libraries (i.e.,
   [runtime](https://github.com/open-telemetry/opentelemetry-go-contrib/tree/main/instrumentation/runtime)
   and
-  [host](https://github.com/open-telemetry/opentelemetry-go-contrib/tree/main/instrumentation/host)
-  metrics instrumentation will be reported automatically.
-  [#265](https://github.com/lightstep/otel-launcher-go/pull/265)
-- Proposed replacement for go-contrib instrumentation/runtime added as lightstep/instrumentation/runtime.
-  [#267](https://github.com/lightstep/otel-launcher-go/pull/267)
+  [host](https://github.com/open-telemetry/opentelemetry-go-contrib/tree/main/instrumentation/host))
+  use `WithMetricsBuiltinLibraries("all:prestable")` or set
+  `LS_METRICS_BUILTIN_LIBRARIES=all:prestable`.
+  [#274](https://github.com/lightstep/otel-launcher-go/pull/274)
+
+### Changed
+
 - Avoid repetitive calls to `otel.Handle()` with error conditions
   caused by out-of-range metrics input values, including NaN, Inf, and
   in some cases negative values.  These will be handled no more than
   once per 30 seconds per condition.
   [#272](https://github.com/lightstep/otel-launcher-go/pull/272)
-- New "cputime" instrumentation package combines several related timing metrics,
-  process.cpu.time, process.uptime, and process.runtime.go.gc.cpu.time [#269](https://github.com/lightstep/otel-launcher-go/pull/269)
-- Reduced replacement for go-contrib instrumentation/host added as
-  lightstep/instrumentation/host; same code but removes process metrics
-  [#268](https://github.com/lightstep/otel-launcher-go/pull/268)
 
 ## [1.10.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.10.1) - 2022-08-29
 
