@@ -37,7 +37,7 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
-	github.com/shirou/gopsutil/v3 v3.22.6 // indirect
+	github.com/shirou/gopsutil/v3 v3.22.8 // indirect
 	github.com/stretchr/testify v1.8.0
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
@@ -56,6 +56,8 @@ require (
 	google.golang.org/protobuf v1.28.1
 )
 
+require github.com/lightstep/otel-launcher-go/lightstep/instrumentation v0.0.0-00010101000000-000000000000
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
@@ -64,3 +66,5 @@ require (
 )
 
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/metric => ../lightstep/sdk/metric
+
+replace github.com/lightstep/otel-launcher-go/lightstep/instrumentation => ../lightstep/instrumentation

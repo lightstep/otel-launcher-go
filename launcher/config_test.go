@@ -376,6 +376,7 @@ func (suite *testSuite) TestDefaultConfig() {
 		MetricReportingPeriod:               "30s",
 		MetricsEnabled:                      true,
 		MetricsBuiltinsEnabled:              true,
+		MetricsBuiltinLibraries:             []string{"all:stable"},
 		MetricExporterTemporalityPreference: "cumulative",
 		LogLevel:                            "info",
 		Propagators:                         []string{"b3"},
@@ -419,6 +420,9 @@ func (suite *testSuite) TestEnvironmentVariables() {
 		Propagators:                         []string{"b3", "w3c"},
 		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
 		UseLightstepMetricsSDK:              true,
+		MetricsEnabled:                      false,
+		MetricsBuiltinsEnabled:              false,
+		MetricsBuiltinLibraries:             []string{"cputime:stable", "runtime:stable"},
 		logger:                              &suite.testLogger,
 		errorHandler:                        &suite.testErrorHandler,
 	}
@@ -445,6 +449,9 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		WithErrorHandler(&suite.testErrorHandler),
 		WithPropagators([]string{"b3"}),
 		WithLightstepMetricsSDK(false),
+		WithMetricsEnabled(true),
+		WithMetricsBuiltinsEnabled(true),
+		WithMetricsBuiltinLibraries([]string{"host:stable"}),
 	)
 
 	attributes := []attribute.KeyValue{
@@ -470,6 +477,9 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		Propagators:                         []string{"b3"},
 		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
 		UseLightstepMetricsSDK:              false,
+		MetricsEnabled:                      true,
+		MetricsBuiltinsEnabled:              true,
+		MetricsBuiltinLibraries:             []string{"host:stable"},
 		logger:                              &suite.testLogger,
 		errorHandler:                        &suite.testErrorHandler,
 	}
@@ -678,6 +688,7 @@ func setEnvironment() {
 	os.Setenv("OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE", "delta")
 	os.Setenv("LS_METRICS_ENABLED", "false")
 	os.Setenv("LS_METRICS_BUILTINS_ENABLED", "false")
+	os.Setenv("LS_METRICS_BUILTIN_LIBRARIES", "cputime:stable,runtime:stable")
 	os.Setenv("LS_METRICS_SDK", "true")
 }
 
@@ -697,6 +708,7 @@ func unsetEnvironment() {
 		"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE",
 		"LS_METRICS_ENABLED",
 		"LS_METRICS_BUILTINS_ENABLED",
+		"LS_METRICS_BUILTIN_LIBRARIES",
 		"LS_METRICS_SDK",
 	}
 	for _, envvar := range vars {
