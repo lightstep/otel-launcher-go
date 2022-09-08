@@ -8,6 +8,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+🛑 [BREAKING] The set of builtin, automatic metrics instrumentation
+libraries configured by the Launcher is new and improved in this
+release  To configure the behavior in Launcher versions 1.10.x and
+prior, use `WithMetricsBuiltinLibraries("all:prestable")` or set
+`LS_METRICS_BUILTIN_LIBRARIES=all:prestable`.
+
 ### Added
 
 - Add `WithMetricsBuiltinsEnabled()` option and environment variable
