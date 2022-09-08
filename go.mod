@@ -6,12 +6,10 @@ require (
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.10.1
 	github.com/lightstep/otel-launcher-go/pipelines v1.10.1
 	github.com/sethvargo/go-envconfig v0.8.2
-	github.com/shirou/gopsutil/v3 v3.22.6
 	github.com/stretchr/testify v1.8.0
 	go.opentelemetry.io/otel v1.9.0
 	go.opentelemetry.io/otel/metric v0.31.0
 	go.opentelemetry.io/otel/sdk v1.9.0
-	go.opentelemetry.io/otel/sdk/metric v0.31.1-0.20220826135333-55b49c407e07
 	go.opentelemetry.io/otel/trace v1.9.0
 )
 
@@ -25,9 +23,11 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v0.0.0-00010101000000-000000000000 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
+	github.com/shirou/gopsutil/v3 v3.22.8 // indirect
 	github.com/tklauser/go-sysconf v0.3.10 // indirect
 	github.com/tklauser/numcpus v0.4.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
@@ -40,6 +40,7 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.31.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.9.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.9.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v0.31.1-0.20220826135333-55b49c407e07 // indirect
 	go.opentelemetry.io/proto/otlp v0.18.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.8.0 // indirect
@@ -55,6 +56,8 @@ require (
 replace github.com/lightstep/otel-launcher-go/pipelines => ./pipelines
 
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/metric => ./lightstep/sdk/metric
+
+replace github.com/lightstep/otel-launcher-go/lightstep/instrumentation => ./lightstep/instrumentation
 
 // The 1.10.0 release included an unneccessary breaking change of
 // default temporality preference; use 1.10.1 instead or consider
