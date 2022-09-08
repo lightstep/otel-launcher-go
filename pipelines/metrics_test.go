@@ -67,9 +67,10 @@ func testInsecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 			semconv.SchemaURL,
 			attribute.String("test-r1", "test-v1"),
 		),
-		ReportingPeriod:        "24h",
-		MetricsBuiltinsEnabled: builtins,
-		UseLightstepMetricsSDK: lightstepSDK,
+		ReportingPeriod:         "24h",
+		MetricsBuiltinsEnabled:  builtins,
+		MetricsBuiltinLibraries: []string{"cputime:stable"},
+		UseLightstepMetricsSDK:  lightstepSDK,
 	})
 	assert.NoError(t, err)
 
@@ -92,9 +93,9 @@ func testInsecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 	require.Equal(t, []string{"test-value"}, server.MetricsMDs()[0]["test-header"])
 
 	if builtins {
-		require.Contains(t, string(txt), "runtime.uptime")
+		require.Contains(t, string(txt), "process.uptime")
 	} else {
-		require.NotContains(t, string(txt), "runtime.uptime")
+		require.NotContains(t, string(txt), "process.uptime")
 	}
 
 	// There should be no partial errors reported.
@@ -114,10 +115,11 @@ func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 			semconv.SchemaURL,
 			attribute.String("test-r1", "test-v1"),
 		),
-		ReportingPeriod:        "24h",
-		Credentials:            credentials.NewTLS(newTLSConfig()),
-		MetricsBuiltinsEnabled: builtins,
-		UseLightstepMetricsSDK: lightstepSDK,
+		ReportingPeriod:         "24h",
+		Credentials:             credentials.NewTLS(newTLSConfig()),
+		MetricsBuiltinsEnabled:  builtins,
+		MetricsBuiltinLibraries: []string{"cputime:stable"},
+		UseLightstepMetricsSDK:  lightstepSDK,
 	})
 	assert.NoError(t, err)
 
@@ -138,9 +140,9 @@ func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 	require.Contains(t, string(txt), "test-library")
 
 	if builtins {
-		require.Contains(t, string(txt), "runtime.uptime")
+		require.Contains(t, string(txt), "process.uptime")
 	} else {
-		require.NotContains(t, string(txt), "runtime.uptime")
+		require.NotContains(t, string(txt), "process.uptime")
 	}
 
 	require.Equal(t, []string{"test-value"}, server.MetricsMDs()[0]["test-header"])
@@ -176,4 +178,77 @@ func TestInsecureMetricsAltSDKNoBuiltins(t *testing.T) {
 
 func TestInsecureMetricsOldSDKNoBuiltins(t *testing.T) {
 	testInsecureMetrics(t, false, false)
+}
+
+func testBuiltinMetrics(t *testing.T, builtins []string, expectMetric string) {
+	server := test.NewServer()
+	defer server.Stop()
+
+	shutdown, err := NewMetricsPipeline(PipelineConfig{
+		Endpoint:                fmt.Sprintf("%s:%d", test.ServerName, server.InsecureMetricsPort),
+		Insecure:                true,
+		Headers:                 nil,
+		Resource:                resource.Empty(),
+		MetricsBuiltinsEnabled:  true,
+		MetricsBuiltinLibraries: builtins,
+		UseLightstepMetricsSDK:  true,
+	})
+	assert.NoError(t, err)
+
+	require.NoError(t, shutdown())
+
+	require.Equal(t, 0, len(server.TraceRequests()))
+
+	// Expect one request, even with no metrics reporting.
+	require.Equal(t, 1, len(server.MetricsRequests()))
+
+	txt, err := prototext.Marshal(server.MetricsRequests()[0])
+	require.NoError(t, err)
+
+	if expectMetric == "" {
+		require.Equal(t, "resource_metrics:{resource:{}}", string(txt))
+	} else {
+		require.Contains(t, string(txt), expectMetric)
+	}
+}
+
+func TestBuiltins(t *testing.T) {
+	for _, test := range []struct {
+		Builtins []string
+		Expect   string
+	}{
+		// invalid entry, valid entry still starts
+		{[]string{"invalid", "cputime"}, "process.runtime.go.gc.cpu.time"},
+		{[]string{"cputime", "invalid"}, "process.runtime.go.gc.cpu.time"},
+		{[]string{"cputime:stable"}, "process.runtime.go.gc.cpu.time"},
+
+		// invalid version: no library starts
+		{[]string{"cputime:v2"}, ""},
+
+		// empty version: success
+		{[]string{"cputime:"}, "process.uptime"},
+
+		// Old runtime library
+		{[]string{"runtime:prestable"}, "runtime.uptime"},
+
+		// New runtime library
+		{[]string{"runtime:stable"}, "process.runtime.go.gc.heap.frees.objects"},
+
+		// Old host library
+		{[]string{"host:prestable"}, "system.cpu.time"},
+
+		// New host library
+		{[]string{"host:stable"}, "system.cpu.time"},
+
+		// All libraries
+		{[]string{"all:stable"}, "system.cpu.time"},
+		{[]string{"all:stable"}, "process.uptime"},
+		{[]string{"all:stable"}, "process.runtime.go.gc.heap.frees.objects"},
+
+		// All prestable libraries
+		{[]string{"all:prestable"}, "process.cpu.time"},
+		{[]string{"all:prestable"}, "runtime.uptime"},
+	} {
+		testBuiltinMetrics(t, test.Builtins, test.Expect)
+	}
 }

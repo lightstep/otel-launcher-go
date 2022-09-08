@@ -34,6 +34,22 @@ type PipelineConfig struct {
 	// standard host and runtime metrics.
 	MetricsBuiltinsEnabled bool
 
+	// MetricsBuiltinLibraries contains strings identifying which
+	// builtin metrics libraries should be started.  The entry is
+	// a single hosrt name (e.g., "host", "cpu", "runtime")
+	// followed by an optional major version number (e.g.,
+	// "host:v0", "cpu:v0", "runtime:v0").  Short names are mapped
+	// to long names internally.
+	//
+	// Recognized names, presently:
+	//
+	//  runtime: v0 is go-contrib/instrumentation/runtime
+	//           v1 is lightstep/instrumentation/runtime
+	//  host:    v0 is go-contrib/instrumentation/host
+	//           v1 is lightstep/instrumentation/host
+	//  cputime: v1 is lightstep/instrumentation/cputime
+	MetricsBuiltinLibraries []string
+
 	// TemporalityPreference is one of "cumulative", "delta", or "stateless"
 	TemporalityPreference string
 

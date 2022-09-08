@@ -37,7 +37,7 @@
 // ----------------------------------------------------------------------
 //
 //	process.cpu.time           state=user|system
-//      process.runtime.uptime
+//      process.uptime
 //      process.runtime.go.gc.cpu.time
 //
 // See https://github.com/open-telemetry/oteps/blob/main/text/0119-standard-system-metrics.md
