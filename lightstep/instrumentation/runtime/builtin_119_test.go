@@ -28,7 +28,7 @@ var expectRuntimeMetrics = map[string]int{
 	"gc.heap.tiny.allocs":     1,
 	"gc.limiter.last-enabled": 1,
 	"gc.stack.starting-size":  1,
-	"memory.classes":          13,
+	"memory.usage":            13,
 	"sched.gomaxprocs":        1,
 	"sched.goroutines":        1,
 }
