@@ -140,9 +140,6 @@ func getTotalizedMetricName(n, u string) string {
 	}
 }
 
-// @@@ TODO: Replace "classes" with "usage", but do not replace
-// "cycles" with "usage".  Right?
-
 func (r *builtinRuntime) register() error {
 	all := r.allFunc()
 	totals := map[string]bool{}
