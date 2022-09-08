@@ -48,7 +48,7 @@
 // process.runtime.go.gc.limiter.last-enabled              {gc-cycle}    UpDownCounter[int64]
 // process.runtime.go.gc.pauses                            seconds       Histogram[float64] (**)
 // process.runtime.go.gc.stack.starting-size               bytes         UpDownCounter[int64]
-// process.runtime.go.memory.classes{class=...}            bytes         UpDownCounter[int64]
+// process.runtime.go.memory.usage{class=...}              bytes         UpDownCounter[int64]
 // process.runtime.go.sched.gomaxprocs                     {threads}     UpDownCounter[int64]
 // process.runtime.go.sched.goroutines                     {goroutines}  UpDownCounter[int64]
 // process.runtime.go.sched.latencies                      seconds       GaugeHistogram[float64] (**)

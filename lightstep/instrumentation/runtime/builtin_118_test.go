@@ -25,6 +25,6 @@ var expectRuntimeMetrics = map[string]int{
 	"gc.heap.goal":           1,
 	"gc.heap.objects":        1,
 	"gc.heap.tiny.allocs":    1,
-	"memory.classes":         13,
+	"memory.usage":           13,
 	"sched.goroutines":       1,
 }

@@ -108,16 +108,36 @@ func newBuiltinRuntime(meter metric.Meter, af allFunc, rf readFunc) *builtinRunt
 	}
 }
 
-func getAttributeName(n string) string {
+func getTotalizedAttributeName(n string) string {
 	x := strings.Split(n, ".")
 	// It's a plural, make it singular.
 	switch x[len(x)-1] {
 	case "cycles":
 		return "cycle"
-	case "classes":
+	case "usage":
 		return "class"
 	}
-	panic("unrecognized attribute name")
+	panic(fmt.Sprint("unrecognized attribute name: ", n))
+}
+
+func getTotalizedMetricName(n, u string) string {
+	if !strings.HasSuffix(n, ".classes") {
+		return n
+	}
+
+	s := n[:len(n)-len("classes")]
+
+	// Note that ".classes" is (apparently) intended as a generic
+	// suffix, while ".cycles" is an exception.
+	// The ideal name depends on what we know.
+	switch u {
+	case "bytes":
+		return s + "usage"
+	case "cpu-seconds":
+		return s + "time"
+	default:
+		panic("unrecognized metric suffix")
+	}
 }
 
 func (r *builtinRuntime) register() error {
@@ -170,7 +190,7 @@ func (r *builtinRuntime) register() error {
 				// Name becomes the overall prefix.
 				// Remember which attribute to use.
 				totalAttrVal = n[len(totalize):]
-				n = totalize[:len(totalize)-1]
+				n = getTotalizedMetricName(totalize[:len(totalize)-1], u)
 				break
 			}
 		}
@@ -244,7 +264,7 @@ func (r *builtinRuntime) register() error {
 		} else {
 			// Append a singleton list.
 			totalAttrs = append(totalAttrs, []attribute.KeyValue{
-				attribute.String(getAttributeName(n), totalAttrVal),
+				attribute.String(getTotalizedAttributeName(n), totalAttrVal),
 			})
 		}
 	}
