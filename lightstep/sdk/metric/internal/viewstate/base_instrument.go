@@ -96,22 +96,42 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) mergeDescription(d
 	}
 }
 
-func attributeFilter(viewf *attribute.Filter) attribute.Filter {
-	return func(kv attribute.KeyValue) bool {
-		if kv.Key == "" {
-			doevery.TimePeriod(time.Minute, func() {
-				otel.Handle(fmt.Errorf("use of empty attribute key, e.g., with value %q", kv.Value.Emit()))
-			})
-			return false
-		}
+// isValidAttribute supports filtering invalid attributes.  Note, this
+// should be fast, trye not to allocate!  Note: the specification is
+// somewhat ambiguous about empty strings, see
+// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/common/attribute-naming.md
+// which just says "valid Unicode sequence".
+func isValidAttribute(kv attribute.KeyValue) bool {
+	return kv.Key != ""
+}
 
-		return viewf == nil || (*viewf)(kv)
-	}
+func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) invalidAttributeFilter(kv attribute.KeyValue) bool {
+	return isValidAttribute(kv) && (metric.keysFilter == nil || (*metric.keysFilter)(kv))
 }
 
 func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) applyKeysFilter(kvs attribute.Set) attribute.Set {
-	kvs, _ = attribute.NewSetWithFiltered(kvs.ToSlice(), attributeFilter(metric.keysFilter))
-	return kvs
+	invalidFilter := false
+	for iter := kvs.Iter(); iter.Next(); {
+		kv := iter.Attribute()
+		if !isValidAttribute(kv) {
+			doevery.TimePeriod(time.Minute, func() {
+				otel.Handle(fmt.Errorf("use of empty attribute key, e.g., with value %q", kv.Value.Emit()))
+			})
+			invalidFilter = true
+			break
+		}
+	}
+
+	if !invalidFilter && metric.keysFilter == nil {
+		return kvs
+	}
+	var res attribute.Set
+	if !invalidFilter {
+		res, _ = kvs.Filter(*metric.keysFilter)
+	} else {
+		res, _ = kvs.Filter(metric.invalidAttributeFilter)
+	}
+	return res
 }
 
 func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) getOrCreateEntry(kvs attribute.Set) *storageHolder[Storage, Auxiliary] {

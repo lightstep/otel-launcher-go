@@ -1703,11 +1703,11 @@ func TestEmptyKeyFilter(t *testing.T) {
 	inst, err := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
-	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "1value")))
+	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "1value"), attribute.String("K", "V")))
 	acc1.(Updater[float64]).Update(1)
 	acc1.SnapshotAndProcess(false)
 
-	acc2 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "2value")))
+	acc2 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "2value"), attribute.String("K", "V")))
 	acc2.(Updater[float64]).Update(1)
 	acc2.SnapshotAndProcess(false)
 
@@ -1718,6 +1718,7 @@ func TestEmptyKeyFilter(t *testing.T) {
 			test.Descriptor("foo", sdkinstrument.SyncCounter, number.Float64Kind),
 			test.Point(
 				startTime, endTime, sum.NewMonotonicFloat64(2), cumulative,
+				attribute.String("K", "V"),
 			),
 		),
 	)
@@ -1739,7 +1740,7 @@ func TestEmptyKeyFilterAndView(t *testing.T) {
 	inst, err := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err)
 
-	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("a", "1"), attribute.String("", "empty")))
+	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("a", "1"), attribute.String("", "empty"), attribute.String("b", "ignored")))
 	acc1.(Updater[float64]).Update(1)
 	acc1.SnapshotAndProcess(false)
 
