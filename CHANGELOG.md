@@ -42,6 +42,8 @@ prior, use `WithMetricsBuiltinLibraries("all:prestable")` or set
 
 ### Changed
 
+- Update to OTel-Go 1.10.0.
+  [#284](https://github.com/lightstep/otel-launcher-go/pull/284)
 - Avoid repetitive calls to `otel.Handle()` with error conditions
   caused by out-of-range metrics input values, including NaN, Inf, and
   in some cases negative values.  These will be handled no more than
