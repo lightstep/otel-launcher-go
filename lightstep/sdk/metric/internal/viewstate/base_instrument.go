@@ -97,8 +97,10 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) mergeDescription(d
 }
 
 // isValidAttribute supports filtering invalid attributes.  Note, this
-// should be fast, trye not to allocate!  TODO: match the
-// specification.
+// should be fast, trye not to allocate!  Note: the specification is
+// somewhat ambiguous about empty strings, see
+// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/common/attribute-naming.md
+// which just says "valid Unicode sequence".
 func isValidAttribute(kv attribute.KeyValue) bool {
 	return kv.Key != ""
 }
