@@ -362,13 +362,10 @@ func TestOutOfRangeValues(t *testing.T) {
 	}, tt, func(ctx context.Context) {
 		c.Observe(ctx, math.NaN())
 		c.Observe(ctx, math.Inf(+1))
-		c.Observe(ctx, math.Inf(-1))
 		u.Observe(ctx, math.NaN())
 		u.Observe(ctx, math.Inf(+1))
-		u.Observe(ctx, math.Inf(-1))
 		g.Observe(ctx, math.NaN())
 		g.Observe(ctx, math.Inf(+1))
-		g.Observe(ctx, math.Inf(-1))
 	})
 
 	runFor := func(num int) {
@@ -403,15 +400,23 @@ func TestOutOfRangeValues(t *testing.T) {
 		)
 	}
 
-	// 2 readers x 3 error conditions x 3 instruments
-	require.Equal(t, 2*3*3, len(*otelErrs))
+	// Errors are rate limited, but this is the only test in this
+	// package that uses invalid values.  We should have at least
+	// one per class.
+	require.LessOrEqual(t, 2, len(*otelErrs))
 
+	haveNaN := false
+	haveInf := false
 	for _, err := range *otelErrs {
 		isNaN := errors.Is(err, aggregator.ErrNaNInput)
 		isInf := errors.Is(err, aggregator.ErrInfInput)
-		isNeg := errors.Is(err, aggregator.ErrNegativeInput)
 
-		require.True(t, isNaN || isInf || isNeg)
+		require.True(t, isNaN || isInf)
 		require.True(t, strings.HasPrefix(err.Error(), "testPattern"))
+
+		haveNaN = haveNaN || isNaN
+		haveInf = haveInf || isInf
 	}
+	require.True(t, haveNaN)
+	require.True(t, haveInf)
 }

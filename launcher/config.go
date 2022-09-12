@@ -150,10 +150,26 @@ func WithMetricExporterTemporalityPreference(prefName string) Option {
 	}
 }
 
-// WithMetricEnabled configures whether metrics should be enabled
+// WithMetricEnabled configures whether metrics should be enabled.
 func WithMetricsEnabled(enabled bool) Option {
 	return func(c *Config) {
 		c.MetricsEnabled = enabled
+	}
+}
+
+// WithMetricBuiltinsEnabled configures whether builtin metrics should
+// be enabled.  Metrics will be disabled when MetricsEnabled is false.
+func WithMetricsBuiltinsEnabled(builtinsEnabled bool) Option {
+	return func(c *Config) {
+		c.MetricsBuiltinsEnabled = builtinsEnabled
+	}
+}
+
+// WithMetricsBuiltinLibraries configures the set of builtin metrics
+// libraries that are started automatically.  When this is
+func WithMetricsBuiltinLibraries(builtinLibraries []string) Option {
+	return func(c *Config) {
+		c.MetricsBuiltinLibraries = builtinLibraries
 	}
 }
 
@@ -214,6 +230,8 @@ type Config struct {
 	MetricExporterEndpointInsecure      bool              `env:"OTEL_EXPORTER_OTLP_METRIC_INSECURE,default=false"`
 	MetricExporterTemporalityPreference string            `env:"OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE,default=cumulative"`
 	MetricsEnabled                      bool              `env:"LS_METRICS_ENABLED,default=true"`
+	MetricsBuiltinsEnabled              bool              `env:"LS_METRICS_BUILTINS_ENABLED,default=true"`
+	MetricsBuiltinLibraries             []string          `env:"LS_METRICS_BUILTIN_LIBRARIES,default=all:stable"`
 	LogLevel                            string            `env:"OTEL_LOG_LEVEL,default=info"`
 	Propagators                         []string          `env:"OTEL_PROPAGATORS,default=b3"`
 	MetricReportingPeriod               string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
@@ -380,13 +398,15 @@ func setupMetrics(c Config) (func() error, error) {
 		return nil, nil
 	}
 	return pipelines.NewMetricsPipeline(pipelines.PipelineConfig{
-		Endpoint:               c.MetricExporterEndpoint,
-		Insecure:               c.MetricExporterEndpointInsecure,
-		Headers:                c.Headers,
-		Resource:               c.Resource,
-		ReportingPeriod:        c.MetricReportingPeriod,
-		TemporalityPreference:  c.MetricExporterTemporalityPreference,
-		UseLightstepMetricsSDK: c.UseLightstepMetricsSDK,
+		Endpoint:                c.MetricExporterEndpoint,
+		Insecure:                c.MetricExporterEndpointInsecure,
+		Headers:                 c.Headers,
+		Resource:                c.Resource,
+		ReportingPeriod:         c.MetricReportingPeriod,
+		TemporalityPreference:   c.MetricExporterTemporalityPreference,
+		MetricsBuiltinsEnabled:  c.MetricsBuiltinsEnabled,
+		MetricsBuiltinLibraries: c.MetricsBuiltinLibraries,
+		UseLightstepMetricsSDK:  c.UseLightstepMetricsSDK,
 	})
 }
 
