@@ -8,7 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
-## [1.11.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.11.0) - 2022-09-08
+## [1.11.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.11.0) - 2022-09-12
 
 🛑 [BREAKING] The set of builtin, automatic metrics instrumentation
 libraries configured by the Launcher is new and improved in this
