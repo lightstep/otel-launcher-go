@@ -8,9 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.11.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.11.0) - 2022-09-12
+
 🛑 [BREAKING] The set of builtin, automatic metrics instrumentation
 libraries configured by the Launcher is new and improved in this
-release  To configure the behavior in Launcher versions 1.10.x and
+release.  To configure the behavior in Launcher versions 1.10.x and
 prior, use `WithMetricsBuiltinLibraries("all:prestable")` or set
 `LS_METRICS_BUILTIN_LIBRARIES=all:prestable`.
 
