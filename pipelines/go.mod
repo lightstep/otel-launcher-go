@@ -11,7 +11,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.33.0
 
 	// b3 and opentracing propagators
-	go.opentelemetry.io/contrib/propagators/b3 v1.9.0
+	go.opentelemetry.io/contrib/propagators/b3 v1.10.0
 	go.opentelemetry.io/contrib/propagators/ot v1.9.0
 	go.opentelemetry.io/otel v1.10.0
 
