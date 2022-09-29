@@ -1724,7 +1724,7 @@ func TestEmptyKeyFilter(t *testing.T) {
 	)
 
 	require.Equal(t, 1, len(*errs))
-	require.Equal(t, "use of empty attribute key, e.g., with value \"1value\"", (*errs)[0].Error())
+	require.Equal(t, "use of empty attribute key, e.g., metric name \"foo\" with value \"1value\"", (*errs)[0].Error())
 }
 
 // TestEmptyKeyFilterAndView ensures no empty keys are used (with a view config).
