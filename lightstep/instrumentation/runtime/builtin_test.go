@@ -63,7 +63,7 @@ func TestBuiltinRuntimeMetrics(t *testing.T) {
 		if expect[name] > 1 {
 			require.Equal(t, 1, len(rec.Attributes))
 		} else {
-			require.Equal(t, 1, expect[name])
+			require.Equal(t, 1, expect[name], "for %v", rec.InstrumentName)
 			require.Equal(t, []attribute.KeyValue(nil), rec.Attributes)
 		}
 		allNames[name]++
