@@ -12,12 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:build go1.19 && !go1.20
+//go:build go1.20
 
 package runtime
 
 var expectRuntimeMetrics = map[string]int{
 	"cgo.go-to-c-calls":       1,
+	"cpu.time":                8,
 	"gc.cycles":               2,
 	"gc.heap.allocs":          1,
 	"gc.heap.allocs.objects":  1,

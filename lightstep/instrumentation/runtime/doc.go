@@ -35,6 +35,7 @@
 // Name                                                    Unit          Instrument
 // ------------------------------------------------------------------------------------
 // process.runtime.go.cgo.go-to-c-calls                    {calls}       Counter[int64]
+// process.runtime.go.cpu.time{class=...}                  {cpu-seconds} Counter[float64]
 // process.runtime.go.gc.cycles{cycle=forced,automatic}    {gc-cycles}   Counter[int64]
 // process.runtime.go.gc.heap.allocs                       bytes (*)     Counter[int64]
 // process.runtime.go.gc.heap.allocs.objects               {objects} (*) Counter[int64]
