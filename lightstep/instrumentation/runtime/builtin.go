@@ -114,7 +114,7 @@ func getTotalizedAttributeName(n string) string {
 	switch x[len(x)-1] {
 	case "cycles":
 		return "cycle"
-	case "usage", "time":
+	case "usage":
 		return "class"
 	}
 	panic(fmt.Sprint("unrecognized attribute name: ", n))
@@ -133,10 +133,10 @@ func getTotalizedMetricName(n, u string) string {
 	switch u {
 	case "bytes":
 		return s + "usage"
-	case "{cpu-seconds}":
+	case "cpu-seconds":
 		return s + "time"
 	default:
-		panic(fmt.Sprint("unrecognized metric suffix: ", u))
+		panic("unrecognized metric suffix")
 	}
 }
 
@@ -184,18 +184,15 @@ func (r *builtinRuntime) register() error {
 
 		// Remove any ".total" suffix, this is redundant for Prometheus.
 		var totalAttrVal string
-		var totalPrefix string
 		for totalize := range totals {
-			if strings.HasPrefix(n, totalize) && len(n)-len(totalize) > len(totalAttrVal) {
+			if strings.HasPrefix(n, totalize) {
 				// Units is unchanged.
-				// Name becomes the shortest prefix.
+				// Name becomes the overall prefix.
 				// Remember which attribute to use.
 				totalAttrVal = n[len(totalize):]
-				totalPrefix = totalize
+				n = getTotalizedMetricName(totalize[:len(totalize)-1], u)
+				break
 			}
-		}
-		if totalPrefix != "" {
-			n = getTotalizedMetricName(totalPrefix[:len(totalPrefix)-1], u)
 		}
 
 		if counts[n] > 1 {
