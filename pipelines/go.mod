@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	// Lightstep-alternate metric SDK
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.11.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.11.1
 
 	// Host and runtime instrumentation
 	go.opentelemetry.io/contrib/instrumentation/host v0.33.0
@@ -56,7 +56,7 @@ require (
 	google.golang.org/protobuf v1.28.1
 )
 
-require github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.11.0
+require github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.11.1
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
