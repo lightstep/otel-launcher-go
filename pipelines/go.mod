@@ -7,7 +7,7 @@ require (
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.11.1
 
 	// Host and runtime instrumentation
-	go.opentelemetry.io/contrib/instrumentation/host v0.33.0
+	go.opentelemetry.io/contrib/instrumentation/host v0.36.1
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.33.0
 
 	// b3 and opentracing propagators
@@ -21,7 +21,7 @@ require (
 	// Standard trace SDK and gRPC OTLP exporter
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.10.0
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.10.0
-	go.opentelemetry.io/otel/metric v0.31.0
+	go.opentelemetry.io/otel/metric v0.32.1
 	go.opentelemetry.io/otel/sdk v1.10.0
 
 	// gRPC
