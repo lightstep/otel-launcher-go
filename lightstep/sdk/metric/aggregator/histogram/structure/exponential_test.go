@@ -23,9 +23,9 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping"
-	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/exponent"
-	"go.opentelemetry.io/otel/sdk/metric/aggregator/exponential/mapping/logarithm"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/mapping"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/mapping/exponent"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram/mapping/logarithm"
 )
 
 const (
