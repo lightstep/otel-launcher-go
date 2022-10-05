@@ -8,6 +8,18 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.11.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.11.0) - 2022-10-05
+
+### Bug fixes
+
+- Updates required for tests to pass with go-1.19.x.
+  [#300](https://github.com/lightstep/otel-launcher-go/pull/300)
+
+### Changed
+
+- Print the metric name responsible for empty attributes
+  [#298](https://github.com/lightstep/otel-launcher-go/pull/298)
+
 ## [1.11.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.11.0) - 2022-09-12
 
 🛑 [BREAKING] The set of builtin, automatic metrics instrumentation
