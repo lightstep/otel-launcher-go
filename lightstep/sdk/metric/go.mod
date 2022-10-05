@@ -7,7 +7,7 @@ require (
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.8
-	github.com/lightstep/go-expohisto v0.0.0-20221005212054-b3ce265ce96c
+	github.com/lightstep/go-expohisto v1.0.0
 	github.com/stretchr/testify v1.8.0
 	go.opentelemetry.io/otel v1.10.0
 	go.opentelemetry.io/otel/metric v0.31.0

@@ -61,7 +61,7 @@ require github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.11.1
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
-	github.com/lightstep/go-expohisto v0.0.0-20221005212054-b3ce265ce96c // indirect
+	github.com/lightstep/go-expohisto v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
