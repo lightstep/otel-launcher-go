@@ -333,6 +333,8 @@ func newResource(c *Config) *resource.Resource {
 		semconv.TelemetrySDKNameKey.String("launcher"),
 		semconv.TelemetrySDKLanguageGo,
 		semconv.TelemetrySDKVersionKey.String(version),
+		attribute.String("telemetry.distro.name", "lightstep"),
+		attribute.String("telemetry.distro.version", version),
 	}
 
 	if len(c.ServiceName) > 0 {
