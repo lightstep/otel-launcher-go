@@ -364,6 +364,8 @@ func (suite *testSuite) TestDefaultConfig() {
 		attribute.String("telemetry.sdk.name", "launcher"),
 		attribute.String("telemetry.sdk.language", "go"),
 		attribute.String("telemetry.sdk.version", version),
+		attribute.String("telemetry.distro.name", "lightstep"),
+		attribute.String("telemetry.distro.version", version),
 	}
 
 	expected := Config{
@@ -405,6 +407,8 @@ func (suite *testSuite) TestEnvironmentVariables() {
 		attribute.String("telemetry.sdk.name", "launcher"),
 		attribute.String("telemetry.sdk.language", "go"),
 		attribute.String("telemetry.sdk.version", version),
+		attribute.String("telemetry.distro.name", "lightstep"),
+		attribute.String("telemetry.distro.version", version),
 	}
 
 	expected := Config{
@@ -458,6 +462,8 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		attribute.String("host.name", host()),
 		attribute.String("service.name", "override-service-name"),
 		attribute.String("service.version", "override-service-version"),
+		attribute.String("telemetry.distro.name", "lightstep"),
+		attribute.String("telemetry.distro.version", version),
 		attribute.String("telemetry.sdk.name", "launcher"),
 		attribute.String("telemetry.sdk.language", "go"),
 		attribute.String("telemetry.sdk.version", version),
@@ -580,6 +586,8 @@ func (suite *testSuite) TestConfigureResourcesAttributes() {
 		attribute.String("label2", "value2"),
 		attribute.String("service.name", "test-service"),
 		attribute.String("service.version", "test-version"),
+		attribute.String("telemetry.distro.name", "lightstep"),
+		attribute.String("telemetry.distro.version", version),
 		attribute.String("telemetry.sdk.language", "go"),
 		attribute.String("telemetry.sdk.name", "launcher"),
 		attribute.String("telemetry.sdk.version", version),
@@ -596,6 +604,8 @@ func (suite *testSuite) TestConfigureResourcesAttributes() {
 		attribute.String("host.name", host()),
 		attribute.String("service.name", "test-service"),
 		attribute.String("service.version", "test-version"),
+		attribute.String("telemetry.distro.name", "lightstep"),
+		attribute.String("telemetry.distro.version", version),
 		attribute.String("telemetry.sdk.language", "go"),
 		attribute.String("telemetry.sdk.name", "launcher"),
 		attribute.String("telemetry.sdk.version", version),
@@ -612,6 +622,8 @@ func (suite *testSuite) TestConfigureResourcesAttributes() {
 		attribute.String("host.name", "host123"),
 		attribute.String("service.name", "test-service-b"),
 		attribute.String("service.version", "test-version"),
+		attribute.String("telemetry.distro.name", "lightstep"),
+		attribute.String("telemetry.distro.version", version),
 		attribute.String("telemetry.sdk.language", "go"),
 		attribute.String("telemetry.sdk.name", "launcher"),
 		attribute.String("telemetry.sdk.version", version),
