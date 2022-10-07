@@ -449,6 +449,7 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		WithAccessToken("override-access-token"),
 		WithSpanExporterEndpoint("override-satellite-url"),
 		WithSpanExporterInsecure(false),
+		WithSpanSamplingEnabled(true),
 		WithSpanSamplingPercent(25),
 		WithMetricExporterEndpoint("override-metrics-url"),
 		WithMetricExporterInsecure(false),
