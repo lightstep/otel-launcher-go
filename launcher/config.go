@@ -103,15 +103,25 @@ func WithSpanExporterInsecure(insecure bool) Option {
 	}
 }
 
+// WithSpanSamplingEnabled turns span sampling on or off. This does not affect
+// the value set by WithSpanSamplingPercent - if you are enabling sampling, you
+// would typically set that as well. The default value is false.
+func WithSpanSamplingEnabled(enabled bool) Option {
+	return func(c *Config) {
+		c.SpanSamplingEnabled = enabled
+	}
+}
+
 // WithSpanSamplingPercent sets a percentage of spans to be sampled client-side.
 // For instance, if set to 75, then 25% of spans will be dropped and 75% will be
 // kept. The default value is 100 (no sampling).
+//
+// Note that this option has no effect unless span sampling is enabled.
 //
 // Sampling is applied at the trace level, rather than the span level, so either
 // all the spans in a trace are sampled, or none are.
 func WithSpanSamplingPercent(percent int) Option {
 	return func(c *Config) {
-		c.SpanSamplingEnabled = true
 		c.SpanSamplingPercent = percent
 	}
 }
