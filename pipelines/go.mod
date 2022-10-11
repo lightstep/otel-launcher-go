@@ -44,7 +44,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.10.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.31.0
-	go.opentelemetry.io/otel/sdk/metric v0.31.1-0.20220826135333-55b49c407e07
+	go.opentelemetry.io/otel/sdk/metric v0.31.0
 	go.opentelemetry.io/otel/trace v1.10.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0
 	go.uber.org/atomic v1.7.0 // indirect
@@ -61,6 +61,7 @@ require github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.11.1
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
+	github.com/lightstep/go-expohisto v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
