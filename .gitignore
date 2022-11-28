@@ -9,3 +9,4 @@ Thumbs.db
 coverage.*
 go.work
 go.work.sum
+vendor/

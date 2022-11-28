@@ -45,11 +45,9 @@ import (
 
 	// The old Metrics SDK
 	oldotlpmetric "go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
-	controller "go.opentelemetry.io/otel/sdk/metric/controller/basic"
-	oldaggregation "go.opentelemetry.io/otel/sdk/metric/export/aggregation"
-	processor "go.opentelemetry.io/otel/sdk/metric/processor/basic"
-	selector "go.opentelemetry.io/otel/sdk/metric/selector/simple"
-
+	metricsdk "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	oldview "go.opentelemetry.io/otel/sdk/metric/view"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
@@ -147,27 +145,22 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 
 	} else {
 		// Install the OTel-Go community metrics SDK.
-		metricExporter, err := c.newOldMetricsExporter(oldPref)
+		metricExporter, err := c.newOldMetricsExporter()
 		if err != nil {
 			return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 		}
-		sdk := controller.New(
-			processor.NewFactory(
-				selector.NewWithHistogramDistribution(),
+		meterProvider := metricsdk.NewMeterProvider(
+			metricsdk.WithResource(c.Resource),
+			metricsdk.WithReader(metricsdk.NewPeriodicReader(
 				metricExporter,
-			),
-			controller.WithExporter(metricExporter),
-			controller.WithResource(c.Resource),
-			controller.WithCollectPeriod(period),
+				metricsdk.WithTemporalitySelector(oldPref),
+				metricsdk.WithInterval(period),
+			)),
 		)
-
-		if err = sdk.Start(context.Background()); err != nil {
-			return nil, fmt.Errorf("failed to start controller: %v", err)
-		}
-
-		provider = sdk
+		metricglobal.SetMeterProvider(meterProvider)
+		provider = meterProvider
 		shutdown = func() error {
-			return sdk.Stop(context.Background())
+			return meterProvider.Shutdown(context.Background())
 		}
 	}
 
@@ -291,18 +284,14 @@ func (c PipelineConfig) newMetricsExporter() (*otlpmetric.Exporter, error) {
 	)
 }
 
-func (c PipelineConfig) newOldMetricsExporter(tempo oldaggregation.TemporalitySelector) (*oldotlpmetric.Exporter, error) {
-	return oldotlpmetric.New(
-		context.Background(),
-		c.newClient(),
-		oldotlpmetric.WithMetricAggregationTemporalitySelector(tempo),
-	)
+func (c PipelineConfig) newOldMetricsExporter() (metricsdk.Exporter, error) {
+	oldotlpmetric.New(c.newClient())
 }
 
-func tempoOptions(c PipelineConfig) (view.Option, oldaggregation.TemporalitySelector, error) {
+func tempoOptions(c PipelineConfig) (view.Option, metricsdk.TemporalitySelector, error) {
 	syncPref := aggregation.CumulativeTemporality
 	asyncPref := aggregation.CumulativeTemporality
-	var oldSelector oldaggregation.TemporalitySelector
+	var oldSelector metricsdk.TemporalitySelector
 
 	switch lower := strings.ToLower(c.TemporalityPreference); lower {
 	case "delta":
@@ -318,15 +307,21 @@ func tempoOptions(c PipelineConfig) (view.Option, oldaggregation.TemporalitySele
 		// preference setting.  We WILL NOT FIX this defect.
 		// Instead, as otel-launcher-go v1.10.x will use the
 		// Lightstep metrics SDK by default.
-		oldSelector = oldaggregation.DeltaTemporalitySelector()
+		oldSelector = func(oldview.InstrumentKind) metricdata.Temporality {
+			return metricdata.DeltaTemporality
+		}
 	case "stateless":
 		// asyncPref set above.
 		syncPref = aggregation.DeltaTemporality
 
-		oldSelector = oldaggregation.StatelessTemporalitySelector()
+		oldSelector = func(oldview.InstrumentKind) metricdata.Temporality {
+			return metricdata.DeltaTemporality
+		}
 	case "", "cumulative":
 		// syncPref, asyncPref set above.
-		oldSelector = oldaggregation.CumulativeTemporalitySelector()
+		oldSelector = func(oldview.InstrumentKind) metricdata.Temporality {
+			return metricdata.CumulativeTemporality
+		}
 	default:
 		return nil, nil, fmt.Errorf("invalid temporality preference: %v", c.TemporalityPreference)
 
