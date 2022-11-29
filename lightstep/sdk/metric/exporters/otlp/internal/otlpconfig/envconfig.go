@@ -15,7 +15,6 @@
 package otlpconfig // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/otlpconfig"
 
 import (
-	"crypto/tls"
 	"net/url"
 	"os"
 	"path"
@@ -81,8 +80,9 @@ func getOptionsFromEnv() []GenericOption {
 				return cfg
 			}, withEndpointForGRPC(u)))
 		}),
-		envconfig.WithTLSConfig("CERTIFICATE", func(c *tls.Config) { opts = append(opts, WithTLSClientConfig(c)) }),
-		envconfig.WithTLSConfig("METRICS_CERTIFICATE", func(c *tls.Config) { opts = append(opts, WithTLSClientConfig(c)) }),
+		// TODO: provide a way to get certs here
+		//envconfig.WithClientCert("CERTIFICATE", func(c *tls.Config) { opts = append(opts, WithTLSClientConfig(c)) }),
+		//envconfig.WithTLSConfig("METRICS_CERTIFICATE", func(c *tls.Config) { opts = append(opts, WithTLSClientConfig(c)) }),
 		envconfig.WithHeaders("HEADERS", func(h map[string]string) { opts = append(opts, WithHeaders(h)) }),
 		envconfig.WithHeaders("METRICS_HEADERS", func(h map[string]string) { opts = append(opts, WithHeaders(h)) }),
 		WithEnvCompression("COMPRESSION", func(c Compression) { opts = append(opts, WithCompression(c)) }),

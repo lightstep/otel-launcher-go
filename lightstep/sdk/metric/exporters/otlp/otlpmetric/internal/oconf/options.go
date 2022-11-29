@@ -25,11 +25,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
 
-	"go.opentelemetry.io/otel/exporters/otlp/internal"
-	"go.opentelemetry.io/otel/exporters/otlp/internal/retry"
-	"go.opentelemetry.io/otel/internal/global"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
+
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/retry"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/global"
 )
 
 const (

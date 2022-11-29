@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package otlpmetricgrpc // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetricgrpc"
+package otlpmetricgrpc // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/otlpmetricgrpc"
 
 import (
 	"context"
@@ -25,17 +25,16 @@ import (
 	"google.golang.org/grpc/status"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/internal"
-	"go.opentelemetry.io/otel/exporters/otlp/internal/retry"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
-github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetricgrpc"
-
-"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/internal/oconf"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	colmetricpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	metricpb "go.opentelemetry.io/proto/otlp/metrics/v1"
+
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/retry"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/internal/oconf"
 )
 
 // New returns an OpenTelemetry metric Exporter. The Exporter can be used with

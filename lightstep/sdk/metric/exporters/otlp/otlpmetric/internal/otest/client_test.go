@@ -19,13 +19,15 @@ import (
 	"testing"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/internal"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
+	"go.opentelemetry.io/otel/sdk/metric/view"
 	cpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	mpb "go.opentelemetry.io/proto/otlp/metrics/v1"
+
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric"
 )
 
 type client struct {
@@ -33,11 +35,11 @@ type client struct {
 	storage *Storage
 }
 
-func (c *client) Temporality(k metric.InstrumentKind) metricdata.Temporality {
+func (c *client) Temporality(k view.InstrumentKind) metricdata.Temporality {
 	return metric.DefaultTemporalitySelector(k)
 }
 
-func (c *client) Aggregation(k metric.InstrumentKind) aggregation.Aggregation {
+func (c *client) Aggregation(k view.InstrumentKind) aggregation.Aggregation {
 	return metric.DefaultAggregationSelector(k)
 }
 
