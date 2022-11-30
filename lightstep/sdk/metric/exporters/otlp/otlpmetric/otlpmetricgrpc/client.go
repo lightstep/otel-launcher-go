@@ -47,7 +47,7 @@ import (
 // on options. If a connection cannot be establishes in the lifetime of ctx,
 // an error will be returned.
 func New(ctx context.Context, options ...Option) (metric.Exporter, error) {
-	c, err := newClient(ctx, options...)
+	c, err := NewClient(ctx, options...)
 	if err != nil {
 		return nil, err
 	}
@@ -71,8 +71,8 @@ type client struct {
 	msc     colmetricpb.MetricsServiceClient
 }
 
-// newClient creates a new gRPC metric client.
-func newClient(ctx context.Context, options ...Option) (otlpmetric.Client, error) {
+// NewClient creates a new gRPC metric client.
+func NewClient(ctx context.Context, options ...Option) (otlpmetric.Client, error) {
 	cfg := oconf.NewGRPCConfig(asGRPCOptions(options)...)
 
 	c := &client{

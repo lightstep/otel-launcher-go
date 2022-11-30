@@ -136,7 +136,7 @@ func TestClient(t *testing.T) {
 
 		ctx := context.Background()
 		addr := coll.Addr().String()
-		client, err := newClient(ctx, WithEndpoint(addr), WithInsecure())
+		client, err := NewClient(ctx, WithEndpoint(addr), WithInsecure())
 		require.NoError(t, err)
 		return client, coll
 	}
