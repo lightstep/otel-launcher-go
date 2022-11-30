@@ -27,6 +27,7 @@ import (
 
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
+	"go.opentelemetry.io/otel/sdk/metric/view"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/retry"
@@ -336,7 +337,7 @@ func WithTemporalitySelector(selector metric.TemporalitySelector) GenericOption 
 
 func WithAggregationSelector(selector metric.AggregationSelector) GenericOption {
 	// Deep copy and validate before using.
-	wrapped := func(ik metric.InstrumentKind) aggregation.Aggregation {
+	wrapped := func(ik view.InstrumentKind) aggregation.Aggregation {
 		a := selector(ik)
 		cpA := a.Copy()
 		if err := cpA.Err(); err != nil {
