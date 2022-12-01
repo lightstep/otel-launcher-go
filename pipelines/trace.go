@@ -36,7 +36,7 @@ func NewTracePipeline(c PipelineConfig) (func() error, error) {
 
 	bsp := trace.NewBatchSpanProcessor(spanExporter)
 	tp := trace.NewTracerProvider(
-		trace.WithSampler(trace.AlwaysSample()),
+		trace.WithSampler(newSampler()),
 		trace.WithSpanProcessor(bsp),
 		trace.WithResource(c.Resource),
 	)

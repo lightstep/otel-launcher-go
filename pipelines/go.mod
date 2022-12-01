@@ -56,6 +56,8 @@ require (
 	google.golang.org/protobuf v1.28.1
 )
 
+require github.com/sethvargo/go-envconfig v0.8.2
+
 require github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.11.1
 
 require (
