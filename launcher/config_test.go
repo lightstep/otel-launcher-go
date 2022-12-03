@@ -384,6 +384,7 @@ func (suite *testSuite) TestDefaultConfig() {
 		Propagators:                         []string{"b3"},
 		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
 		UseLightstepMetricsSDK:              true,
+		SamplingProbability:                 1,
 		logger:                              &suite.testLogger,
 		errorHandler:                        &suite.testErrorHandler,
 	}
@@ -427,6 +428,7 @@ func (suite *testSuite) TestEnvironmentVariables() {
 		MetricsEnabled:                      false,
 		MetricsBuiltinsEnabled:              false,
 		MetricsBuiltinLibraries:             []string{"cputime:stable", "runtime:stable"},
+		SamplingProbability:                 1,
 		logger:                              &suite.testLogger,
 		errorHandler:                        &suite.testErrorHandler,
 	}
@@ -486,6 +488,7 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		MetricsEnabled:                      true,
 		MetricsBuiltinsEnabled:              true,
 		MetricsBuiltinLibraries:             []string{"host:stable"},
+		SamplingProbability:                 1,
 		logger:                              &suite.testLogger,
 		errorHandler:                        &suite.testErrorHandler,
 	}

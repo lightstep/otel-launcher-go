@@ -20,6 +20,7 @@ import (
 
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/contrib/propagators/ot"
+	"go.opentelemetry.io/contrib/samplers/probability/consistent"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -34,9 +35,17 @@ func NewTracePipeline(c PipelineConfig) (func() error, error) {
 		return nil, fmt.Errorf("failed to create span exporter: %v", err)
 	}
 
+	sampler := trace.AlwaysSample()
+
+	if c.SamplingProbability > 0 && c.SamplingProbability < 1 {
+		sampler = consistent.ParentProbabilityBased(
+			consistent.ProbabilityBased(c.SamplingProbability),
+		)
+	}
+
 	bsp := trace.NewBatchSpanProcessor(spanExporter)
 	tp := trace.NewTracerProvider(
-		trace.WithSampler(trace.AlwaysSample()),
+		trace.WithSampler(sampler),
 		trace.WithSpanProcessor(bsp),
 		trace.WithResource(c.Resource),
 	)

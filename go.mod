@@ -36,6 +36,7 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.36.4 // indirect
 	go.opentelemetry.io/contrib/propagators/b3 v1.11.1 // indirect
 	go.opentelemetry.io/contrib/propagators/ot v1.11.1 // indirect
+	go.opentelemetry.io/contrib/samplers/probability/consistent v0.5.2 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.11.1 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.31.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.31.0 // indirect

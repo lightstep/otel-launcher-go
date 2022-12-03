@@ -173,6 +173,13 @@ func WithMetricsBuiltinLibraries(builtinLibraries []string) Option {
 	}
 }
 
+// WithSamplingProbability sets the sampling probability.
+func WithSamplingProbability(value float64) Option {
+	return func(c *Config) {
+		c.SamplingProbability = value
+	}
+}
+
 type Logger interface {
 	Fatalf(format string, v ...interface{})
 	Debugf(format string, v ...interface{})
@@ -236,6 +243,7 @@ type Config struct {
 	Propagators                         []string          `env:"OTEL_PROPAGATORS,default=b3"`
 	MetricReportingPeriod               string            `env:"OTEL_EXPORTER_OTLP_METRIC_PERIOD,default=30s"`
 	UseLightstepMetricsSDK              bool              `env:"LS_METRICS_SDK,default=true"`
+	SamplingProbability                 float64           `env:"LS_METRICS_SAMPLING_PROBABILITY,default=1.0"`
 	ResourceAttributes                  map[string]string
 	Resource                            *resource.Resource
 	logger                              Logger
@@ -384,11 +392,12 @@ func setupTracing(c Config) (func() error, error) {
 		return nil, nil
 	}
 	return pipelines.NewTracePipeline(pipelines.PipelineConfig{
-		Endpoint:    c.SpanExporterEndpoint,
-		Insecure:    c.SpanExporterEndpointInsecure,
-		Headers:     c.Headers,
-		Resource:    c.Resource,
-		Propagators: c.Propagators,
+		Endpoint:            c.SpanExporterEndpoint,
+		Insecure:            c.SpanExporterEndpointInsecure,
+		Headers:             c.Headers,
+		Resource:            c.Resource,
+		Propagators:         c.Propagators,
+		SamplingProbability: c.SamplingProbability,
 	})
 }
 

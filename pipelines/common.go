@@ -59,6 +59,11 @@ type PipelineConfig struct {
 	// UseLightstepMetricsSDK determines whether to use the metrics
 	// SDK at ../lightstep/sdk/metric.
 	UseLightstepMetricsSDK bool
+
+	// Sampling probability, if > 0 and < 1, will configure an
+	// OTel consistent probability sampler using OTel probability
+	// sampler.
+	SamplingProbability float64
 }
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)

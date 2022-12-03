@@ -56,7 +56,10 @@ require (
 	google.golang.org/protobuf v1.28.1
 )
 
-require github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.11.1
+require (
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.11.1
+	go.opentelemetry.io/contrib/samplers/probability/consistent v0.5.2
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
