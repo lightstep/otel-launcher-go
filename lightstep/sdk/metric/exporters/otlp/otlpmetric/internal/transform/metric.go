@@ -14,7 +14,7 @@
 
 // Package metrictransform provides translations for opentelemetry-go concepts and
 // structures to otlp structures.
-package metrictransform // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/metrictransform"
+package transform // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/transform"
 
 import (
 	"errors"

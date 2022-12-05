@@ -25,6 +25,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric/view"
 	mpb "go.opentelemetry.io/proto/otlp/metrics/v1"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/internal/transform"
 )
 
@@ -52,8 +53,8 @@ func (e *exporter) Aggregation(k view.InstrumentKind) aggregation.Aggregation {
 }
 
 // Export transforms and transmits metric data to an OTLP receiver.
-func (e *exporter) Export(ctx context.Context, rm metricdata.ResourceMetrics) error {
-	otlpRm, err := transform.ResourceMetrics(rm)
+func (e *exporter) Export(ctx context.Context, rm data.Metrics) error {
+	otlpRm, err := transform.Metrics(rm)
 	// Best effort upload of transformable metrics.
 	e.clientMu.Lock()
 	upErr := e.client.UploadMetrics(ctx, otlpRm)
@@ -98,7 +99,7 @@ func (e *exporter) Shutdown(ctx context.Context) error {
 // New return an Exporter that uses client to transmits the OTLP data it
 // produces. The client is assumed to be fully started and able to communicate
 // with its OTLP receiving endpoint.
-func New(client Client) metric.Exporter {
+func New(client Client) *exporter {
 	return &exporter{client: client}
 }
 

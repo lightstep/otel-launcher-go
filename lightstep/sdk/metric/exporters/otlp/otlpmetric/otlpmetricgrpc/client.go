@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"go.opentelemetry.io/otel"
+	otelmetric "go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
@@ -51,7 +52,7 @@ func New(ctx context.Context, options ...Option) (metric.Exporter, error) {
 	if err != nil {
 		return nil, err
 	}
-	return otlpmetric.New(c), nil
+	return otelmetric.New(c), nil
 }
 
 type client struct {
