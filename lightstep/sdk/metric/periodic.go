@@ -36,11 +36,11 @@ type PushExporter interface {
 	// from the Producer.
 	ExportMetrics(context.Context, data.Metrics) error
 
-	// ShutdownMetrics is called when the user calls Shutdown with
+	// ShutdownMetrics is called when the user calls ShutdownMetrics with
 	// final data collected from the Producer.
 	ShutdownMetrics(context.Context, data.Metrics) error
 
-	// ForceFlushMetrics is called when the user calls ForceFlush
+	// ForceFlushMetrics is called when the user calls ForceFlushMetrics
 	// with data collected from the Producer.
 	ForceFlushMetrics(context.Context, data.Metrics) error
 }

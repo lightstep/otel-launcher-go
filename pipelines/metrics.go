@@ -25,7 +25,7 @@ import (
 	// The Lightstep SDK
 	sdkmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
-	otlpmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
@@ -265,8 +265,9 @@ func interceptor(
 	return err
 }
 
-func (c PipelineConfig) newClient() otlpmetric.Client {
+func (c PipelineConfig) newClient() (otlpmetric.Client, error) {
 	return otlpmetricgrpc.NewClient(
+		context.Background(),
 		c.secureMetricOption(),
 		otlpmetricgrpc.WithEndpoint(c.Endpoint),
 		otlpmetricgrpc.WithHeaders(c.Headers),
@@ -278,14 +279,19 @@ func (c PipelineConfig) newClient() otlpmetric.Client {
 }
 
 func (c PipelineConfig) newMetricsExporter() (*otlpmetric.Exporter, error) {
-	return otlpmetric.New(
-		context.Background(),
-		c.newClient(),
-	)
+	client, err := c.newClient()
+	if err != nil {
+		return nil, err
+	}
+	return otlpmetric.New(client), nil
 }
 
 func (c PipelineConfig) newOldMetricsExporter() (metricsdk.Exporter, error) {
-	oldotlpmetric.New(c.newClient())
+	client, err := c.newClient()
+	if err != nil {
+		return nil, err
+	}
+	return oldotlpmetric.New(client), nil
 }
 
 func tempoOptions(c PipelineConfig) (view.Option, metricsdk.TemporalitySelector, error) {

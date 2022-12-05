@@ -196,7 +196,7 @@ func WithDialOption(opts ...grpc.DialOption) Option {
 // other option of those types passed will be ignored.
 //
 // It is the callers responsibility to close the passed conn. The Exporter
-// Shutdown method will not close this connection.
+// ShutdownMetrics method will not close this connection.
 func WithGRPCConn(conn *grpc.ClientConn) Option {
 	return wrappedOption{oconf.NewGRPCOption(func(cfg oconf.Config) oconf.Config {
 		cfg.GRPCConn = conn

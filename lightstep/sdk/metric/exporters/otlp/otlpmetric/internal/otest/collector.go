@@ -102,8 +102,8 @@ type GRPCCollector struct {
 // If endpoint is an empty string, the returned collector will be listeing on
 // the localhost interface at an OS chosen port.
 //
-// If errCh is not nil, the collector will respond to Export calls with errors
-// sent on that channel. This means that if errCh is not nil Export calls will
+// If errCh is not nil, the collector will respond to ExportMetrics calls with errors
+// sent on that channel. This means that if errCh is not nil ExportMetrics calls will
 // block until an error is received.
 func NewGRPCCollector(endpoint string, resultCh <-chan ExportResult) (*GRPCCollector, error) {
 	if endpoint == "" {
@@ -213,7 +213,7 @@ type HTTPCollector struct {
 // that path will be used instead of the default OTLP metric endpoint path.
 //
 // If errCh is not nil, the collector will respond to HTTP requests with errors
-// sent on that channel. This means that if errCh is not nil Export calls will
+// sent on that channel. This means that if errCh is not nil ExportMetrics calls will
 // block until an error is received.
 func NewHTTPCollector(endpoint string, resultCh <-chan ExportResult) (*HTTPCollector, error) {
 	u, err := url.Parse(endpoint)

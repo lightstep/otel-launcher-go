@@ -182,12 +182,12 @@ type ClientFactory func(resultCh <-chan ExportResult) (otlpmetric.Client, Collec
 func RunClientTests(f ClientFactory) func(*testing.T) {
 	return func(t *testing.T) {
 		t.Run("ClientHonorsContextErrors", func(t *testing.T) {
-			t.Run("Shutdown", testCtxErrs(func() func(context.Context) error {
+			t.Run("ShutdownMetrics", testCtxErrs(func() func(context.Context) error {
 				c, _ := f(nil)
 				return c.Shutdown
 			}))
 
-			t.Run("ForceFlush", testCtxErrs(func() func(context.Context) error {
+			t.Run("ForceFlushMetrics", testCtxErrs(func() func(context.Context) error {
 				c, _ := f(nil)
 				return c.ForceFlush
 			}))

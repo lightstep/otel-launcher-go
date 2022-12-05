@@ -97,7 +97,7 @@ func NewClient(ctx context.Context, options ...Option) (otlpmetric.Client, error
 			return nil, err
 		}
 		// Keep track that we own the lifecycle of this conn and need to close
-		// it on Shutdown.
+		// it on ShutdownMetrics.
 		c.ourConn = true
 		c.conn = conn
 	}
