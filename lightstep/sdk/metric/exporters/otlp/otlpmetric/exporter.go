@@ -90,10 +90,9 @@ var errShutdown = fmt.Errorf("Exporter is shutdown")
 // ShutdownMetrics flushes all metric data held by an Exporter and releases any held
 // computational resources.
 func (e *Exporter) ShutdownMetrics(ctx context.Context, rm data.Metrics) error {
-	err := errShutdown
+	err := e.ExportMetrics(ctx, rm)
 	e.shutdownOnce.Do(func() {
 		e.clientMu.Lock()
-		err = e.ExportMetrics(ctx, rm)
 		client := e.client
 		e.client = shutdownClient{
 			temporalitySelector: client.Temporality,
