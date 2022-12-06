@@ -15,9 +15,6 @@ require (
 	go.opentelemetry.io/contrib/propagators/ot v1.11.1
 	go.opentelemetry.io/otel v1.11.1
 
-	// Standard metric gRPC OTLP exporter
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.33.0
-
 	// Standard trace SDK and gRPC OTLP exporter
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.11.1
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.11.1
