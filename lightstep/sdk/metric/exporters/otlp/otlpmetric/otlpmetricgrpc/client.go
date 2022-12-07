@@ -25,11 +25,9 @@ import (
 	"google.golang.org/grpc/status"
 
 	"go.opentelemetry.io/otel"
-	otelmetric "go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
-	"go.opentelemetry.io/otel/sdk/metric/view"
 	colmetricpb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	metricpb "go.opentelemetry.io/proto/otlp/metrics/v1"
 
@@ -38,22 +36,6 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/internal/oconf"
 )
-
-// New returns an OpenTelemetry metric Exporter. The Exporter can be used with
-// a PeriodicReader to export OpenTelemetry metric data to an OTLP receiving
-// endpoint using gRPC.
-//
-// If an already established gRPC ClientConn is not passed in options using
-// WithGRPCConn, a connection to the OTLP endpoint will be established based
-// on options. If a connection cannot be establishes in the lifetime of ctx,
-// an error will be returned.
-func New(ctx context.Context, options ...Option) (metric.Exporter, error) {
-	c, err := NewClient(ctx, options...)
-	if err != nil {
-		return nil, err
-	}
-	return otelmetric.New(c), nil
-}
 
 type client struct {
 	metadata      metadata.MD
@@ -108,12 +90,12 @@ func NewClient(ctx context.Context, options ...Option) (otlpmetric.Client, error
 }
 
 // Temporality returns the Temporality to use for an instrument kind.
-func (c *client) Temporality(k view.InstrumentKind) metricdata.Temporality {
+func (c *client) Temporality(k metric.InstrumentKind) metricdata.Temporality {
 	return c.temporalitySelector(k)
 }
 
 // Aggregation returns the Aggregation to use for an instrument kind.
-func (c *client) Aggregation(k view.InstrumentKind) aggregation.Aggregation {
+func (c *client) Aggregation(k metric.InstrumentKind) aggregation.Aggregation {
 	return c.aggregationSelector(k)
 }
 

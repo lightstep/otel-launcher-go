@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package oconf // import "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/internal/oconf"
+package oconf // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/internal/oconf"
 
 import (
 	"crypto/tls"
@@ -27,7 +27,6 @@ import (
 
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
-	"go.opentelemetry.io/otel/sdk/metric/view"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/retry"
@@ -337,7 +336,7 @@ func WithTemporalitySelector(selector metric.TemporalitySelector) GenericOption 
 
 func WithAggregationSelector(selector metric.AggregationSelector) GenericOption {
 	// Deep copy and validate before using.
-	wrapped := func(ik view.InstrumentKind) aggregation.Aggregation {
+	wrapped := func(ik metric.InstrumentKind) aggregation.Aggregation {
 		a := selector(ik)
 		cpA := a.Copy()
 		if err := cpA.Err(); err != nil {

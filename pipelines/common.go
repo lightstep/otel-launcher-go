@@ -15,6 +15,7 @@
 package pipelines
 
 import (
+	oldotlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"google.golang.org/grpc/credentials"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -63,15 +64,17 @@ type PipelineConfig struct {
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)
 
-func (p PipelineConfig) secureMetricOption() otlpmetricgrpc.Option {
+func (p PipelineConfig) secureMetricOption() (otlpmetricgrpc.Option, oldotlpmetricgrpc.Option) {
 	if p.Insecure {
-		return otlpmetricgrpc.WithInsecure()
+		return otlpmetricgrpc.WithInsecure(), oldotlpmetricgrpc.WithInsecure()
 	} else if p.Credentials != nil {
-		return otlpmetricgrpc.WithTLSCredentials(p.Credentials)
+		return otlpmetricgrpc.WithTLSCredentials(p.Credentials), oldotlpmetricgrpc.WithTLSCredentials(p.Credentials)
 	}
 	return otlpmetricgrpc.WithTLSCredentials(
-		credentials.NewClientTLSFromCert(nil, ""),
-	)
+			credentials.NewClientTLSFromCert(nil, ""),
+		), oldotlpmetricgrpc.WithTLSCredentials(
+			credentials.NewClientTLSFromCert(nil, ""),
+		)
 }
 
 func (p PipelineConfig) secureTraceOption() otlptracegrpc.Option {

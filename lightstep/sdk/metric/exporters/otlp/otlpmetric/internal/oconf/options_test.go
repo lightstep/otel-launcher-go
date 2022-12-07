@@ -16,16 +16,15 @@ package oconf_test
 
 import (
 	"errors"
+	"go.opentelemetry.io/otel/sdk/metric"
 	"testing"
 	"time"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/envconfig"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/internal/oconf"
 	"github.com/stretchr/testify/assert"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
-	"go.opentelemetry.io/otel/sdk/metric/view"
-
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/envconfig"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/internal/oconf"
 )
 
 const (
@@ -397,7 +396,7 @@ func TestConfigs(t *testing.T) {
 				// Function value comparisons are disallowed, test non-default
 				// behavior of a TemporalitySelector here to ensure our "catch
 				// all" was set.
-				var undefinedKind view.InstrumentKind
+				var undefinedKind metric.InstrumentKind
 				got := c.Metrics.TemporalitySelector
 				assert.Equal(t, metricdata.DeltaTemporality, got(undefinedKind))
 			},
@@ -413,7 +412,7 @@ func TestConfigs(t *testing.T) {
 				// Function value comparisons are disallowed, test non-default
 				// behavior of a AggregationSelector here to ensure our "catch
 				// all" was set.
-				var undefinedKind view.InstrumentKind
+				var undefinedKind metric.InstrumentKind
 				got := c.Metrics.AggregationSelector
 				assert.Equal(t, aggregation.Drop{}, got(undefinedKind))
 			},
@@ -441,11 +440,11 @@ func TestConfigs(t *testing.T) {
 	}
 }
 
-func dropSelector(view.InstrumentKind) aggregation.Aggregation {
+func dropSelector(metric.InstrumentKind) aggregation.Aggregation {
 	return aggregation.Drop{}
 }
 
-func deltaSelector(view.InstrumentKind) metricdata.Temporality {
+func deltaSelector(metric.InstrumentKind) metricdata.Temporality {
 	return metricdata.DeltaTemporality
 }
 

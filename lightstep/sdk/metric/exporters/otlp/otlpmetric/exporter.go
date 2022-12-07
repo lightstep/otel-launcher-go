@@ -22,12 +22,13 @@ import (
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/aggregation"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
-	"go.opentelemetry.io/otel/sdk/metric/view"
 	mpb "go.opentelemetry.io/proto/otlp/metrics/v1"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/internal/transform"
 )
+
+var errShutdown = fmt.Errorf("Exporter is shutdown")
 
 // Exporter exports metrics data as OTLP.
 type Exporter struct {
@@ -43,14 +44,14 @@ func (e *Exporter) String() string {
 }
 
 // Temporality returns the Temporality to use for an instrument kind.
-func (e *Exporter) Temporality(k view.InstrumentKind) metricdata.Temporality {
+func (e *Exporter) Temporality(k metric.InstrumentKind) metricdata.Temporality {
 	e.clientMu.Lock()
 	defer e.clientMu.Unlock()
 	return e.client.Temporality(k)
 }
 
 // Aggregation returns the Aggregation to use for an instrument kind.
-func (e *Exporter) Aggregation(k view.InstrumentKind) aggregation.Aggregation {
+func (e *Exporter) Aggregation(k metric.InstrumentKind) aggregation.Aggregation {
 	e.clientMu.Lock()
 	defer e.clientMu.Unlock()
 	return e.client.Aggregation(k)
@@ -84,8 +85,6 @@ func (e *Exporter) ForceFlushMetrics(ctx context.Context, rm data.Metrics) error
 	defer e.clientMu.Unlock()
 	return e.client.ForceFlush(ctx)
 }
-
-var errShutdown = fmt.Errorf("Exporter is shutdown")
 
 // ShutdownMetrics flushes all metric data held by an Exporter and releases any held
 // computational resources.
@@ -127,11 +126,11 @@ func (c shutdownClient) err(ctx context.Context) error {
 	return errShutdown
 }
 
-func (c shutdownClient) Temporality(k view.InstrumentKind) metricdata.Temporality {
+func (c shutdownClient) Temporality(k metric.InstrumentKind) metricdata.Temporality {
 	return c.temporalitySelector(k)
 }
 
-func (c shutdownClient) Aggregation(k view.InstrumentKind) aggregation.Aggregation {
+func (c shutdownClient) Aggregation(k metric.InstrumentKind) aggregation.Aggregation {
 	return c.aggregationSelector(k)
 }
 

@@ -44,10 +44,9 @@ import (
 	metricglobal "go.opentelemetry.io/otel/metric/global"
 
 	// The old Metrics SDK
-	oldotlpmetric "go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
+	oldotlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	metricsdk "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
-	oldview "go.opentelemetry.io/otel/sdk/metric/view"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/encoding/gzip"
 	"google.golang.org/grpc/metadata"
@@ -119,13 +118,14 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 	var shutdown func() error
 
 	newPref, oldPref, err := tempoOptions(c)
+	newSecure, oldSecure := c.secureMetricOption()
 	if err != nil {
 		return nil, fmt.Errorf("invalid metric view configuration: %v", err)
 	}
 
 	if c.UseLightstepMetricsSDK {
 		// Install the Lightstep metrics SDK
-		metricExporter, err := c.newMetricsExporter()
+		metricExporter, err := c.newMetricsExporter(newSecure)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 		}
@@ -145,7 +145,7 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 
 	} else {
 		// Install the OTel-Go community metrics SDK.
-		metricExporter, err := c.newOldMetricsExporter()
+		metricExporter, err := c.newOldMetricsExporter(oldPref, oldSecure)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 		}
@@ -153,7 +153,6 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 			metricsdk.WithResource(c.Resource),
 			metricsdk.WithReader(metricsdk.NewPeriodicReader(
 				metricExporter,
-				metricsdk.WithTemporalitySelector(oldPref),
 				metricsdk.WithInterval(period),
 			)),
 		)
@@ -265,10 +264,10 @@ func interceptor(
 	return err
 }
 
-func (c PipelineConfig) newClient() (otlpmetric.Client, error) {
+func (c PipelineConfig) newClient(secure otlpmetricgrpc.Option) (otlpmetric.Client, error) {
 	return otlpmetricgrpc.NewClient(
 		context.Background(),
-		c.secureMetricOption(),
+		secure,
 		otlpmetricgrpc.WithEndpoint(c.Endpoint),
 		otlpmetricgrpc.WithHeaders(c.Headers),
 		otlpmetricgrpc.WithCompressor(gzip.Name),
@@ -278,20 +277,26 @@ func (c PipelineConfig) newClient() (otlpmetric.Client, error) {
 	)
 }
 
-func (c PipelineConfig) newMetricsExporter() (*otlpmetric.Exporter, error) {
-	client, err := c.newClient()
+func (c PipelineConfig) newMetricsExporter(secure otlpmetricgrpc.Option) (*otlpmetric.Exporter, error) {
+	client, err := c.newClient(secure)
 	if err != nil {
 		return nil, err
 	}
 	return otlpmetric.New(client), nil
 }
 
-func (c PipelineConfig) newOldMetricsExporter() (metricsdk.Exporter, error) {
-	client, err := c.newClient()
-	if err != nil {
-		return nil, err
-	}
-	return oldotlpmetric.New(client), nil
+func (c PipelineConfig) newOldMetricsExporter(temporality metricsdk.TemporalitySelector, secureOpt oldotlpmetricgrpc.Option) (metricsdk.Exporter, error) {
+	return oldotlpmetricgrpc.New(
+		context.Background(),
+		secureOpt,
+		oldotlpmetricgrpc.WithTemporalitySelector(temporality),
+		oldotlpmetricgrpc.WithEndpoint(c.Endpoint),
+		oldotlpmetricgrpc.WithHeaders(c.Headers),
+		oldotlpmetricgrpc.WithCompressor(gzip.Name),
+		oldotlpmetricgrpc.WithDialOption(
+			grpc.WithUnaryInterceptor(interceptor),
+		),
+	)
 }
 
 func tempoOptions(c PipelineConfig) (view.Option, metricsdk.TemporalitySelector, error) {
@@ -313,19 +318,19 @@ func tempoOptions(c PipelineConfig) (view.Option, metricsdk.TemporalitySelector,
 		// preference setting.  We WILL NOT FIX this defect.
 		// Instead, as otel-launcher-go v1.10.x will use the
 		// Lightstep metrics SDK by default.
-		oldSelector = func(oldview.InstrumentKind) metricdata.Temporality {
+		oldSelector = func(metricsdk.InstrumentKind) metricdata.Temporality {
 			return metricdata.DeltaTemporality
 		}
 	case "stateless":
 		// asyncPref set above.
 		syncPref = aggregation.DeltaTemporality
 
-		oldSelector = func(oldview.InstrumentKind) metricdata.Temporality {
+		oldSelector = func(metricsdk.InstrumentKind) metricdata.Temporality {
 			return metricdata.DeltaTemporality
 		}
 	case "", "cumulative":
 		// syncPref, asyncPref set above.
-		oldSelector = func(oldview.InstrumentKind) metricdata.Temporality {
+		oldSelector = func(metricsdk.InstrumentKind) metricdata.Temporality {
 			return metricdata.CumulativeTemporality
 		}
 	default:
