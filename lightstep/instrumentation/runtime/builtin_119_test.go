@@ -16,19 +16,19 @@
 
 package runtime
 
-//var expectRuntimeMetrics = map[string]int{
-//	"cgo.go-to-c-calls":       1,
-//	"gc.cycles":               2,
-//	"gc.heap.allocs":          1,
-//	"gc.heap.allocs.objects":  1,
-//	"gc.heap.frees":           1,
-//	"gc.heap.frees.objects":   1,
-//	"gc.heap.goal":            1,
-//	"gc.heap.objects":         1,
-//	"gc.heap.tiny.allocs":     1,
-//	"gc.limiter.last-enabled": 1,
-//	"gc.stack.starting-size":  1,
-//	"memory.usage":            13,
-//	"sched.gomaxprocs":        1,
-//	"sched.goroutines":        1,
-//}
+var expectRuntimeMetrics = map[string]int{
+	"cgo.go-to-c-calls":       1,
+	"gc.cycles":               2,
+	"gc.heap.allocs":          1,
+	"gc.heap.allocs.objects":  1,
+	"gc.heap.frees":           1,
+	"gc.heap.frees.objects":   1,
+	"gc.heap.goal":            1,
+	"gc.heap.objects":         1,
+	"gc.heap.tiny.allocs":     1,
+	"gc.limiter.last-enabled": 1,
+	"gc.stack.starting-size":  1,
+	"memory.usage":            13,
+	"sched.gomaxprocs":        1,
+	"sched.goroutines":        1,
+}
