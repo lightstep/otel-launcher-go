@@ -16,15 +16,15 @@
 
 package runtime
 
-var expectRuntimeMetrics = map[string]int{
-	"gc.cycles":              2,
-	"gc.heap.allocs":         1,
-	"gc.heap.allocs.objects": 1,
-	"gc.heap.frees":          1,
-	"gc.heap.frees.objects":  1,
-	"gc.heap.goal":           1,
-	"gc.heap.objects":        1,
-	"gc.heap.tiny.allocs":    1,
-	"memory.usage":           13,
-	"sched.goroutines":       1,
-}
+//var expectRuntimeMetrics = map[string]int{
+//	"gc.cycles":              2,
+//	"gc.heap.allocs":         1,
+//	"gc.heap.allocs.objects": 1,
+//	"gc.heap.frees":          1,
+//	"gc.heap.frees.objects":  1,
+//	"gc.heap.goal":           1,
+//	"gc.heap.objects":        1,
+//	"gc.heap.tiny.allocs":    1,
+//	"memory.usage":           13,
+//	"sched.goroutines":       1,
+//}
