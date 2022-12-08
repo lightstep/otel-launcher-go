@@ -171,7 +171,7 @@ func (t *testReader) Shutdown(_ context.Context) error {
 }
 
 func TestForceFlush(t *testing.T) {
-	// Test with 0 through 2 readers, ForceFlushMetrics() with and without errors.
+	// Test with 0 through 2 readers, ForceFlush() with and without errors.
 	ctx := context.Background()
 	provider := NewMeterProvider()
 
@@ -193,7 +193,7 @@ func TestForceFlush(t *testing.T) {
 	provider = NewMeterProvider(
 		WithReader(rdr2),
 		WithReader(rdr1),
-		WithReader(NewManualReader("also_tested")), // ManualReader.ForceFlushMetrics cannot error
+		WithReader(NewManualReader("also_tested")), // ManualReader.ForceFlush cannot error
 	)
 
 	err = provider.ForceFlush(ctx)
@@ -216,7 +216,7 @@ func TestForceFlush(t *testing.T) {
 func TestShutdown(t *testing.T) {
 	ctx := context.Background()
 
-	// ShutdownMetrics with 0 meters; repeat shutdown causes error.
+	// Shutdown with 0 meters; repeat shutdown causes error.
 	provider := NewMeterProvider()
 
 	require.NoError(t, provider.Shutdown(ctx))
@@ -224,7 +224,7 @@ func TestShutdown(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, errors.Is(err, ErrAlreadyShutdown))
 
-	// ShutdownMetrics with 1 meters
+	// Shutdown with 1 meters
 	rdr1 := &testReader{}
 	provider = NewMeterProvider(WithReader(rdr1))
 
@@ -236,7 +236,7 @@ func TestShutdown(t *testing.T) {
 	require.Error(t, err)
 	require.True(t, errors.Is(err, ErrAlreadyShutdown))
 
-	// ShutdownMetrics with 3 meters, 2 errors
+	// Shutdown with 3 meters, 2 errors
 	rdr1.retval = fmt.Errorf("first error")
 
 	rdr2 := &testReader{}
@@ -245,7 +245,7 @@ func TestShutdown(t *testing.T) {
 	provider = NewMeterProvider(
 		WithReader(rdr1),
 		WithReader(rdr2),
-		WithReader(NewManualReader("also_tested")), // ManualReader.ShutdownMetrics cannot error
+		WithReader(NewManualReader("also_tested")), // ManualReader.Shutdown cannot error
 	)
 
 	err = provider.Shutdown(ctx)

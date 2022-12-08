@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package otlpmetric provides an OpenTelemetry metric Exporter that can be
-// used with PeriodicReader. It transforms metricdata into OTLP and transmits
+// Package otlpmetric provides a metric Exporter that can be
+// used with PeriodicReader. It transforms metrics data into OTLP and transmits
 // the transformed data to OTLP receivers. The Exporter is configurable to use
 // different Clients, each using a distinct transport protocol to communicate
 // to an OTLP receiving endpoint.
-package otlpmetric // import "go.opentelemetry.io/otel/exporters/otlp/otlpmetric"
+package otlpmetric // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric"

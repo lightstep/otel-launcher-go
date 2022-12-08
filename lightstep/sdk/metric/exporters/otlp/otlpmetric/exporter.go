@@ -30,7 +30,7 @@ import (
 
 var errShutdown = fmt.Errorf("Exporter is shutdown")
 
-// Exporter exports metrics data as OTLP.
+// Exporter exports metrics data as OTLP.  It implements the `PushExporter` interface in github.com/lightstep/otel-launcher-go/lightstep/sdk/metric.
 type Exporter struct {
 	// Ensure synchronous access to the client across all functionality.
 	clientMu sync.Mutex

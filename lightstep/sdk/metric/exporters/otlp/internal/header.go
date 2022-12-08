@@ -13,7 +13,8 @@
 // limitations under the License.
 
 // Package internal contains common functionality for all OTLP exporters.
-package internal // import "go.opentelemetry.io/otel/exporters/otlp/internal"
+// This was forked from "go.opentelemetry.io/otel/exporters/otlp/internal".
+package internal // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal"
 
 import "go.opentelemetry.io/otel"
 
