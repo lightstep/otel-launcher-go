@@ -8,6 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+- Update to OTel-Go 1.11.x and OTel-Go metrics 0.34.
+  [#333](https://github.com/lightstep/otel-launcher-go/pull/333)
+- Remove Lightstep-specific partial-success error handling, now using upstream.
+  [#250](https://github.com/lightstep/otel-launcher-go/pull/250)
+
 ## [1.11.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.11.0) - 2022-10-05
 
 ### Bug fixes

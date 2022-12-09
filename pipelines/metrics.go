@@ -16,9 +16,7 @@ package pipelines
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"strconv"
 	"strings"
 	"time"
 
@@ -39,6 +37,7 @@ import (
 	contribHost "go.opentelemetry.io/contrib/instrumentation/host"
 	contribRuntime "go.opentelemetry.io/contrib/instrumentation/runtime"
 
+	// OTel APIs
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	metricglobal "go.opentelemetry.io/otel/metric/global"
@@ -47,9 +46,7 @@ import (
 	otelotlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	otelsdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/encoding/gzip"
-	"google.golang.org/grpc/metadata"
 )
 
 func prestableHostMetrics(provider metric.MeterProvider) error {
@@ -193,77 +190,6 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 	return shutdown, nil
 }
 
-var errNoSingleCount = fmt.Errorf("no count")
-
-func singleCount(values []string) (int, error) {
-	if len(values) != 1 {
-		return 0, errNoSingleCount
-	}
-	return strconv.Atoi(values[0])
-}
-
-type dropExample struct {
-	Reason string   `json:"reason"`
-	Names  []string `json:"names"`
-}
-
-type dropSummary struct {
-	Dropped struct {
-		Points  int `json:"points,omitempty"`
-		Metrics int `json:"metrics,omitempty"`
-	} `json:"dropped,omitempty"`
-	Examples []dropExample `json:"examples,omitempty"`
-}
-
-func (ds *dropSummary) Empty() bool {
-	return len(ds.Examples) == 0 && ds.Dropped.Points == 0 && ds.Dropped.Metrics == 0
-}
-
-func interceptor(
-	ctx context.Context,
-	method string,
-	req, reply interface{},
-	cc *grpc.ClientConn,
-	invoker grpc.UnaryInvoker,
-	opts ...grpc.CallOption,
-) error {
-	const invalidTrailerPrefix = "otlp-invalid-"
-
-	var md metadata.MD
-	err := invoker(ctx, method, req, reply, cc, append(opts, grpc.Trailer(&md))...)
-	if err == nil && md != nil {
-		var ds dropSummary
-		for key, values := range md {
-			key = strings.ToLower(key)
-			if !strings.HasPrefix(key, "otlp-") {
-				continue
-			}
-
-			if key == "otlp-points-dropped" {
-				if points, err := singleCount(values); err == nil {
-					ds.Dropped.Points = points
-				}
-			} else if key == "otlp-metrics-dropped" {
-				if metrics, err := singleCount(values); err == nil {
-					ds.Dropped.Metrics = metrics
-				}
-			} else if strings.HasPrefix(key, invalidTrailerPrefix) {
-				key = key[len(invalidTrailerPrefix):]
-				key = strings.ReplaceAll(key, "-", " ")
-				ds.Examples = append(ds.Examples, dropExample{
-					Reason: key,
-					Names:  values,
-				})
-			}
-		}
-		if !ds.Empty() {
-			data, _ := json.Marshal(ds)
-			otel.Handle(fmt.Errorf("metrics partial failure: %v", string(data)))
-		}
-	}
-	return err
-}
-
 func (c PipelineConfig) newClient(secure otlpmetricgrpc.Option) (otlpmetric.Client, error) {
 	return otlpmetricgrpc.NewClient(
 		context.Background(),
@@ -271,9 +197,6 @@ func (c PipelineConfig) newClient(secure otlpmetricgrpc.Option) (otlpmetric.Clie
 		otlpmetricgrpc.WithEndpoint(c.Endpoint),
 		otlpmetricgrpc.WithHeaders(c.Headers),
 		otlpmetricgrpc.WithCompressor(gzip.Name),
-		otlpmetricgrpc.WithDialOption(
-			grpc.WithUnaryInterceptor(interceptor),
-		),
 	)
 }
 
@@ -293,9 +216,6 @@ func (c PipelineConfig) newOtelMetricsExporter(temporality otelsdkmetric.Tempora
 		otelotlpmetricgrpc.WithEndpoint(c.Endpoint),
 		otelotlpmetricgrpc.WithHeaders(c.Headers),
 		otelotlpmetricgrpc.WithCompressor(gzip.Name),
-		otelotlpmetricgrpc.WithDialOption(
-			grpc.WithUnaryInterceptor(interceptor),
-		),
 	)
 }
 
