@@ -12,11 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package otlp // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp"
+// Package internal contains common functionality for all OTLP exporters.
+package internal // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal"
 
-type config struct{}
+import (
+	"testing"
 
-// Option are setting options passed to an Exporter on creation.
-type Option interface {
-	apply(config) config
+	"github.com/stretchr/testify/require"
+)
+
+func TestGetUserAgentHeader(t *testing.T) {
+	require.Regexp(t, "OTel OTLP Exporter Go/1\\..*", GetUserAgentHeader())
 }

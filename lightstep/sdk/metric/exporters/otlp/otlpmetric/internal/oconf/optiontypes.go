@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package otlpconfig // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/otlpconfig"
+package oconf // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/internal/oconf"
 
 import "time"
 
