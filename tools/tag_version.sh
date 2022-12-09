@@ -25,6 +25,7 @@ echo $VERSION > ./VERSION
 sed -i '' "s/const version.*/const version = \"$VERSION\"/" ./launcher/version.go
 
 (cd pipelines && go get github.com/lightstep/otel-launcher-go/lightstep/sdk/metric@v$VERSION)
+(cd pipelines && go get github.com/lightstep/otel-launcher-go/lightstep/instrumentation@v$VERSION)
 (cd lightstep/sdk/metric/example && go get github.com/lightstep/otel-launcher-go/lightstep/sdk/metric@v$VERSION)
 
 go get github.com/lightstep/otel-launcher-go/pipelines@v$VERSION

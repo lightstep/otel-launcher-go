@@ -11,7 +11,6 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package runtime
 
 import (
@@ -23,48 +22,64 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/metric/metrictest"
+	"go.opentelemetry.io/otel/sdk/instrumentation"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
 // prefix is mandatory for this library, however the "go." part is not.
 const expectPrefix = "process.runtime.go."
 
-var expectLib = metrictest.Scope{
-	InstrumentationName:    "otel-launcher-go/runtime",
-	InstrumentationVersion: "",
-	SchemaURL:              "",
+var expectScope = instrumentation.Scope{
+	Name: "otel-launcher-go/runtime",
 }
 
 // TestBuiltinRuntimeMetrics tests the real output of the library to
 // ensure expected prefix, instrumentation scope, and empty
 // attributes.
 func TestBuiltinRuntimeMetrics(t *testing.T) {
-	provider, exp := metrictest.NewTestMeterProvider()
+	reader := metric.NewManualReader()
+	provider := metric.NewMeterProvider(metric.WithReader(reader))
 
 	err := Start(WithMeterProvider(provider))
-
 	require.NoError(t, err)
 
-	require.NoError(t, exp.Collect(context.Background()))
+	data, err := reader.Collect(context.Background())
+	require.NoError(t, err)
 
-	// Counts are >1 for metrics that are totalized.
+	require.Equal(t, 1, len(data.ScopeMetrics))
+	require.Equal(t, expectScope, data.ScopeMetrics[0].Scope)
+
 	expect := expectRuntimeMetrics
 	allNames := map[string]int{}
 
 	// Note: metrictest library lacks a way to distinguish
 	// monotonic vs not or to test the unit. This will be fixed in
 	// the new SDK, all the pieces untested here.
-	for _, rec := range exp.Records {
-		require.True(t, strings.HasPrefix(rec.InstrumentName, expectPrefix), "%s", rec.InstrumentName)
-		name := rec.InstrumentName[len(expectPrefix):]
-
-		require.Equal(t, expectLib, rec.InstrumentationLibrary)
+	for _, inst := range data.ScopeMetrics[0].Metrics {
+		require.True(t, strings.HasPrefix(inst.Name, expectPrefix), "%s", inst.Name)
+		name := inst.Name[len(expectPrefix):]
+		var attrs attribute.Set
+		switch dt := inst.Data.(type) {
+		case metricdata.Gauge[int64]:
+			require.Equal(t, 1, len(dt.DataPoints))
+			attrs = dt.DataPoints[0].Attributes
+		case metricdata.Gauge[float64]:
+			require.Equal(t, 1, len(dt.DataPoints))
+			attrs = dt.DataPoints[0].Attributes
+		case metricdata.Sum[int64]:
+			require.Equal(t, 1, len(dt.DataPoints))
+			attrs = dt.DataPoints[0].Attributes
+		case metricdata.Sum[float64]:
+			require.Equal(t, 1, len(dt.DataPoints))
+			attrs = dt.DataPoints[0].Attributes
+		}
 
 		if expect[name] > 1 {
-			require.Equal(t, 1, len(rec.Attributes))
+			require.Equal(t, 1, attrs.Len())
 		} else {
-			require.Equal(t, 1, expect[name])
-			require.Equal(t, []attribute.KeyValue(nil), rec.Attributes)
+			require.Equal(t, 1, expect[name], "for %v", inst.Name)
+			require.Equal(t, 0, attrs.Len())
 		}
 		allNames[name]++
 	}
@@ -172,11 +187,13 @@ func makeTestCase() (allFunc, readFunc, map[string]map[string]metrics.Value) {
 // TestMetricTranslation validates the translation logic using
 // synthetic metric names and values.
 func TestMetricTranslation(t *testing.T) {
-	provider, exp := metrictest.NewTestMeterProvider()
+	reader := metric.NewManualReader()
+	provider := metric.NewMeterProvider(metric.WithReader(reader))
 
 	af, rf, mapping := makeTestCase()
 	br := newBuiltinRuntime(provider.Meter("test"), af, rf)
-	br.register()
+	err := br.register()
+	require.NoError(t, err)
 
 	expectRecords := 0
 	for _, values := range mapping {
@@ -187,30 +204,39 @@ func TestMetricTranslation(t *testing.T) {
 		}
 	}
 
-	require.NoError(t, exp.Collect(context.Background()))
+	data, err := reader.Collect(context.Background())
+	require.NoError(t, err)
 	require.Equal(t, 10, expectRecords)
 
-	for _, rec := range exp.Records {
+	require.Equal(t, 1, len(data.ScopeMetrics))
+	require.Equal(t, "test", data.ScopeMetrics[0].Scope.Name)
+
+	for _, inst := range data.ScopeMetrics[0].Metrics {
 		// Test the special cases are present always:
 
-		require.True(t, strings.HasPrefix(rec.InstrumentName, expectPrefix), "%s", rec.InstrumentName)
-		name := rec.InstrumentName[len(expectPrefix):]
+		require.True(t, strings.HasPrefix(inst.Name, expectPrefix), "%s", inst.Name)
+		name := inst.Name[len(expectPrefix):]
+
+		require.Equal(t, 1, len(inst.Data.(metricdata.Sum[int64]).DataPoints))
+
+		sum := inst.Data.(metricdata.Sum[int64]).DataPoints[0].Value
+		attrs := inst.Data.(metricdata.Sum[int64]).DataPoints[0].Attributes
 
 		// Note: only int64 is tested, we have no way to
 		// generate Float64 values and Float64Hist values are
 		// not implemented for testing.
 		m := mapping[name]
 		if len(m) == 1 {
-			require.Equal(t, mapping[name][""].Uint64(), uint64(rec.Sum.AsInt64()))
+			require.Equal(t, mapping[name][""].Uint64(), uint64(sum))
 
 			// no attributes
-			require.Equal(t, []attribute.KeyValue(nil), rec.Attributes)
+			require.Equal(t, 0, attrs.Len())
 		} else {
 			require.Equal(t, 5, len(m))
-			require.Equal(t, 1, len(rec.Attributes))
-			require.Equal(t, rec.Attributes[0].Key, "class")
-			feature := rec.Attributes[0].Value.AsString()
-			require.Equal(t, mapping[name][feature].Uint64(), uint64(rec.Sum.AsInt64()))
+			require.Equal(t, 1, attrs.Len())
+			require.Equal(t, attrs.ToSlice()[0].Key, "class")
+			feature := attrs.ToSlice()[0].Value.AsString()
+			require.Equal(t, mapping[name][feature].Uint64(), uint64(sum))
 		}
 	}
 }
