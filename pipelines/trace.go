@@ -20,6 +20,7 @@ import (
 
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/contrib/propagators/ot"
+	"go.opentelemetry.io/contrib/samplers/probability/consistent"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
@@ -62,8 +63,9 @@ func (c PipelineConfig) newSampler() trace.Sampler {
 		return trace.NeverSample()
 	}
 
-	ratioed := trace.TraceIDRatioBased(float64(c.SamplingPercent) / 100.0)
-	return trace.ParentBased(ratioed)
+	return consistent.ParentProbabilityBased(
+		consistent.ProbabilityBased(float64(c.SamplingPercent) / 100.0),
+	)
 }
 
 func (c PipelineConfig) newTraceExporter() (*otlptrace.Exporter, error) {

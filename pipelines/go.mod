@@ -63,6 +63,7 @@ require (
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	go.opentelemetry.io/contrib/samplers/probability/consistent v0.6.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 

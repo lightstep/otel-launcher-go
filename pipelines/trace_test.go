@@ -142,9 +142,8 @@ func TestSampledTrace(t *testing.T) {
 	require.Equal(t, 0, len(server.MetricsRequests()))
 	require.Equal(t, 1, len(server.TraceRequests()))
 
-	nSpans := spanCount(server)
-	require.Greater(t, nSpans, 30)
-	require.Less(t, nSpans, 70)
+	// Not exactly 50, but reliably a very close number
+	require.Equal(t, spanCount(server), 55)
 }
 
 func spanCount(server *test.Server) int {
