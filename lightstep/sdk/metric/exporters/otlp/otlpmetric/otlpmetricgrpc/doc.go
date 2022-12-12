@@ -12,4 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package otlpconfig
+// Package otlpmetricgrpc provides an otlpmetric.Client that communicates
+// with an OTLP receiving endpoint using gRPC.  This is a fork of the client
+// code in "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc",
+// except the `NewClient()` function is exported, which allows us to use it
+// from the otlpmetric.Exporter.
+package otlpmetricgrpc // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/otlpmetricgrpc"

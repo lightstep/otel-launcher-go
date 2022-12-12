@@ -301,6 +301,9 @@ func attributesEqual(a, b []attribute.KeyValue) bool {
 		return false
 	}
 	for i := range a {
+		if a[i].Value.Type() != b[i].Value.Type() {
+			return false
+		}
 		if a[i].Key != b[i].Key {
 			return false
 		}

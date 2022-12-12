@@ -21,11 +21,11 @@ import (
 
 	// Note the SDK, exporter, and test appratus are from this repository
 	lightstep "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
-	exporter "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp"
+	exporter "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric"
+	otlpmetricgrpc "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	otlptest "github.com/lightstep/otel-launcher-go/pipelines/test"
 
 	// Note the gRPC/OTLP exporter and protocol are from the community SDK.
-	otlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	otlpproto "go.opentelemetry.io/proto/otlp/metrics/v1"
 )
 
@@ -35,7 +35,8 @@ func ExampleMinimumConfig() {
 	server := otlptest.NewServer()
 
 	// Configure an exporter.
-	exp, _ := exporter.New(ctx, otlpmetricgrpc.NewClient(
+	client, _ := otlpmetricgrpc.NewClient(
+		ctx,
 
 		// In a real scenario, replace the following three lines with, for example:
 		//    WithEndpoint("ingest.lightstep.com:443").
@@ -43,7 +44,8 @@ func ExampleMinimumConfig() {
 		otlpmetricgrpc.WithInsecure(),
 		otlpmetricgrpc.WithEndpoint(fmt.Sprint(otlptest.ServerName, ":", server.InsecureMetricsPort)),
 		otlpmetricgrpc.WithHeaders(map[string]string{"lightstep-access-token": "${TOKEN}"}),
-	))
+	)
+	exp := exporter.New(client)
 
 	// Configure the SDK.
 	sdk := lightstep.NewMeterProvider(
@@ -56,7 +58,7 @@ func ExampleMinimumConfig() {
 
 	// Count once and shutdown.
 	counter.Add(ctx, 1)
-	sdk.Shutdown(ctx)
+	_ = sdk.Shutdown(ctx)
 
 	oneScope := server.MetricsRequests()[0].ResourceMetrics[0].ScopeMetrics[0]
 	oneHeader := server.MetricsMDs()[0]

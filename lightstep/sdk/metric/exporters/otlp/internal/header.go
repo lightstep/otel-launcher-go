@@ -13,23 +13,13 @@
 // limitations under the License.
 
 // Package internal contains common functionality for all OTLP exporters.
-// Other than config.go, these files were forked from "go.opentelemetry.io/otel/exporters/otlp/internal".
+// This was forked from "go.opentelemetry.io/otel/exporters/otlp/internal".
 package internal // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal"
 
-import (
-	"fmt"
-	"path"
-	"strings"
-)
+import "go.opentelemetry.io/otel"
 
-// CleanPath returns a path with all spaces trimmed and all redundancies removed. If urlPath is empty or cleaning it results in an empty string, defaultPath is returned instead.
-func CleanPath(urlPath string, defaultPath string) string {
-	tmp := path.Clean(strings.TrimSpace(urlPath))
-	if tmp == "." {
-		return defaultPath
-	}
-	if !path.IsAbs(tmp) {
-		tmp = fmt.Sprintf("/%s", tmp)
-	}
-	return tmp
+// GetUserAgentHeader return an OTLP header value form "OTel OTLP Exporter Go/{{ .Version }}"
+// https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/protocol/exporter.md#user-agent
+func GetUserAgentHeader() string {
+	return "OTel OTLP Exporter Go/" + otel.Version()
 }
