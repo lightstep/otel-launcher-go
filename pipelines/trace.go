@@ -55,16 +55,16 @@ func NewTracePipeline(c PipelineConfig) (func() error, error) {
 }
 
 func (c PipelineConfig) newSampler() trace.Sampler {
-	if !c.SamplingEnabled || c.SamplingPercent == 100 {
+	if !c.SamplingEnabled || c.SamplingPercent >= 1.0 {
 		return trace.AlwaysSample()
 	}
 
-	if c.SamplingPercent == 0 {
+	if c.SamplingPercent == 0.0 {
 		return trace.NeverSample()
 	}
 
 	return consistent.ParentProbabilityBased(
-		consistent.ProbabilityBased(float64(c.SamplingPercent) / 100.0),
+		consistent.ProbabilityBased(c.SamplingPercent),
 	)
 }
 

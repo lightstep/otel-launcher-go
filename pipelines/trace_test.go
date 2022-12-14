@@ -127,7 +127,7 @@ func TestSampledTrace(t *testing.T) {
 		Credentials:     credentials.NewTLS(newTLSConfig()),
 		Propagators:     []string{"tracecontext", "baggage"},
 		SamplingEnabled: true,
-		SamplingPercent: 50,
+		SamplingPercent: 0.5,
 	})
 	require.NoError(t, err)
 

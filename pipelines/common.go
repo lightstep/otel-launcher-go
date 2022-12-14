@@ -66,9 +66,10 @@ type PipelineConfig struct {
 	// to the endpoint.
 	SamplingEnabled bool
 
-	// SamplingPercent is the percentage of spans will be sent to the endpoint,
-	// in the range 0-100. It is only consulted if SamplingEnabled is set to true
-	SamplingPercent int
+	// SamplingPercent is the percentage of spans that will be sent to the
+	// endpoint, in the range 0.0-1.0. It is only consulted if SamplingEnabled
+	// is set to true
+	SamplingPercent float64
 }
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/lightstep/otel-launcher-go/pipelines"
@@ -113,14 +114,14 @@ func WithSpanSamplingEnabled(enabled bool) Option {
 }
 
 // WithSpanSamplingPercent sets a percentage of spans to be sampled client-side.
-// For instance, if set to 75, then 25% of spans will be dropped and 75% will be
-// kept. The default value is 100 (no sampling).
+// For instance, if set to 0.75, then 25% of spans will be dropped and 75% will be
+// kept. The default value is 1 (no sampling).
 //
 // Note that this option has no effect unless span sampling is enabled.
 //
 // Sampling is applied at the trace level, rather than the span level, so either
 // all the spans in a trace are sampled, or none are.
-func WithSpanSamplingPercent(percent int) Option {
+func WithSpanSamplingPercent(percent float64) Option {
 	return func(c *Config) {
 		c.SpanSamplingPercent = percent
 	}
@@ -240,7 +241,7 @@ const (
 	// we'll set this to `DefaultMetricExporterEndpoint`.
 
 	DefaultSpanSamplingEnabled    = false
-	DefaultSpanSamplingPercent    = 100
+	DefaultSpanSamplingPercent    = 1.0
 	DefaultSpanExporterEndpoint   = "ingest.lightstep.com:443"
 	DefaultMetricExporterEndpoint = "ingest.lightstep.com:443"
 )
@@ -249,7 +250,7 @@ type Config struct {
 	SpanExporterEndpoint                string            `env:"OTEL_EXPORTER_OTLP_SPAN_ENDPOINT,default=ingest.lightstep.com:443"`
 	SpanExporterEndpointInsecure        bool              `env:"OTEL_EXPORTER_OTLP_SPAN_INSECURE,default=false"`
 	SpanSamplingEnabled                 bool              `env:"LS_SPAN_SAMPLING_ENABLED,default=false"`
-	SpanSamplingPercent                 int               `env:"LS_SPAN_SAMPLING_PERCENT,default=100"`
+	SpanSamplingPercent                 float64           `env:"LS_SPAN_SAMPLING_PERCENT,default=100"`
 	ServiceName                         string            `env:"LS_SERVICE_NAME"`
 	ServiceVersion                      string            `env:"LS_SERVICE_VERSION,default=unknown"`
 	Headers                             map[string]string `env:"OTEL_EXPORTER_OTLP_HEADERS"`
@@ -322,9 +323,24 @@ func validateConfiguration(c Config) error {
 	return nil
 }
 
+// For ease of use, percentages are set in the range 0.0 - 100.0 in envvars, but
+// in the range 0.0-1.0 in code
+func convertPercentsToFloat(ctx context.Context, key, value string) (string, error) {
+	if key != "LS_SPAN_SAMPLING_PERCENT" {
+		return value, nil
+	}
+
+	f, err := strconv.ParseFloat(value, 64)
+	if err != nil {
+		return "", err
+	}
+
+	return strconv.FormatFloat(f/100.0, 'E', -1, 64), nil
+}
+
 func newConfig(opts ...Option) Config {
 	var c Config
-	envError := envconfig.Process(context.Background(), &c)
+	envError := envconfig.ProcessWith(context.Background(), &c, envconfig.OsLookuper(), convertPercentsToFloat)
 	c.logger = &DefaultLogger{}
 	c.errorHandler = &defaultHandler{logger: c.logger}
 	var defaultOpts []Option
