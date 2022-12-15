@@ -115,7 +115,7 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) applyKeysFilter(kv
 		kv := iter.Attribute()
 		if !isValidAttribute(kv) {
 			doevery.TimePeriod(time.Minute, func() {
-				otel.Handle(fmt.Errorf("use of empty attribute key, e.g., with value %q", kv.Value.Emit()))
+				otel.Handle(fmt.Errorf("use of empty attribute key, e.g., metric name %q with value %q", metric.desc.Name, kv.Value.Emit()))
 			})
 			invalidFilter = true
 			break

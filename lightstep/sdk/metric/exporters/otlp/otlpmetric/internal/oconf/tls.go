@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package otlpconfig // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/otlpconfig"
+package oconf // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/internal/oconf"
 
 import (
 	"crypto/tls"
 	"crypto/x509"
 	"errors"
-	"io/ioutil"
+	"os"
 )
 
 // ReadTLSConfigFromFile reads a PEM certificate file and creates
 // a tls.Config that will use this certifate to verify a server certificate.
 func ReadTLSConfigFromFile(path string) (*tls.Config, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

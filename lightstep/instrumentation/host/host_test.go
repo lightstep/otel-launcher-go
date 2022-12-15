@@ -4,14 +4,13 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package host
 
 import (
@@ -30,56 +29,74 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/metric/export/aggregation"
-	"go.opentelemetry.io/otel/sdk/metric/metrictest"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
-func getMetric(exp *metrictest.Exporter, name string, lbl attribute.KeyValue) float64 {
-	for _, r := range exp.GetRecords() {
-		if r.InstrumentName != name {
+func getMetric(metrics []metricdata.Metrics, name string, lbl attribute.KeyValue) float64 {
+	for _, m := range metrics {
+		fmt.Println(m.Name)
+		if m.Name != name {
 			continue
 		}
 
-		if lbl.Key != "" {
-			foundAttribute := false
-			for _, haveLabel := range r.Attributes {
-				if haveLabel != lbl {
-					continue
+		switch dt := m.Data.(type) {
+		case metricdata.Gauge[int64]:
+			if !lbl.Valid() {
+				return float64(dt.DataPoints[0].Value)
+			}
+			for _, p := range dt.DataPoints {
+				if val, ok := p.Attributes.Value(lbl.Key); ok && val.Emit() == lbl.Value.Emit() {
+					return float64(p.Value)
 				}
-				foundAttribute = true
-				break
 			}
-			if !foundAttribute {
-				continue
+		case metricdata.Gauge[float64]:
+			if !lbl.Valid() {
+				return dt.DataPoints[0].Value
 			}
-		}
-
-		switch r.AggregationKind {
-		case aggregation.SumKind, aggregation.HistogramKind:
-			return r.Sum.CoerceToFloat64(r.NumberKind)
-		case aggregation.LastValueKind:
-			return r.LastValue.CoerceToFloat64(r.NumberKind)
+			for _, p := range dt.DataPoints {
+				if val, ok := p.Attributes.Value(lbl.Key); ok && val.Emit() == lbl.Value.Emit() {
+					return p.Value
+				}
+			}
+		case metricdata.Sum[int64]:
+			if !lbl.Valid() {
+				return float64(dt.DataPoints[0].Value)
+			}
+			for _, p := range dt.DataPoints {
+				if val, ok := p.Attributes.Value(lbl.Key); ok && val.Emit() == lbl.Value.Emit() {
+					return float64(p.Value)
+				}
+			}
+		case metricdata.Sum[float64]:
+			if !lbl.Valid() {
+				return dt.DataPoints[0].Value
+			}
+			for _, p := range dt.DataPoints {
+				if val, ok := p.Attributes.Value(lbl.Key); ok && val.Emit() == lbl.Value.Emit() {
+					return p.Value
+				}
+			}
 		default:
-			panic(fmt.Sprintf("invalid aggregation type: %v", r.AggregationKind))
+			panic(fmt.Sprintf("invalid aggregation type: %v", dt))
 		}
 	}
-	panic("Could not locate a metric in test output")
+	panic(fmt.Sprintf("Could not locate a metric in test output, name: %s, keyValue: %v", name, lbl))
 }
 
 func TestHostCPU(t *testing.T) {
-	provider, exp := metrictest.NewTestMeterProvider()
-	err := Start(
-		WithMeterProvider(provider),
-	)
-	assert.NoError(t, err)
+	ctx := context.Background()
+	reader := metric.NewManualReader()
+	provider := metric.NewMeterProvider(metric.WithReader(reader))
+
+	err := Start(WithMeterProvider(provider))
+	require.NoError(t, err)
 
 	// Note: we use a different library
 	// ("github.com/shirou/gopsutil/v3/process") to verify process
 	// CPU times computed from syscall.Getrusage().
 	proc, err := process.NewProcess(int32(os.Getpid()))
 	require.NoError(t, err)
-
-	ctx := context.Background()
 
 	hostBefore, err := cpu.TimesWithContext(ctx, false)
 	require.NoError(t, err)
@@ -93,10 +110,12 @@ func TestHostCPU(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	require.NoError(t, exp.Collect(ctx))
+	data, err := reader.Collect(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(data.ScopeMetrics))
 
-	hostUser := getMetric(exp, "system.cpu.time", AttributeCPUTimeUser[0])
-	hostSystem := getMetric(exp, "system.cpu.time", AttributeCPUTimeSystem[0])
+	hostUser := getMetric(data.ScopeMetrics[0].Metrics, "system.cpu.time", AttributeCPUTimeUser[0])
+	hostSystem := getMetric(data.ScopeMetrics[0].Metrics, "system.cpu.time", AttributeCPUTimeSystem[0])
 
 	hostAfter, err := cpu.TimesWithContext(ctx, false)
 	require.NoError(t, err)
@@ -122,31 +141,33 @@ func TestHostCPU(t *testing.T) {
 }
 
 func TestHostMemory(t *testing.T) {
-	provider, exp := metrictest.NewTestMeterProvider()
-	err := Start(
-		WithMeterProvider(provider),
-	)
-	assert.NoError(t, err)
-
 	ctx := context.Background()
+	reader := metric.NewManualReader()
+	provider := metric.NewMeterProvider(metric.WithReader(reader))
+
+	err := Start(WithMeterProvider(provider))
+	require.NoError(t, err)
+
 	vMem, err := mem.VirtualMemoryWithContext(ctx)
 	require.NoError(t, err)
 
-	require.NoError(t, exp.Collect(ctx))
+	data, err := reader.Collect(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(data.ScopeMetrics))
 
-	hostUsed := getMetric(exp, "system.memory.usage", AttributeMemoryUsed[0])
+	hostUsed := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.usage", AttributeMemoryUsed[0])
 	assert.Greater(t, hostUsed, 0.0)
 	assert.LessOrEqual(t, hostUsed, float64(vMem.Total))
 
-	hostAvailable := getMetric(exp, "system.memory.usage", AttributeMemoryAvailable[0])
+	hostAvailable := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.usage", AttributeMemoryAvailable[0])
 	assert.GreaterOrEqual(t, hostAvailable, 0.0)
 	assert.Less(t, hostAvailable, float64(vMem.Total))
 
-	hostUsedUtil := getMetric(exp, "system.memory.utilization", AttributeMemoryUsed[0])
+	hostUsedUtil := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.utilization", AttributeMemoryUsed[0])
 	assert.Greater(t, hostUsedUtil, 0.0)
 	assert.LessOrEqual(t, hostUsedUtil, 1.0)
 
-	hostAvailableUtil := getMetric(exp, "system.memory.utilization", AttributeMemoryAvailable[0])
+	hostAvailableUtil := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.utilization", AttributeMemoryAvailable[0])
 	assert.GreaterOrEqual(t, hostAvailableUtil, 0.0)
 	assert.Less(t, hostAvailableUtil, 1.0)
 
@@ -194,13 +215,13 @@ func sendBytes(t *testing.T, count int) error {
 }
 
 func TestHostNetwork(t *testing.T) {
-	provider, exp := metrictest.NewTestMeterProvider()
-	err := Start(
-		WithMeterProvider(provider),
-	)
-	assert.NoError(t, err)
-
 	ctx := context.Background()
+	reader := metric.NewManualReader()
+	provider := metric.NewMeterProvider(metric.WithReader(reader))
+
+	err := Start(WithMeterProvider(provider))
+	require.NoError(t, err)
+
 	hostBefore, err := net.IOCountersWithContext(ctx, false)
 	require.NoError(t, err)
 
@@ -217,9 +238,11 @@ func TestHostNetwork(t *testing.T) {
 			uint64(howMuch) <= hostAfter[0].BytesRecv-hostBefore[0].BytesRecv
 	}, 30*time.Second, time.Second/2)
 
-	require.NoError(t, exp.Collect(ctx))
-	hostTransmit := getMetric(exp, "system.network.io", AttributeNetworkTransmit[0])
-	hostReceive := getMetric(exp, "system.network.io", AttributeNetworkReceive[0])
+	data, err := reader.Collect(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(data.ScopeMetrics))
+	hostTransmit := getMetric(data.ScopeMetrics[0].Metrics, "system.network.io", AttributeNetworkTransmit[0])
+	hostReceive := getMetric(data.ScopeMetrics[0].Metrics, "system.network.io", AttributeNetworkReceive[0])
 
 	// Check that the recorded measurements reflect the same change:
 	require.LessOrEqual(t, uint64(howMuch), uint64(hostTransmit)-hostBefore[0].BytesSent)

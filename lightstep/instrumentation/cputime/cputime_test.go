@@ -4,14 +4,13 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
 package cputime
 
 import (
@@ -24,50 +23,68 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/metric/export/aggregation"
-	"go.opentelemetry.io/otel/sdk/metric/metrictest"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
-func getMetric(exp *metrictest.Exporter, name string, lbl attribute.KeyValue) float64 {
-	for _, r := range exp.GetRecords() {
-		if r.InstrumentName != name {
+func getMetric(metrics []metricdata.Metrics, name string, lbl attribute.KeyValue) float64 {
+	for _, m := range metrics {
+		fmt.Println(m.Name)
+		if m.Name != name {
 			continue
 		}
 
-		if lbl.Key != "" {
-			foundAttribute := false
-			for _, haveLabel := range r.Attributes {
-				if haveLabel != lbl {
-					continue
+		switch dt := m.Data.(type) {
+		case metricdata.Gauge[int64]:
+			if !lbl.Valid() {
+				return float64(dt.DataPoints[0].Value)
+			}
+			for _, p := range dt.DataPoints {
+				if val, ok := p.Attributes.Value(lbl.Key); ok && val.Emit() == lbl.Value.Emit() {
+					return float64(p.Value)
 				}
-				foundAttribute = true
-				break
 			}
-			if !foundAttribute {
-				continue
+		case metricdata.Gauge[float64]:
+			if !lbl.Valid() {
+				return dt.DataPoints[0].Value
 			}
-		}
-
-		switch r.AggregationKind {
-		case aggregation.SumKind, aggregation.HistogramKind:
-			return r.Sum.CoerceToFloat64(r.NumberKind)
-		case aggregation.LastValueKind:
-			return r.LastValue.CoerceToFloat64(r.NumberKind)
+			for _, p := range dt.DataPoints {
+				if val, ok := p.Attributes.Value(lbl.Key); ok && val.Emit() == lbl.Value.Emit() {
+					return p.Value
+				}
+			}
+		case metricdata.Sum[int64]:
+			if !lbl.Valid() {
+				return float64(dt.DataPoints[0].Value)
+			}
+			for _, p := range dt.DataPoints {
+				if val, ok := p.Attributes.Value(lbl.Key); ok && val.Emit() == lbl.Value.Emit() {
+					return float64(p.Value)
+				}
+			}
+		case metricdata.Sum[float64]:
+			if !lbl.Valid() {
+				return dt.DataPoints[0].Value
+			}
+			for _, p := range dt.DataPoints {
+				if val, ok := p.Attributes.Value(lbl.Key); ok && val.Emit() == lbl.Value.Emit() {
+					return p.Value
+				}
+			}
 		default:
-			panic(fmt.Sprintf("invalid aggregation type: %v", r.AggregationKind))
+			panic(fmt.Sprintf("invalid aggregation type: %v", dt))
 		}
 	}
-	panic("Could not locate a metric in test output")
+	panic(fmt.Sprintf("Could not locate a metric in test output, name: %s, keyValue: %v", name, lbl))
 }
 
 func TestProcessCPU(t *testing.T) {
-	provider, exp := metrictest.NewTestMeterProvider()
-	err := Start(
-		WithMeterProvider(provider),
-	)
-	require.NoError(t, err)
-
 	ctx := context.Background()
+	reader := metric.NewManualReader()
+	provider := metric.NewMeterProvider(metric.WithReader(reader))
+
+	err := Start(WithMeterProvider(provider))
+	require.NoError(t, err)
 
 	// This is a second copy of the same source of information.
 	// We ultimately have to trust the information source, the
@@ -88,10 +105,12 @@ func TestProcessCPU(t *testing.T) {
 
 	beforeUser, beforeSystem, _, _ := c.getProcessTimes(ctx)
 
-	require.NoError(t, exp.Collect(ctx))
+	data, err := reader.Collect(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(data.ScopeMetrics))
 
-	processUser := getMetric(exp, "process.cpu.time", AttributeCPUTimeUser[0])
-	processSystem := getMetric(exp, "process.cpu.time", AttributeCPUTimeSystem[0])
+	processUser := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeUser[0])
+	processSystem := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeSystem[0])
 
 	afterUser, afterSystem, _, _ := c.getProcessTimes(ctx)
 
@@ -116,13 +135,18 @@ func TestProcessUptime(t *testing.T) {
 		processStartTime = save
 	}()
 
-	provider, exp := metrictest.NewTestMeterProvider()
+	reader := metric.NewManualReader()
+	provider := metric.NewMeterProvider(metric.WithReader(reader))
+
 	c, err := newCputime(config{MeterProvider: provider})
 	require.NoError(t, err)
 	require.NoError(t, c.register())
 
-	require.NoError(t, exp.Collect(ctx))
-	procUptime := getMetric(exp, "process.uptime", attribute.KeyValue{})
+	data, err := reader.Collect(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(data.ScopeMetrics))
+
+	procUptime := getMetric(data.ScopeMetrics[0].Metrics, "process.uptime", attribute.KeyValue{})
 
 	require.LessOrEqual(t, expectUptime, procUptime)
 }
@@ -130,17 +154,21 @@ func TestProcessUptime(t *testing.T) {
 func TestProcessGCCPUTime(t *testing.T) {
 	ctx := context.Background()
 
-	provider, exp := metrictest.NewTestMeterProvider()
+	reader := metric.NewManualReader()
+	provider := metric.NewMeterProvider(metric.WithReader(reader))
 	c, err := newCputime(config{
 		MeterProvider: provider,
 	})
 	require.NoError(t, err)
 	require.NoError(t, c.register())
 
-	require.NoError(t, exp.Collect(ctx))
-	initialUtime := getMetric(exp, "process.cpu.time", AttributeCPUTimeUser[0])
-	initialStime := getMetric(exp, "process.cpu.time", AttributeCPUTimeSystem[0])
-	initialGCtime := getMetric(exp, "process.runtime.go.gc.cpu.time", attribute.KeyValue{})
+	data, err := reader.Collect(ctx)
+	require.NoError(t, err)
+	require.Equal(t, 1, len(data.ScopeMetrics))
+
+	initialUtime := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeUser[0])
+	initialStime := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeSystem[0])
+	initialGCtime := getMetric(data.ScopeMetrics[0].Metrics, "process.runtime.go.gc.cpu.time", attribute.KeyValue{})
 
 	// Make garbage
 	for i := 0; i < 2; i++ {
@@ -151,10 +179,12 @@ func TestProcessGCCPUTime(t *testing.T) {
 		require.Less(t, 0, len(garbage))
 		runtime.GC()
 
-		require.NoError(t, exp.Collect(ctx))
-		utime := -initialUtime + getMetric(exp, "process.cpu.time", AttributeCPUTimeUser[0])
-		stime := -initialStime + getMetric(exp, "process.cpu.time", AttributeCPUTimeSystem[0])
-		gctime := -initialGCtime + getMetric(exp, "process.runtime.go.gc.cpu.time", attribute.KeyValue{})
+		data, err := reader.Collect(ctx)
+		require.NoError(t, err)
+		require.Equal(t, 1, len(data.ScopeMetrics))
+		utime := -initialUtime + getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeUser[0])
+		stime := -initialStime + getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeSystem[0])
+		gctime := -initialGCtime + getMetric(data.ScopeMetrics[0].Metrics, "process.runtime.go.gc.cpu.time", attribute.KeyValue{})
 
 		require.LessOrEqual(t, gctime, utime+stime)
 	}

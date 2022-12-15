@@ -195,26 +195,6 @@ Lightstep users are recommended to select either the "cumulative" or
 "stateless" preference.  The OpenTelemetry-specified "delta"
 temporality preference is not recommended for Lightstep users.
 
-### Metrics validation errors
-
-Lightstep performs a number of validation steps over metrics data
-before accepting it.  When an OTLP Metrics export request is
-successful but data is completely or partially rejected for any
-reason, the outcome is detailed using Lightstep-specific response
-headers. 
-
-These headers predate [work in OpenTelemetry on returning partial
-success](https://github.com/open-telemetry/opentelemetry-proto/pull/390).
-Lightstep expects to use standard OTLP fields to convey these
-partially-successful outcomes in the future.
-
-Validation errors are generally repetitive.  Lightstep limits the size
-of each partial-success response to lower the overhead associated with
-these responses using random selection.
-
-The launcher contains special code to interpret these headers and
-direct them to the standard OpenTelemetry-Go error handler.
-
 ------
 
 *Made with*

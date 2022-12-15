@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package otlpconfig // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/otlpconfig"
+package oconf // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/internal/oconf"
 
 import (
 	"crypto/tls"
@@ -25,8 +25,12 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/encoding/gzip"
 
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/aggregation"
+
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/internal/retry"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/global"
 )
 
 const (
@@ -57,6 +61,9 @@ type (
 
 		// gRPC configurations
 		GRPCCredentials credentials.TransportCredentials
+
+		TemporalitySelector metric.TemporalitySelector
+		AggregationSelector metric.AggregationSelector
 	}
 
 	Config struct {
@@ -82,6 +89,9 @@ func NewHTTPConfig(opts ...HTTPOption) Config {
 			URLPath:     DefaultMetricsPath,
 			Compression: NoCompression,
 			Timeout:     DefaultTimeout,
+
+			TemporalitySelector: metric.DefaultTemporalitySelector,
+			AggregationSelector: metric.DefaultAggregationSelector,
 		},
 		RetryConfig: retry.DefaultConfig,
 	}
@@ -102,8 +112,12 @@ func NewGRPCConfig(opts ...GRPCOption) Config {
 			URLPath:     DefaultMetricsPath,
 			Compression: NoCompression,
 			Timeout:     DefaultTimeout,
+
+			TemporalitySelector: metric.DefaultTemporalitySelector,
+			AggregationSelector: metric.DefaultAggregationSelector,
 		},
 		RetryConfig: retry.DefaultConfig,
+		DialOptions: []grpc.DialOption{grpc.WithUserAgent(internal.GetUserAgentHeader())},
 	}
 	cfg = ApplyGRPCEnvConfigs(cfg)
 	for _, opt := range opts {
@@ -309,6 +323,35 @@ func WithHeaders(headers map[string]string) GenericOption {
 func WithTimeout(duration time.Duration) GenericOption {
 	return newGenericOption(func(cfg Config) Config {
 		cfg.Metrics.Timeout = duration
+		return cfg
+	})
+}
+
+func WithTemporalitySelector(selector metric.TemporalitySelector) GenericOption {
+	return newGenericOption(func(cfg Config) Config {
+		cfg.Metrics.TemporalitySelector = selector
+		return cfg
+	})
+}
+
+func WithAggregationSelector(selector metric.AggregationSelector) GenericOption {
+	// Deep copy and validate before using.
+	wrapped := func(ik metric.InstrumentKind) aggregation.Aggregation {
+		a := selector(ik)
+		cpA := a.Copy()
+		if err := cpA.Err(); err != nil {
+			cpA = metric.DefaultAggregationSelector(ik)
+			global.Error(
+				err, "using default aggregation instead",
+				"aggregation", a,
+				"replacement", cpA,
+			)
+		}
+		return cpA
+	}
+
+	return newGenericOption(func(cfg Config) Config {
+		cfg.Metrics.AggregationSelector = wrapped
 		return cfg
 	})
 }

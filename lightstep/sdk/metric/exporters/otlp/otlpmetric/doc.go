@@ -1,4 +1,4 @@
-// Copyright Lightstep Authors
+// Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package launcher
-
-const version = "1.11.1"
+// Package otlpmetric provides a metric Exporter that can be
+// used with PeriodicReader. It transforms metrics data into OTLP and transmits
+// the transformed data to OTLP receivers. The Exporter is configurable to use
+// different Clients, each using a distinct transport protocol to communicate
+// to an OTLP receiving endpoint.
+package otlpmetric // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric"
