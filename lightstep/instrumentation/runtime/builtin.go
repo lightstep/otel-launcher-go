@@ -108,16 +108,13 @@ func newBuiltinRuntime(meter metric.Meter, af allFunc, rf readFunc) *builtinRunt
 	}
 }
 
-func getTotalizedAttributeName(n string) string {
-	x := strings.Split(n, ".")
+func getTotalizedAttributeName(order int) string {
 	// It's a plural, make it singular.
-	switch x[len(x)-1] {
-	case "cycles":
-		return "cycle"
-	case "usage", "time":
-		return "class"
+	base := "class"
+	for ; order > 0; order-- {
+		base = "sub" + base
 	}
-	panic(fmt.Sprint("unrecognized attribute name: ", n))
+	return base
 }
 
 func getTotalizedMetricName(n, u string) string {
@@ -131,11 +128,17 @@ func getTotalizedMetricName(n, u string) string {
 	// suffix, while ".cycles" is an exception.
 	// The ideal name depends on what we know.
 	switch u {
-	case "bytes":
+	case "By":
+		// OTel has similar conventions for memory usage, disk usage, etc, so
+		// for metrics with /classes/*:bytes we create a .usage metric.
 		return s + "usage"
 	case "{cpu-seconds}":
+		// Same argument above, except OTel uses .time for
+		// cpu-timing metrics instead of .usage.
 		return s + "time"
 	default:
+		// There are no other conventions in the
+		// runtime/metrics that we know of.
 		panic(fmt.Sprint("unrecognized metric suffix: ", u))
 	}
 }
@@ -166,16 +169,26 @@ func (r *builtinRuntime) register() error {
 	var totalAttrs [][]attribute.KeyValue
 
 	for _, m := range all {
+		// n is the output name, which has '/' replaced with
+		// '.' and a prefix this value may be modified below,
+		// based on conventions in the runtime/metrics
+		// package.
 		n, statedUnits := toName(m.Name)
 
+		originalName, _, _ := strings.Cut(m.Name, ":")
+
+		// We skip all total metrics because they are implied
+		// as sums and can be configured as OTel views.
 		if strings.HasSuffix(n, ".total") {
 			continue
 		}
 
+		// Get the units, real or pseudo.
 		var u string
 		switch statedUnits {
-		case "bytes", "seconds":
-			// Real units
+		case "bytes":
+			u = string(unit.Bytes)
+		case "seconds":
 			u = statedUnits
 		default:
 			// Pseudo-units
@@ -183,23 +196,30 @@ func (r *builtinRuntime) register() error {
 		}
 
 		// Remove any ".total" suffix, this is redundant for Prometheus.
-		var totalAttrVal string
+		var totalAttrVals []string
+		var totalAttrSubstring string
 		var totalPrefix string
 		for totalize := range totals {
-			if strings.HasPrefix(n, totalize) && len(n)-len(totalize) > len(totalAttrVal) {
+			// For any totals, find the longest substring.
+			if strings.HasPrefix(n, totalize) && len(n)-len(totalize) > len(totalAttrSubstring) {
 				// Units is unchanged.
 				// Name becomes the shortest prefix.
 				// Remember which attribute to use.
-				totalAttrVal = n[len(totalize):]
+				totalAttrSubstring = n[len(totalize):]
+				totalAttrVals = strings.Split(totalAttrSubstring, ".")
 				totalPrefix = totalize
 			}
 		}
 		if totalPrefix != "" {
 			n = getTotalizedMetricName(totalPrefix[:len(totalPrefix)-1], u)
+			originalName = originalName[:len(originalName)-len(totalAttrSubstring)-1]
 		}
 
+		// Next branch helps identify the objects/bytes special case,
+		// which correctly removes "bytes" (a proper unit)
+		// from appearing as a suffix.
 		if counts[n] > 1 {
-			if totalAttrVal != "" {
+			if totalAttrVals != nil {
 				// This has not happened, hopefully never will.
 				// Indicates the special case for objects/bytes
 				// overlaps with the special case for total.
@@ -225,9 +245,21 @@ func (r *builtinRuntime) register() error {
 			}
 		}
 
+		// We need a fixed description, which depends which
+		// convention is used.
+		var description string
+		if totalAttrVals != nil {
+			// This case is an aggregation of known values
+			description = fmt.Sprintf("runtime/metrics: %v/*:%s", originalName, statedUnits)
+		} else {
+			// This includes the counts[n] > 1 case, both
+			// use an exact name.
+			description = fmt.Sprintf("runtime/metrics: %v", m.Name)
+		}
+
 		opts := []instrument.Option{
 			instrument.WithUnit(unit.Unit(u)),
-			instrument.WithDescription(m.Description),
+			instrument.WithDescription(description),
 		}
 		var inst instrument.Asynchronous
 		var err error
@@ -262,13 +294,16 @@ func (r *builtinRuntime) register() error {
 		}
 		samples = append(samples, samp)
 		instruments = append(instruments, inst)
-		if totalAttrVal == "" {
+
+		if totalAttrVals == nil {
 			totalAttrs = append(totalAttrs, nil)
 		} else {
-			// Append a singleton list.
-			totalAttrs = append(totalAttrs, []attribute.KeyValue{
-				attribute.String(getTotalizedAttributeName(n), totalAttrVal),
-			})
+			// Form a list of attributes to use in the callback.
+			var attrs []attribute.KeyValue
+			for i, val := range totalAttrVals {
+				attrs = append(attrs, attribute.Key(getTotalizedAttributeName(i)).String(val))
+			}
+			totalAttrs = append(totalAttrs, attrs)
 		}
 	}
 

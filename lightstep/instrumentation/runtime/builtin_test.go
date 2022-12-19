@@ -22,6 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
@@ -30,9 +31,54 @@ import (
 // prefix is mandatory for this library, however the "go." part is not.
 const expectPrefix = "process.runtime.go."
 
-var expectScope = instrumentation.Scope{
-	Name: "otel-launcher-go/runtime",
+type builtinExpected int
+
+var expectSingleton = map[attribute.Set]bool{
+	emptySet: true,
 }
+
+const (
+	builtinCounter builtinExpected = iota
+	builtinUpDownCounter
+	builtinGauge
+)
+
+type builtinNameExpected struct {
+	name   string
+	expect builtinExpected
+}
+
+func expectCounter(name string) builtinNameExpected {
+	return builtinNameExpected{
+		name:   name,
+		expect: builtinCounter,
+	}
+}
+
+func expectUpDownCounter(name string) builtinNameExpected {
+	return builtinNameExpected{
+		name:   name,
+		expect: builtinCounter,
+	}
+}
+
+func expectGauge(name string) builtinNameExpected {
+	return builtinNameExpected{
+		name:   name,
+		expect: builtinGauge,
+	}
+}
+
+var (
+	expectScope = instrumentation.Scope{
+		Name: "otel-launcher-go/runtime",
+	}
+
+	emptySet = attribute.NewSet()
+
+	classKey    = attribute.Key("class")
+	subclassKey = attribute.Key("subclass")
+)
 
 // TestBuiltinRuntimeMetrics tests the real output of the library to
 // ensure expected prefix, instrumentation scope, and empty
@@ -75,8 +121,11 @@ func TestBuiltinRuntimeMetrics(t *testing.T) {
 			attrs = dt.DataPoints[0].Attributes
 		}
 
-		if expect[name] > 1 {
-			require.Equal(t, 1, attrs.Len())
+		lookup, ok := expect[name]
+		require.True(t, ok, "lookup %v", name)
+
+		if lookup == nil {
+			require.Equal(t, 0, attrs.Len())
 		} else {
 			require.Equal(t, 1, expect[name], "for %v", inst.Name)
 			require.Equal(t, 0, attrs.Len())
@@ -87,7 +136,7 @@ func TestBuiltinRuntimeMetrics(t *testing.T) {
 	require.Equal(t, expect, allNames)
 }
 
-func makeTestCase() (allFunc, readFunc, map[string]map[string]metrics.Value) {
+func makeAllInts() []metrics.Value {
 	// Note: the library provides no way to generate values, so use the
 	// builtin library to get some.  Since we can't generate a Float64 value
 	// we can't even test the Gauge logic in this package.
@@ -115,6 +164,32 @@ func makeTestCase() (allFunc, readFunc, map[string]map[string]metrics.Value) {
 	for iv := range ints {
 		allInts = append(allInts, iv)
 	}
+	return allInts
+}
+
+type testMapping map[string]metrics.Value
+
+func (m testMapping) read(samples []metrics.Sample) {
+	for i := range samples {
+		v, ok := m[samples[i].Name]
+		if ok {
+			samples[i].Value = v
+		} else {
+			panic("outcome uncertain")
+		}
+	}
+}
+
+type testExpectation map[string]*testExpectMetric
+
+type testExpectMetric struct {
+	desc string
+	unit unit.Unit
+	vals map[attribute.Set]metrics.Value
+}
+
+func makeTestCase1() (allFunc, readFunc, testExpectation) {
+	allInts := makeAllInts()
 
 	af := func() []metrics.Description {
 		return []metrics.Description{
@@ -142,9 +217,45 @@ func makeTestCase() (allFunc, readFunc, map[string]map[string]metrics.Value) {
 				Kind:        metrics.KindUint64,
 				Cumulative:  true,
 			},
+			{
+				Name:        "/waste/cycles/ocean:cycles",
+				Description: "blah blah",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
+			{
+				Name:        "/waste/cycles/sea:cycles",
+				Description: "blah blah",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
+			{
+				Name:        "/waste/cycles/lake:cycles",
+				Description: "blah blah",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
+			{
+				Name:        "/waste/cycles/pond:cycles",
+				Description: "blah blah",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
+			{
+				Name:        "/waste/cycles/puddle:cycles",
+				Description: "blah blah",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
+			{
+				Name:        "/waste/cycles/total:cycles",
+				Description: "blah blah",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
 		}
 	}
-	mapping := map[string]metrics.Value{
+	mapping := testMapping{
 		"/cntr/things:things":         allInts[0],
 		"/updowncntr/things:things":   allInts[1],
 		"/process/count:objects":      allInts[2],
@@ -156,37 +267,126 @@ func makeTestCase() (allFunc, readFunc, map[string]map[string]metrics.Value) {
 		"/waste/cycles/puddle:cycles": allInts[8],
 		"/waste/cycles/total:cycles":  allInts[9],
 	}
-	rf := func(samples []metrics.Sample) {
-		for i := range samples {
-			v, ok := mapping[samples[i].Name]
-			if ok {
-				samples[i].Value = v
-			} else {
-				panic("outcome uncertain")
-			}
-		}
-	}
-	return af, rf, map[string]map[string]metrics.Value{
-		"cntr.things":           {"": allInts[0]},
-		"updowncntr.things":     {"": allInts[1]},
-		"process.count.objects": {"": allInts[2]},
-		"process.count":         {"": allInts[3]},
-
-		// This uses "cycles", one of the two known
-		// multi-variate metrics as of go-1.19.
-		"waste.cycles": {
-			"ocean":  allInts[4],
-			"sea":    allInts[5],
-			"lake":   allInts[6],
-			"pond":   allInts[7],
-			"puddle": allInts[8],
+	return af, mapping.read, testExpectation{
+		"cntr.things": &testExpectMetric{
+			unit: "{things}",
+			desc: "runtime/metrics: /cntr/things:things",
+			vals: map[attribute.Set]metrics.Value{
+				emptySet: allInts[0],
+			},
+		},
+		"updowncntr.things": &testExpectMetric{
+			unit: "{things}",
+			desc: "runtime/metrics: /updowncntr/things:things",
+			vals: map[attribute.Set]metrics.Value{
+				emptySet: allInts[1],
+			},
+		},
+		"process.count.objects": &testExpectMetric{
+			unit: "{objects}",
+			desc: "runtime/metrics: /process/count:objects",
+			vals: map[attribute.Set]metrics.Value{
+				emptySet: allInts[2],
+			},
+		},
+		"process.count": &testExpectMetric{
+			unit: unit.Bytes,
+			desc: "runtime/metrics: /process/count:bytes",
+			vals: map[attribute.Set]metrics.Value{
+				emptySet: allInts[3],
+			},
+		},
+		"waste.cycles": &testExpectMetric{
+			unit: "{cycles}",
+			desc: "runtime/metrics: /waste/cycles/*:cycles",
+			vals: map[attribute.Set]metrics.Value{
+				attribute.NewSet(classKey.String("ocean")):  allInts[4],
+				attribute.NewSet(classKey.String("sea")):    allInts[5],
+				attribute.NewSet(classKey.String("lake")):   allInts[6],
+				attribute.NewSet(classKey.String("pond")):   allInts[7],
+				attribute.NewSet(classKey.String("puddle")): allInts[8],
+			},
 		},
 	}
 }
 
-// TestMetricTranslation validates the translation logic using
+func makeTestCase2() (allFunc, readFunc, testExpectation) {
+	allInts := makeAllInts()
+
+	af := func() []metrics.Description {
+		return []metrics.Description{
+			{
+				Name:        "/objsize/classes/presos:bytes",
+				Description: "a counter of presos bytes",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
+			{
+				Name:        "/objsize/classes/sheets:bytes",
+				Description: "a counter of sheets bytes",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
+			{
+				Name:        "/objsize/classes/docs/word:bytes",
+				Description: "a counter of word doc bytes",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
+			{
+				Name:        "/objsize/classes/docs/pdf:bytes",
+				Description: "a counter of word docs",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
+			{
+				Name:        "/objsize/classes/docs/total:bytes",
+				Description: "a counter of all docs bytes",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
+			{
+				Name:        "/objsize/classes/total:bytes",
+				Description: "a counter of all kinds things bytes",
+				Kind:        metrics.KindUint64,
+				Cumulative:  true,
+			},
+		}
+	}
+	mapping := testMapping{
+		"/objsize/classes/presos:bytes":     allInts[0],
+		"/objsize/classes/sheets:bytes":     allInts[1],
+		"/objsize/classes/docs/word:bytes":  allInts[2],
+		"/objsize/classes/docs/pdf:bytes":   allInts[3],
+		"/objsize/classes/docs/total:bytes": allInts[4],
+		"/objsize/classes/total:bytes":      allInts[5],
+	}
+	return af, mapping.read, testExpectation{
+		"objsize.usage": &testExpectMetric{
+			unit: unit.Bytes,
+			desc: "runtime/metrics: /objsize/classes/*:bytes",
+			vals: map[attribute.Set]metrics.Value{
+				attribute.NewSet(classKey.String("presos")):                           allInts[0],
+				attribute.NewSet(classKey.String("sheets")):                           allInts[1],
+				attribute.NewSet(classKey.String("docs"), subclassKey.String("word")): allInts[2],
+				attribute.NewSet(classKey.String("docs"), subclassKey.String("pdf")):  allInts[3],
+			},
+		},
+	}
+}
+
+// TestMetricTranslation1 validates the translation logic using
 // synthetic metric names and values.
-func TestMetricTranslation(t *testing.T) {
+func TestMetricTranslation1(t *testing.T) {
+	testMetricTranslation(t, makeTestCase1)
+}
+
+// TestMetricTranslation2 is a more complex test than the first.
+func TestMetricTranslation2(t *testing.T) {
+	testMetricTranslation(t, makeTestCase2)
+}
+
+func testMetricTranslation(t *testing.T, makeTestCase func() (allFunc, readFunc, testExpectation)) {
 	reader := metric.NewManualReader()
 	provider := metric.NewMeterProvider(metric.WithReader(reader))
 
@@ -195,48 +395,32 @@ func TestMetricTranslation(t *testing.T) {
 	err := br.register()
 	require.NoError(t, err)
 
-	expectRecords := 0
-	for _, values := range mapping {
-		expectRecords += len(values)
-		if len(values) > 1 {
-			// Counts the total
-			expectRecords++
-		}
-	}
-
 	data, err := reader.Collect(context.Background())
 	require.NoError(t, err)
-	require.Equal(t, 10, expectRecords)
 
 	require.Equal(t, 1, len(data.ScopeMetrics))
 	require.Equal(t, "test", data.ScopeMetrics[0].Scope.Name)
+	require.Equal(t, len(mapping), len(data.ScopeMetrics[0].Metrics), "metrics count: %v", data.ScopeMetrics[0].Metrics)
 
 	for _, inst := range data.ScopeMetrics[0].Metrics {
 		// Test the special cases are present always:
-
 		require.True(t, strings.HasPrefix(inst.Name, expectPrefix), "%s", inst.Name)
 		name := inst.Name[len(expectPrefix):]
-
-		require.Equal(t, 1, len(inst.Data.(metricdata.Sum[int64]).DataPoints))
-
-		sum := inst.Data.(metricdata.Sum[int64]).DataPoints[0].Value
-		attrs := inst.Data.(metricdata.Sum[int64]).DataPoints[0].Attributes
 
 		// Note: only int64 is tested, we have no way to
 		// generate Float64 values and Float64Hist values are
 		// not implemented for testing.
-		m := mapping[name]
-		if len(m) == 1 {
-			require.Equal(t, mapping[name][""].Uint64(), uint64(sum))
+		exm := mapping[name]
 
-			// no attributes
-			require.Equal(t, 0, attrs.Len())
-		} else {
-			require.Equal(t, 5, len(m))
-			require.Equal(t, 1, attrs.Len())
-			require.Equal(t, attrs.ToSlice()[0].Key, "class")
-			feature := attrs.ToSlice()[0].Value.AsString()
-			require.Equal(t, mapping[name][feature].Uint64(), uint64(sum))
+		require.Equal(t, exm.desc, inst.Description)
+		require.Equal(t, exm.unit, inst.Unit)
+
+		require.Equal(t, len(exm.vals), len(inst.Data.(metricdata.Sum[int64]).DataPoints), "points count: %v != %v", inst.Data.(metricdata.Sum[int64]).DataPoints, exm.vals)
+
+		for _, point := range inst.Data.(metricdata.Sum[int64]).DataPoints {
+			lookup, ok := exm.vals[point.Attributes]
+			require.True(t, ok, "lookup failed: %v", exm.vals, point.Attributes)
+			require.Equal(t, lookup.Uint64(), uint64(point.Value))
 		}
 	}
 }
