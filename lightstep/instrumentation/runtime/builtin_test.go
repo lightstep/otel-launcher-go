@@ -4,7 +4,7 @@
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
 //
-//     http://www.apache.org/licenses/LICENSE-2.0
+//	http://www.apache.org/licenses/LICENSE-2.0
 //
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,118 +23,9 @@ import (
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric/unit"
-	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
-
-// prefix is mandatory for this library, however the "go." part is not.
-const expectPrefix = "process.runtime.go."
-
-type builtinExpected int
-
-var expectSingleton = map[attribute.Set]bool{
-	emptySet: true,
-}
-
-const (
-	builtinCounter builtinExpected = iota
-	builtinUpDownCounter
-	builtinGauge
-)
-
-type builtinNameExpected struct {
-	name   string
-	expect builtinExpected
-}
-
-func expectCounter(name string) builtinNameExpected {
-	return builtinNameExpected{
-		name:   name,
-		expect: builtinCounter,
-	}
-}
-
-func expectUpDownCounter(name string) builtinNameExpected {
-	return builtinNameExpected{
-		name:   name,
-		expect: builtinCounter,
-	}
-}
-
-func expectGauge(name string) builtinNameExpected {
-	return builtinNameExpected{
-		name:   name,
-		expect: builtinGauge,
-	}
-}
-
-var (
-	expectScope = instrumentation.Scope{
-		Name: "otel-launcher-go/runtime",
-	}
-
-	emptySet = attribute.NewSet()
-
-	classKey    = attribute.Key("class")
-	subclassKey = attribute.Key("subclass")
-)
-
-// TestBuiltinRuntimeMetrics tests the real output of the library to
-// ensure expected prefix, instrumentation scope, and empty
-// attributes.
-func TestBuiltinRuntimeMetrics(t *testing.T) {
-	reader := metric.NewManualReader()
-	provider := metric.NewMeterProvider(metric.WithReader(reader))
-
-	err := Start(WithMeterProvider(provider))
-	require.NoError(t, err)
-
-	data, err := reader.Collect(context.Background())
-	require.NoError(t, err)
-
-	require.Equal(t, 1, len(data.ScopeMetrics))
-	require.Equal(t, expectScope, data.ScopeMetrics[0].Scope)
-
-	expect := expectRuntimeMetrics
-	allNames := map[string]int{}
-
-	// Note: metrictest library lacks a way to distinguish
-	// monotonic vs not or to test the unit. This will be fixed in
-	// the new SDK, all the pieces untested here.
-	for _, inst := range data.ScopeMetrics[0].Metrics {
-		require.True(t, strings.HasPrefix(inst.Name, expectPrefix), "%s", inst.Name)
-		name := inst.Name[len(expectPrefix):]
-		var attrs attribute.Set
-		switch dt := inst.Data.(type) {
-		case metricdata.Gauge[int64]:
-			require.Equal(t, 1, len(dt.DataPoints))
-			attrs = dt.DataPoints[0].Attributes
-		case metricdata.Gauge[float64]:
-			require.Equal(t, 1, len(dt.DataPoints))
-			attrs = dt.DataPoints[0].Attributes
-		case metricdata.Sum[int64]:
-			require.Equal(t, 1, len(dt.DataPoints))
-			attrs = dt.DataPoints[0].Attributes
-		case metricdata.Sum[float64]:
-			require.Equal(t, 1, len(dt.DataPoints))
-			attrs = dt.DataPoints[0].Attributes
-		}
-
-		lookup, ok := expect[name]
-		require.True(t, ok, "lookup %v", name)
-
-		if lookup == nil {
-			require.Equal(t, 0, attrs.Len())
-		} else {
-			require.Equal(t, 1, expect[name], "for %v", inst.Name)
-			require.Equal(t, 0, attrs.Len())
-		}
-		allNames[name]++
-	}
-
-	require.Equal(t, expect, allNames)
-}
 
 func makeAllInts() []metrics.Value {
 	// Note: the library provides no way to generate values, so use the
@@ -180,7 +71,7 @@ func (m testMapping) read(samples []metrics.Sample) {
 	}
 }
 
-type testExpectation map[string]*testExpectMetric
+type testExpectation map[string]testExpectMetric
 
 type testExpectMetric struct {
 	desc string
@@ -268,35 +159,35 @@ func makeTestCase1() (allFunc, readFunc, testExpectation) {
 		"/waste/cycles/total:cycles":  allInts[9],
 	}
 	return af, mapping.read, testExpectation{
-		"cntr.things": &testExpectMetric{
+		"cntr.things": testExpectMetric{
 			unit: "{things}",
 			desc: "runtime/metrics: /cntr/things:things",
 			vals: map[attribute.Set]metrics.Value{
 				emptySet: allInts[0],
 			},
 		},
-		"updowncntr.things": &testExpectMetric{
+		"updowncntr.things": testExpectMetric{
 			unit: "{things}",
 			desc: "runtime/metrics: /updowncntr/things:things",
 			vals: map[attribute.Set]metrics.Value{
 				emptySet: allInts[1],
 			},
 		},
-		"process.count.objects": &testExpectMetric{
+		"process.count.objects": testExpectMetric{
 			unit: "{objects}",
 			desc: "runtime/metrics: /process/count:objects",
 			vals: map[attribute.Set]metrics.Value{
 				emptySet: allInts[2],
 			},
 		},
-		"process.count": &testExpectMetric{
+		"process.count": testExpectMetric{
 			unit: unit.Bytes,
 			desc: "runtime/metrics: /process/count:bytes",
 			vals: map[attribute.Set]metrics.Value{
 				emptySet: allInts[3],
 			},
 		},
-		"waste.cycles": &testExpectMetric{
+		"waste.cycles": testExpectMetric{
 			unit: "{cycles}",
 			desc: "runtime/metrics: /waste/cycles/*:cycles",
 			vals: map[attribute.Set]metrics.Value{
@@ -362,7 +253,7 @@ func makeTestCase2() (allFunc, readFunc, testExpectation) {
 		"/objsize/classes/total:bytes":      allInts[5],
 	}
 	return af, mapping.read, testExpectation{
-		"objsize.usage": &testExpectMetric{
+		"objsize.usage": testExpectMetric{
 			unit: unit.Bytes,
 			desc: "runtime/metrics: /objsize/classes/*:bytes",
 			vals: map[attribute.Set]metrics.Value{
@@ -399,17 +290,20 @@ func testMetricTranslation(t *testing.T, makeTestCase func() (allFunc, readFunc,
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(data.ScopeMetrics))
+
+	require.Equal(t, 1, len(data.ScopeMetrics))
 	require.Equal(t, "test", data.ScopeMetrics[0].Scope.Name)
 	require.Equal(t, len(mapping), len(data.ScopeMetrics[0].Metrics), "metrics count: %v", data.ScopeMetrics[0].Metrics)
 
 	for _, inst := range data.ScopeMetrics[0].Metrics {
 		// Test the special cases are present always:
-		require.True(t, strings.HasPrefix(inst.Name, expectPrefix), "%s", inst.Name)
-		name := inst.Name[len(expectPrefix):]
+		require.True(t, strings.HasPrefix(inst.Name, namePrefix+"."), "%s", inst.Name)
+		name := inst.Name[len(namePrefix)+1:]
 
-		// Note: only int64 is tested, we have no way to
-		// generate Float64 values and Float64Hist values are
-		// not implemented for testing.
+		// Note: only int64 values are tested, as we have no
+		// way to generate float64 values w/o an
+		// runtime/metrics supporting a metric to generate
+		// these values.
 		exm := mapping[name]
 
 		require.Equal(t, exm.desc, inst.Description)

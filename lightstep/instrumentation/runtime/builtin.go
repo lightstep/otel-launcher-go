@@ -28,6 +28,12 @@ import (
 	"go.opentelemetry.io/otel/metric/unit"
 )
 
+const (
+	namePrefix = "process.runtime.go"
+	classKey     = attribute.Key("class")
+	subclassKey  = attribute.Key("subclass")
+)
+
 // LibraryName is the value of instrumentation.Library.Name.
 const LibraryName = "otel-launcher-go/runtime"
 
@@ -145,112 +151,21 @@ func getTotalizedMetricName(n, u string) string {
 
 func (r *builtinRuntime) register() error {
 	all := r.allFunc()
-	totals := map[string]bool{}
-	counts := map[string]int{}
-	toName := func(in string) (string, string) {
-		n, statedUnits, _ := strings.Cut(in, ":")
-		n = "process.runtime.go" + strings.ReplaceAll(n, "/", ".")
-		return n, statedUnits
-	}
+	desc := expectRuntimeMetrics()
 
 	for _, m := range all {
-		name, _ := toName(m.Name)
-
-		// Totals map includes the '.' suffix.
-		if strings.HasSuffix(name, ".total") {
-			totals[name[:len(name)-len("total")]] = true
-		}
-
-		counts[name]++
-	}
-
-	var samples []metrics.Sample
-	var instruments []instrument.Asynchronous
-	var totalAttrs [][]attribute.KeyValue
-
-	for _, m := range all {
-		// n is the output name, which has '/' replaced with
-		// '.' and a prefix this value may be modified below,
-		// based on conventions in the runtime/metrics
-		// package.
-		n, statedUnits := toName(m.Name)
-
-		originalName, _, _ := strings.Cut(m.Name, ":")
-
-		// We skip all total metrics because they are implied
-		// as sums and can be configured as OTel views.
-		if strings.HasSuffix(n, ".total") {
-			continue
-		}
-
-		// Get the units, real or pseudo.
-		var u string
-		switch statedUnits {
-		case "bytes":
-			u = string(unit.Bytes)
-		case "seconds":
-			u = statedUnits
-		default:
-			// Pseudo-units
-			u = "{" + statedUnits + "}"
-		}
-
-		// Remove any ".total" suffix, this is redundant for Prometheus.
-		var totalAttrVals []string
-		var totalAttrSubstring string
-		var totalPrefix string
-		for totalize := range totals {
-			// For any totals, find the longest substring.
-			if strings.HasPrefix(n, totalize) && len(n)-len(totalize) > len(totalAttrSubstring) {
-				// Units is unchanged.
-				// Name becomes the shortest prefix.
-				// Remember which attribute to use.
-				totalAttrSubstring = n[len(totalize):]
-				totalAttrVals = strings.Split(totalAttrSubstring, ".")
-				totalPrefix = totalize
-			}
-		}
-		if totalPrefix != "" {
-			n = getTotalizedMetricName(totalPrefix[:len(totalPrefix)-1], u)
-			originalName = originalName[:len(originalName)-len(totalAttrSubstring)-1]
-		}
-
-		// Next branch helps identify the objects/bytes special case,
-		// which correctly removes "bytes" (a proper unit)
-		// from appearing as a suffix.
-		if counts[n] > 1 {
-			if totalAttrVals != nil {
-				// This has not happened, hopefully never will.
-				// Indicates the special case for objects/bytes
-				// overlaps with the special case for total.
-				panic("special case collision")
-			}
-
-			// This is treated as a special case, we know this happens
-			// with "objects" and "bytes" in the standard Go 1.19 runtime.
-			switch statedUnits {
-			case "objects":
-				// In this case, use `.objects` suffix.
-				n = n + ".objects"
-				u = "{objects}"
-			case "bytes":
-				// In this case, use no suffix.  In Prometheus this will
-				// be appended as a suffix.
-			default:
-				panic(fmt.Sprint(
-					"unrecognized duplicate metrics names, ",
-					"attention required: ",
-					n,
-				))
-			}
+		// each should match one
+		family, err = desc.find(m.Name)
+		if err != nil {
+			return err
 		}
 
 		// We need a fixed description, which depends which
 		// convention is used.
 		var description string
-		if totalAttrVals != nil {
+		if len(family.attrs) != 1 {
 			// This case is an aggregation of known values
-			description = fmt.Sprintf("runtime/metrics: %v/*:%s", originalName, statedUnits)
+			description = fmt.Sprintf("runtime/metrics: %v/*:%s", m.Name, statedUnits)
 		} else {
 			// This includes the counts[n] > 1 case, both
 			// use an exact name.
