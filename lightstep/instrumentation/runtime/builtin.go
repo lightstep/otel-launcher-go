@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/otel/metric/unit"
 )
 
+// namePrefix is prefixed onto OTel instrument names.
 const namePrefix = "process.runtime.go"
 
 // LibraryName is the value of instrumentation.Library.Name.
@@ -84,19 +85,25 @@ func Start(opts ...Option) error {
 	return r.register(expectRuntimeMetrics())
 }
 
+// allFunc is the function signature of metrics.All()
 type allFunc = func() []metrics.Description
+
+// allFunc is the function signature of metrics.Read()
 type readFunc = func([]metrics.Sample)
 
+// builtinRuntime instruments all supported kinds of runtime/metrics.
 type builtinRuntime struct {
 	meter    metric.Meter
 	allFunc  allFunc
 	readFunc readFunc
 }
 
+// int64Observer is any async int64 instrument.
 type int64Observer interface {
 	Observe(ctx context.Context, x int64, attrs ...attribute.KeyValue)
 }
 
+// float64Observer is any async float64 instrument.
 type float64Observer interface {
 	Observe(ctx context.Context, x float64, attrs ...attribute.KeyValue)
 }
@@ -109,6 +116,8 @@ func newBuiltinRuntime(meter metric.Meter, af allFunc, rf readFunc) *builtinRunt
 	}
 }
 
+// register parses each name and registers metric instruments for all
+// the recognized instruments.
 func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 	all := r.allFunc()
 
