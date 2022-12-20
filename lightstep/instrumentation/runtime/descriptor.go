@@ -20,33 +20,39 @@ var (
 )
 
 const (
-	builtinCounter builtinKind = iota
+	builtinSkip builtinKind = iota
+	builtinCounter
 	builtinObjectBytesCounter
 	builtinUpDownCounter
 	builtinGauge
+	builtinHistogram
 )
 
 type builtinMetricFamily struct {
 	pattern string
 	matches int
 	kind    builtinKind
-	attrs   []attribute.Set
 }
 
 type builtinDescriptor struct {
 	families []*builtinMetricFamily
 }
 
-func newBuiltinDescriptor() *builtinDescriptor {
-	return &builtinDescriptor{}
-}
-
-func (bd *builtinDescriptor) add(pattern string, kind builtinKind, attrs ...attribute.Set) {
-	bd.families = append(bd.families, &builtinMetricFamily{
-		pattern: pattern,
-		kind:    kind,
-		attrs:   attrs,
-	})
+func (k builtinKind) String() string {
+	switch k {
+	case builtinCounter:
+		return "counter"
+	case builtinObjectBytesCounter:
+		return "object/bytes counter"
+	case builtinUpDownCounter:
+		return "up/down counter"
+	case builtinGauge:
+		return "gauge"
+	case builtinHistogram:
+		return "histogram"
+	case builtinSkip:
+	}
+	return "skipped"
 }
 
 func toOTelNameAndStatedUnit(nameAndUnit string) (on, un string) {
@@ -58,31 +64,35 @@ func toOTelName(name string) string {
 	return namePrefix + strings.ReplaceAll(name, "/", ".")
 }
 
+// attributeName returns "class", "class2", "class3", ...
 func attributeName(order int) string {
-	base := "class"
-	for ; order > 0; order-- {
-
-		base = "sub" + base
+	if order == 0 {
+		return "class"
 	}
-	return base
+	return fmt.Sprintf("class%d", order+1)
+}
+
+func newBuiltinDescriptor() *builtinDescriptor {
+	return &builtinDescriptor{}
+}
+
+func (bd *builtinDescriptor) add(pattern string, kind builtinKind) {
+	bd.families = append(bd.families, &builtinMetricFamily{
+		pattern: pattern,
+		kind:    kind,
+	})
 }
 
 func (bd *builtinDescriptor) singleCounter(pattern string) {
 	bd.add(pattern, builtinCounter)
 }
 
-func (bd *builtinDescriptor) classesCounter(pattern string, attrs ...attribute.Set) {
-	if len(attrs) < 2 {
-		panic(fmt.Sprintf("must have >1 attrs: %s", attrs))
-	}
-	bd.add(pattern, builtinCounter, attrs...)
+func (bd *builtinDescriptor) classesCounter(pattern string) {
+	bd.add(pattern, builtinCounter)
 }
 
-func (bd *builtinDescriptor) classesUpDownCounter(pattern string, attrs ...attribute.Set) {
-	if len(attrs) < 2 {
-		panic(fmt.Sprintf("must have >1 attrs: %s", attrs))
-	}
-	bd.add(pattern, builtinUpDownCounter, attrs...)
+func (bd *builtinDescriptor) classesUpDownCounter(pattern string) {
+	bd.add(pattern, builtinUpDownCounter)
 }
 
 func (bd *builtinDescriptor) objectBytesCounter(pattern string) {
@@ -97,22 +107,32 @@ func (bd *builtinDescriptor) singleGauge(pattern string) {
 	bd.add(pattern, builtinGauge)
 }
 
-func (bd *builtinDescriptor) findMatch(goname string) (mname, munit, descPattern string, attrs []attribute.KeyValue, _ error) {
+func (bd *builtinDescriptor) ignoreHistogram(pattern string) {
+	bd.add(pattern, builtinHistogram)
+}
+
+func (bd *builtinDescriptor) findMatch(goname string) (mname, munit, descPattern string, attrs []attribute.KeyValue, kind builtinKind, _ error) {
 	fam, err := bd.findFamily(goname)
 	if err != nil {
-		return "", "", "", nil, err
+		return "", "", "", nil, builtinSkip, err
 	}
 	fam.matches++
+
+	kind = fam.kind
 
 	// Set the name, unit and pattern.
 	if wildCnt := strings.Count(fam.pattern, "*"); wildCnt == 0 {
 		mname, munit = toOTelNameAndStatedUnit(goname)
 		descPattern = goname
 	} else if strings.HasSuffix(fam.pattern, ":*") {
-		// Special case for bytes/objects w/ same prefix.
+		// Special case for bytes/objects w/ same prefix: two
+		// counters, different names.  One has "By" (UCUM for
+		// "bytes") units and no suffix.  One has no units and
+		// a ".objects" suffix.  (In Prometheus, this becomes
+		// _objects and _bytes as you would expect.)
 		mname, munit = toOTelNameAndStatedUnit(goname)
 		descPattern = goname
-
+		kind = builtinCounter
 		if munit == "objects" {
 			mname += "." + munit
 			munit = ""
@@ -129,7 +149,7 @@ func (bd *builtinDescriptor) findMatch(goname string) (mname, munit, descPattern
 		}
 		// Ignore subtotals
 		if splitVals[len(splitVals)-1] == "total" {
-			return "", "", "", nil, nil
+			return "", "", "", nil, builtinSkip, nil
 		}
 		descPattern = fam.pattern
 	}
@@ -166,7 +186,9 @@ func (bd *builtinDescriptor) findMatch(goname string) (mname, munit, descPattern
 		}
 	}
 
-	return mname, munit, descPattern, attrs, nil
+	// Note: we may be returning the special builtinObjectBytes.
+	// if it was not fixed for patterns w/ trailing wildcard (see above).
+	return mname, munit, descPattern, attrs, kind, err
 }
 
 func (bd *builtinDescriptor) findFamily(name string) (family *builtinMetricFamily, _ error) {

@@ -27,12 +27,7 @@ import (
 	"go.opentelemetry.io/otel/metric/unit"
 )
 
-const (
-	namePrefix     = "process.runtime.go"
-	classKey       = attribute.Key("class")
-	subclassKey    = attribute.Key("subclass")
-	subsubclassKey = attribute.Key("subsubclass")
-)
+const namePrefix = "process.runtime.go"
 
 // LibraryName is the value of instrumentation.Library.Name.
 const LibraryName = "otel-launcher-go/runtime"
@@ -123,13 +118,25 @@ func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 
 	for _, m := range all {
 		// each should match one
-		mname, munit, pattern, attrs, err := desc.findMatch(m.Name)
+		mname, munit, pattern, attrs, kind, err := desc.findMatch(m.Name)
 		if err != nil {
-			return err
-		}
-		if mname == "" {
+			// skip unrecognized metric names
+			otel.Handle(fmt.Errorf("unrecognized runtime/metrics name: %s", m.Name))
 			continue
 		}
+		if kind == builtinSkip {
+			// skip e.g., totalized metrics
+			continue
+		}
+
+		if kind == builtinHistogram {
+			// skip unsupported data types
+			if m.Kind != metrics.KindFloat64Histogram {
+				otel.Handle(fmt.Errorf("expected histogram runtime/metrics: %s", mname))
+			}
+			continue
+		}
+
 		description := fmt.Sprintf("%s from runtime/metrics", pattern)
 
 		opts := []instrument.Option{
@@ -137,30 +144,40 @@ func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 			instrument.WithDescription(description),
 		}
 		var inst instrument.Asynchronous
-		if m.Cumulative {
+		switch kind {
+		case builtinCounter:
 			switch m.Kind {
 			case metrics.KindUint64:
+				// e.g., alloc bytes
 				inst, err = r.meter.AsyncInt64().Counter(mname, opts...)
 			case metrics.KindFloat64:
+				// e.g., cpu time (1.20)
 				inst, err = r.meter.AsyncFloat64().Counter(mname, opts...)
-			case metrics.KindFloat64Histogram:
-				// Not implemented Histogram[float64].
-				continue
 			}
-		} else {
+		case builtinUpDownCounter:
 			switch m.Kind {
 			case metrics.KindUint64:
+				// e.g., memory size
 				inst, err = r.meter.AsyncInt64().UpDownCounter(mname, opts...)
 			case metrics.KindFloat64:
-				// Note: this has never been used.
+				// not used through 1.20
+				inst, err = r.meter.AsyncFloat64().UpDownCounter(mname, opts...)
+			}
+		case builtinGauge:
+			switch m.Kind {
+			case metrics.KindUint64:
+				inst, err = r.meter.AsyncInt64().Gauge(mname, opts...)
+			case metrics.KindFloat64:
+				// not used through 1.20
 				inst, err = r.meter.AsyncFloat64().Gauge(mname, opts...)
-			case metrics.KindFloat64Histogram:
-				// Not implemented GaugeHistogram[float64].
-				continue
 			}
 		}
 		if err != nil {
 			return err
+		}
+		if inst == nil {
+			otel.Handle(fmt.Errorf("unexpected runtime/metrics %v: %s", kind, mname))
+			continue
 		}
 
 		samp := metrics.Sample{
