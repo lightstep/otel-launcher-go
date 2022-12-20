@@ -19,7 +19,7 @@ package runtime
 import "go.opentelemetry.io/otel/attribute"
 
 func expectRuntimeMetrics() *builtinDescriptor {
-	bd := newBuiltinsDescriptor()
+	bd := newBuiltinDescriptor()
 	bd.singleCounter("/cgo/go-to-c-calls:calls")
 	bd.classesCounter("/gc/cycles/*:gc-cycles",
 		attribute.NewSet(classKey.String("automatic")),
@@ -37,6 +37,17 @@ func expectRuntimeMetrics() *builtinDescriptor {
 	bd.singleGauge("/gc/stack/starting-size:bytes")
 	bd.classesUpDownCounter("memory.usage",
 		attribute.NewSet(classKey.String("heap"), subclassKey.String("free")),
+		attribute.NewSet(classKey.String("heap"), subclassKey.String("objects")),
+		attribute.NewSet(classKey.String("heap"), subclassKey.String("released")),
+		attribute.NewSet(classKey.String("heap"), subclassKey.String("stacks")),
+		attribute.NewSet(classKey.String("heap"), subclassKey.String("unused")),
+		attribute.NewSet(classKey.String("metadata"), subclassKey.String("mcache"), subsubclassKey.String("free")),
+		attribute.NewSet(classKey.String("metadata"), subclassKey.String("mcache"), subsubclassKey.String("inuse")),
+		attribute.NewSet(classKey.String("metadata"), subclassKey.String("mspan"), subsubclassKey.String("free")),
+		attribute.NewSet(classKey.String("metadata"), subclassKey.String("mspan"), subsubclassKey.String("inuse")),
+		attribute.NewSet(classKey.String("metadata"), subclassKey.String("other")),
+		attribute.NewSet(classKey.String("os-stacks")),
+		attribute.NewSet(classKey.String("other")),
 	)
 	bd.singleGauge("sched.gomaxprocs")
 	bd.singleUpDownCounter("sched.goroutines")

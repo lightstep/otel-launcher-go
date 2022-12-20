@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"runtime/metrics"
-	"strings"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -29,9 +28,10 @@ import (
 )
 
 const (
-	namePrefix = "process.runtime.go"
-	classKey     = attribute.Key("class")
-	subclassKey  = attribute.Key("subclass")
+	namePrefix     = "process.runtime.go"
+	classKey       = attribute.Key("class")
+	subclassKey    = attribute.Key("subclass")
+	subsubclassKey = attribute.Key("subsubclass")
 )
 
 // LibraryName is the value of instrumentation.Library.Name.
@@ -86,7 +86,7 @@ func Start(opts ...Option) error {
 	)
 
 	r := newBuiltinRuntime(meter, metrics.All, metrics.Read)
-	return r.register()
+	return r.register(expectRuntimeMetrics())
 }
 
 type allFunc = func() []metrics.Description
@@ -114,76 +114,35 @@ func newBuiltinRuntime(meter metric.Meter, af allFunc, rf readFunc) *builtinRunt
 	}
 }
 
-func getTotalizedAttributeName(order int) string {
-	// It's a plural, make it singular.
-	base := "class"
-	for ; order > 0; order-- {
-		base = "sub" + base
-	}
-	return base
-}
-
-func getTotalizedMetricName(n, u string) string {
-	if !strings.HasSuffix(n, ".classes") {
-		return n
-	}
-
-	s := n[:len(n)-len("classes")]
-
-	// Note that ".classes" is (apparently) intended as a generic
-	// suffix, while ".cycles" is an exception.
-	// The ideal name depends on what we know.
-	switch u {
-	case "By":
-		// OTel has similar conventions for memory usage, disk usage, etc, so
-		// for metrics with /classes/*:bytes we create a .usage metric.
-		return s + "usage"
-	case "{cpu-seconds}":
-		// Same argument above, except OTel uses .time for
-		// cpu-timing metrics instead of .usage.
-		return s + "time"
-	default:
-		// There are no other conventions in the
-		// runtime/metrics that we know of.
-		panic(fmt.Sprint("unrecognized metric suffix: ", u))
-	}
-}
-
-func (r *builtinRuntime) register() error {
+func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 	all := r.allFunc()
-	desc := expectRuntimeMetrics()
+
+	var instruments []instrument.Asynchronous
+	var samples []metrics.Sample
+	var instAttrs [][]attribute.KeyValue
 
 	for _, m := range all {
 		// each should match one
-		family, err = desc.find(m.Name)
+		mname, munit, pattern, attrs, err := desc.findMatch(m.Name)
 		if err != nil {
 			return err
 		}
-
-		// We need a fixed description, which depends which
-		// convention is used.
-		var description string
-		if len(family.attrs) != 1 {
-			// This case is an aggregation of known values
-			description = fmt.Sprintf("runtime/metrics: %v/*:%s", m.Name, statedUnits)
-		} else {
-			// This includes the counts[n] > 1 case, both
-			// use an exact name.
-			description = fmt.Sprintf("runtime/metrics: %v", m.Name)
+		if mname == "" {
+			continue
 		}
+		description := fmt.Sprintf("%s from runtime/metrics", pattern)
 
 		opts := []instrument.Option{
-			instrument.WithUnit(unit.Unit(u)),
+			instrument.WithUnit(unit.Unit(munit)),
 			instrument.WithDescription(description),
 		}
 		var inst instrument.Asynchronous
-		var err error
 		if m.Cumulative {
 			switch m.Kind {
 			case metrics.KindUint64:
-				inst, err = r.meter.AsyncInt64().Counter(n, opts...)
+				inst, err = r.meter.AsyncInt64().Counter(mname, opts...)
 			case metrics.KindFloat64:
-				inst, err = r.meter.AsyncFloat64().Counter(n, opts...)
+				inst, err = r.meter.AsyncFloat64().Counter(mname, opts...)
 			case metrics.KindFloat64Histogram:
 				// Not implemented Histogram[float64].
 				continue
@@ -191,10 +150,10 @@ func (r *builtinRuntime) register() error {
 		} else {
 			switch m.Kind {
 			case metrics.KindUint64:
-				inst, err = r.meter.AsyncInt64().UpDownCounter(n, opts...)
+				inst, err = r.meter.AsyncInt64().UpDownCounter(mname, opts...)
 			case metrics.KindFloat64:
 				// Note: this has never been used.
-				inst, err = r.meter.AsyncFloat64().Gauge(n, opts...)
+				inst, err = r.meter.AsyncFloat64().Gauge(mname, opts...)
 			case metrics.KindFloat64Histogram:
 				// Not implemented GaugeHistogram[float64].
 				continue
@@ -209,17 +168,7 @@ func (r *builtinRuntime) register() error {
 		}
 		samples = append(samples, samp)
 		instruments = append(instruments, inst)
-
-		if totalAttrVals == nil {
-			totalAttrs = append(totalAttrs, nil)
-		} else {
-			// Form a list of attributes to use in the callback.
-			var attrs []attribute.KeyValue
-			for i, val := range totalAttrVals {
-				attrs = append(attrs, attribute.Key(getTotalizedAttributeName(i)).String(val))
-			}
-			totalAttrs = append(totalAttrs, attrs)
-		}
+		instAttrs = append(instAttrs, attrs)
 	}
 
 	if err := r.meter.RegisterCallback(instruments, func(ctx context.Context) {
@@ -229,9 +178,9 @@ func (r *builtinRuntime) register() error {
 
 			switch samp.Value.Kind() {
 			case metrics.KindUint64:
-				instruments[idx].(int64Observer).Observe(ctx, int64(samp.Value.Uint64()), totalAttrs[idx]...)
+				instruments[idx].(int64Observer).Observe(ctx, int64(samp.Value.Uint64()), instAttrs[idx]...)
 			case metrics.KindFloat64:
-				instruments[idx].(float64Observer).Observe(ctx, samp.Value.Float64(), totalAttrs[idx]...)
+				instruments[idx].(float64Observer).Observe(ctx, samp.Value.Float64(), instAttrs[idx]...)
 			default:
 				// KindFloat64Histogram (unsupported in OTel) and KindBad
 				// (unsupported by runtime/metrics).  Neither should happen
