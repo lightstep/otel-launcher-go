@@ -11,8 +11,6 @@ import (
 type builtinKind int
 
 var (
-	singleton = []attribute.Set{emptySet}
-
 	emptySet = attribute.NewSet()
 
 	ErrUnmatchedBuiltin   = fmt.Errorf("builtin unmatched")

@@ -19,15 +19,58 @@
 // the expected OpenTelemetry instrument kind in defs.go.
 //
 //  1. Single Counter, UpDownCounter, and Gauge instruments.  No
-//  wildcards are used.  E.g., /cgo/go-to-c-calls:calls becomes
-//  process.runtime.go.cgo.go-to-c-calls with unit {calls}.
+//  wildcards are used.  For example:
+//
+//      /cgo/go-to-c-calls:calls
+//
+//  becomes:
+//
+//      process.runtime.go.cgo.go-to-c-calls (unit: {calls})
+//
 //  2. Objects/Bytes Counter.  There are two runtime/metrics with the
 //  same name and different units.  The objects counter has a suffix,
-//  the bytes counter has a unit, to disambiguate.
+//  the bytes counter has a unit, to disambiguate.  For example:
+//
+//      /gc/heap/allocs:*
+//
+//  becomes:
+//
+//      process.runtime.go.gc.heap.allocs (unit: bytes)
+//      process.runtime.go.gc.heap.allocs.objects (unitless)
+//
 //  3. Multi-dimensional Counter/UpDownCounter (generally), ignore any
-//  "total" elements to avoid double-counting.  4. Multi-dimensional
-//  Counter/UpDownCounter (named ".classes"), map to "usage" for bytes
-//  and "time" for cpu-seconds.
+//  "total" elements to avoid double-counting.  For example:
+//
+//      /gc/cycles/*:gc-cycles
+//
+//  becomes:
+//
+//      process.runtime.go.gc.cycles (unit: gc-cycles)
+//
+//  with two attribute setes:
+//
+//      class=automatic
+//      class=forced
+//
+//  4. Multi-dimensional Counter/UpDownCounter (named ".classes"), map
+//  to ".usage" for bytes and ".time" for cpu-seconds.  For example:
+//
+//      /cpu/classes/*:cpu-seconds
+//
+//  becomes:
+//
+//      process.runtime.go.cpu.time (unit: cpu-seconds)
+//
+//  with multi-dimensional attributes:
+//
+//      class=gc,class2=mark,class3=assist
+//      class=gc,class2=mark,class3=dedicated
+//      class=gc,class2=mark,class3=idle
+//      class=gc,class2=pause
+//      class=scavenge,class2=assist
+//      class=scavenge,class2=background
+//      class=idle
+//      class=user
 //
 // Histograms are not currently implemented, see the related issues
 // for an explanation:
