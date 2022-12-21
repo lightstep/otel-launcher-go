@@ -88,7 +88,7 @@ func Start(opts ...Option) error {
 // allFunc is the function signature of metrics.All()
 type allFunc = func() []metrics.Description
 
-// allFunc is the function signature of metrics.Read()
+// readFunc is the function signature of metrics.Read()
 type readFunc = func([]metrics.Sample)
 
 // builtinRuntime instruments all supported kinds of runtime/metrics.
