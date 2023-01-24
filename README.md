@@ -111,8 +111,8 @@ below:
 | Short name | Metrics produced                                                                          |
 |------------|-------------------------------------------------------------------------------------------|
 | host       | system.cpu.time, system.memory.usage, system.memory.utilization, system.network.io        |
-| cputime    | process.cpu.time, process.uptime, process.runtime.go.gc.cpu.time                          |
-| runtime    | process.runtime.go.* generated from [runtime/metrics](https://pkg.go.dev/runtime/metrics) |
+| cputime    | process.cpu.time, process.uptime                                                          |
+| runtime    | process.runtime.go.* generated from [runtime/metrics](https://pkg.go.dev/runtime/metrics), e.g., process.runtime.go.cpu.time |
 
 The available instrumentation library and versions are listed below:
 
