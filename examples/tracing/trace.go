@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/lightstep/otel-launcher-go/launcher"
 	"go.opentelemetry.io/otel"
@@ -36,35 +37,53 @@ func main() {
 	lsLauncher := launcher.ConfigureOpentelemetry(
 		// example for setting resource attributes:
 		launcher.WithResourceAttributes(attributes),
+		launcher.WithHeaders(map[string]string{
+			"X-Scope-OrgID": "winderwonderland",
+		}),
 	)
 	defer lsLauncher.Shutdown()
 	tracer := otel.Tracer("ex.com/basic")
 
-	ctx0 := context.Background()
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
 
-	ctx1, finish1 := tracer.Start(ctx0, "foo")
-	defer finish1.End()
+	ctx0, cancel := context.WithTimeout(context.Background(), 10000*time.Second)
+	defer cancel()
 
-	ctx2, finish2 := tracer.Start(ctx1, "bar")
-	defer finish2.End()
+	for {
+		select {
+		case <-ctx0.Done():
+		default:
+		}
+		<-ticker.C
 
-	ctx3, finish3 := tracer.Start(setBaggage(ctx2), "baz")
-	defer finish3.End()
+		ctx1, finish1 := tracer.Start(ctx0, "foo")
+		defer finish1.End()
 
-	ctx := ctx3
-	getSpan(ctx)
-	addAttribute(ctx)
-	addEvent(ctx)
-	recordException(ctx)
-	createChild(ctx, tracer)
+		tid := trace.SpanContextFromContext(ctx1).TraceID()
+		tidStr := fmt.Sprintf("%x", tid[:])
+		fmtStr := tidStr[:18] + "|" + tidStr[18:]
+		fmt.Printf("Winter-wonderland example trace: %s\n", fmtStr)
 
-	fmt.Println("OpenTelemetry example")
+		ctx2, finish2 := tracer.Start(ctx1, "bar")
+		defer finish2.End()
+
+		ctx3, finish3 := tracer.Start(setBaggage(ctx2), "baz")
+		defer finish3.End()
+
+		ctx := ctx3
+		getSpan(ctx)
+		addAttribute(ctx)
+		addEvent(ctx)
+		recordException(ctx)
+		createChild(ctx, tracer)
+	}
 }
 
 // example of getting the current span
 func getSpan(ctx context.Context) {
-	span := trace.SpanFromContext(ctx)
-	fmt.Printf("current span: %v\n", span.SpanContext().SpanID())
+	//span := trace.SpanFromContext(ctx)
+	//fmt.Printf("current span: %v\n", span.SpanContext().SpanID())
 }
 
 // example of adding an attribute to a span
@@ -93,7 +112,7 @@ func recordException(ctx context.Context) {
 func createChild(ctx context.Context, tracer trace.Tracer) {
 	_, childSpan := tracer.Start(ctx, "child")
 	defer childSpan.End()
-	fmt.Printf("child span: %v\n", childSpan.SpanContext().SpanID())
+	//fmt.Printf("child span: %v\n", childSpan.SpanContext().SpanID())
 }
 
 // example of setting baggage

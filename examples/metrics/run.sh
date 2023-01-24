@@ -1,0 +1,12 @@
+#!/bin/sh
+
+# dev-jmacd
+#export LS_ACCESS_TOKEN=4IY1I9adf9FeOUUFgHiOaWIp4hRs1NDlwQfyzV02oRA+/3PBGchUJ0MoQkHKuxQcHC/+AYLM5k7iVboj5A6NP12eVjICe9+yQOT9bNsv
+
+# dev-kristinapathak
+export LS_ACCESS_TOKEN=TXBQ5ykh+qt75I8ZwYtaVIm50y9bfNZl88X71Fc7iPdZy4lpaKHXJDbY2FOC8csDnLduVtoiEp/6o0GtCPiunwamyiJ5npYl7ESF2ksR
+
+export LS_SERVICE_NAME=pre11
+export OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE=cumulative
+
+go run .
