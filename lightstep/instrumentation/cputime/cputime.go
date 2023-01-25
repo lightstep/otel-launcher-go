@@ -93,7 +93,6 @@ func (c *cputime) register() error {
 
 		processCPUTime   asyncfloat64.Counter
 		processUptime    asyncfloat64.UpDownCounter
-		processGCCPUTime asyncfloat64.Counter
 	)
 
 	if processCPUTime, err = c.meter.AsyncFloat64().Counter(
@@ -114,24 +113,13 @@ func (c *cputime) register() error {
 		return err
 	}
 
-	if processGCCPUTime, err = c.meter.AsyncFloat64().UpDownCounter(
-		// Note: this name is selected so that if Go's runtime/metrics package
-		// were to start generating this it would be named /gc/cpu/time:seconds (float64).
-		"process.runtime.go.gc.cpu.time",
-		instrument.WithUnit("s"),
-		instrument.WithDescription("Seconds of garbage collection since application was initialized"),
-	); err != nil {
-		return err
-	}
-
 	return c.meter.RegisterCallback(
 		[]instrument.Asynchronous{
 			processCPUTime,
 			processUptime,
-			processGCCPUTime,
 		},
 		func(ctx context.Context) {
-			processUser, processSystem, processGC, uptime := c.getProcessTimes(ctx)
+			processUser, processSystem, uptime := c.getProcessTimes(ctx)
 
 			// Uptime
 			processUptime.Observe(ctx, uptime)
@@ -139,9 +127,6 @@ func (c *cputime) register() error {
 			// Process CPU time
 			processCPUTime.Observe(ctx, processUser, AttributeCPUTimeUser...)
 			processCPUTime.Observe(ctx, processSystem, AttributeCPUTimeSystem...)
-
-			// Process GC CPU time
-			processGCCPUTime.Observe(ctx, processGC)
 		},
 	)
 }

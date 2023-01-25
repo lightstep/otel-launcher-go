@@ -16,7 +16,6 @@ package cputime
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"testing"
 	"time"
 
@@ -100,10 +99,10 @@ func TestProcessCPU(t *testing.T) {
 		// This has a mix of user and system time, so serves
 		// the purpose of advancing both process and host,
 		// user and system CPU usage.
-		_, _, _, _ = c.getProcessTimes(ctx)
+		_, _, _ = c.getProcessTimes(ctx)
 	}
 
-	beforeUser, beforeSystem, _, _ := c.getProcessTimes(ctx)
+	beforeUser, beforeSystem, _ := c.getProcessTimes(ctx)
 
 	data, err := reader.Collect(ctx)
 	require.NoError(t, err)
@@ -112,7 +111,7 @@ func TestProcessCPU(t *testing.T) {
 	processUser := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeUser[0])
 	processSystem := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeSystem[0])
 
-	afterUser, afterSystem, _, _ := c.getProcessTimes(ctx)
+	afterUser, afterSystem, _ := c.getProcessTimes(ctx)
 
 	// Validate process times:
 	// User times are in range
@@ -149,43 +148,4 @@ func TestProcessUptime(t *testing.T) {
 	procUptime := getMetric(data.ScopeMetrics[0].Metrics, "process.uptime", attribute.KeyValue{})
 
 	require.LessOrEqual(t, expectUptime, procUptime)
-}
-
-func TestProcessGCCPUTime(t *testing.T) {
-	ctx := context.Background()
-
-	reader := metric.NewManualReader()
-	provider := metric.NewMeterProvider(metric.WithReader(reader))
-	c, err := newCputime(config{
-		MeterProvider: provider,
-	})
-	require.NoError(t, err)
-	require.NoError(t, c.register())
-
-	data, err := reader.Collect(ctx)
-	require.NoError(t, err)
-	require.Equal(t, 1, len(data.ScopeMetrics))
-
-	initialUtime := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeUser[0])
-	initialStime := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeSystem[0])
-	initialGCtime := getMetric(data.ScopeMetrics[0].Metrics, "process.runtime.go.gc.cpu.time", attribute.KeyValue{})
-
-	// Make garbage
-	for i := 0; i < 2; i++ {
-		var garbage []struct{}
-		for start := time.Now(); time.Since(start) < time.Second/16; {
-			garbage = append(garbage, struct{}{})
-		}
-		require.Less(t, 0, len(garbage))
-		runtime.GC()
-
-		data, err := reader.Collect(ctx)
-		require.NoError(t, err)
-		require.Equal(t, 1, len(data.ScopeMetrics))
-		utime := -initialUtime + getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeUser[0])
-		stime := -initialStime + getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeSystem[0])
-		gctime := -initialGCtime + getMetric(data.ScopeMetrics[0].Metrics, "process.runtime.go.gc.cpu.time", attribute.KeyValue{})
-
-		require.LessOrEqual(t, gctime, utime+stime)
-	}
 }

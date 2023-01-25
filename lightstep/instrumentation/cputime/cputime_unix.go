@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"math"
-	"runtime"
 	"syscall"
 	"time"
 
@@ -48,17 +47,8 @@ func newCputime(c config) (*cputime, error) {
 // of Go-1.19 there is no such runtime metric.  User and system sum to
 // 100% of CPU time; gc is an independent, comparable metric value.
 // These are correlated with uptime.
-func (_ *cputime) getProcessTimes(ctx context.Context) (userSeconds, systemSeconds, gcSeconds, uptimeSeconds float64) {
-	// Would really be better if runtime/metrics exposed this,
-	// making an expensive call for a single field that is not
-	// exposed via ReadMemStats().
-	var memStats runtime.MemStats
-	runtime.ReadMemStats(&memStats)
-
-	gomaxprocs := float64(runtime.GOMAXPROCS(0))
-
+func (_ *cputime) getProcessTimes(ctx context.Context) (userSeconds, systemSeconds, uptimeSeconds float64) {
 	uptimeSeconds = time.Since(processStartTime).Seconds()
-	gcSeconds = memStats.GCCPUFraction * uptimeSeconds * gomaxprocs
 
 	var ru syscall.Rusage
 	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &ru); err != nil {

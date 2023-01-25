@@ -218,9 +218,9 @@ func TestBuiltins(t *testing.T) {
 		Expect   string
 	}{
 		// invalid entry, valid entry still starts
-		{[]string{"invalid", "cputime"}, "process.runtime.go.gc.cpu.time"},
-		{[]string{"cputime", "invalid"}, "process.runtime.go.gc.cpu.time"},
-		{[]string{"cputime:stable"}, "process.runtime.go.gc.cpu.time"},
+		{[]string{"invalid", "cputime"}, "process.uptime"},
+		{[]string{"cputime", "invalid"}, "process.uptime"},
+		{[]string{"cputime:stable"}, "process.uptime"},
 
 		// invalid version: no library starts
 		{[]string{"cputime:v2"}, ""},
