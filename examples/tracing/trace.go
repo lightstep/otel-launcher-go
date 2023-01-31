@@ -34,12 +34,21 @@ func main() {
 		"book.category":  "science",
 	}
 
+	// authString := func(user, pw string) string {
+	// 	return "Basic " + base64.StdEncoding.EncodeToString([]byte(user+":"+pw))
+	// }
+
+	// fmt.Println("NOTE YOU will need ", authString("arrowstream", "arrowpw"))
+	// ourAuth := authString("testuser", "testpw")
+	// fmt.Println("OUR AUTH is ", ourAuth)
+
 	lsLauncher := launcher.ConfigureOpentelemetry(
 		// example for setting resource attributes:
 		launcher.WithResourceAttributes(attributes),
-		launcher.WithHeaders(map[string]string{
-			"X-Scope-OrgID": "winderwonderland",
-		}),
+		// launcher.WithHeaders(map[string]string{
+		// 	"X-Scope-OrgID": "winderwonderland",
+		// 	// "Authorization": ourAuth,
+		// }),
 	)
 	defer lsLauncher.Shutdown()
 	tracer := otel.Tracer("ex.com/basic")
