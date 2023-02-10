@@ -24,6 +24,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
+	"go.uber.org/multierr"
 )
 
 // Sentinel errors for Aggregator interface.
@@ -31,6 +32,7 @@ var (
 	ErrNegativeInput = fmt.Errorf("negative value is out of range for this instrument")
 	ErrNaNInput      = fmt.Errorf("NaN value is an invalid input")
 	ErrInfInput      = fmt.Errorf("±Inf value is an invalid input")
+	ErrInvalidLimit  = fmt.Errorf("limit is invalid")
 )
 
 // RangeTest is a common routine for testing for valid input values.
@@ -88,6 +90,7 @@ func (jc JSONConfig) ToConfig() Config {
 // Config supports the configuration for all aggregators in a single struct.
 type Config struct {
 	Histogram histostruct.Config
+	Limits    LimitsConfig
 }
 
 // Valid returns true for valid configurations.
@@ -99,9 +102,45 @@ func (c Config) Valid() bool {
 // Valid returns a valid Configuration along with an error if there
 // were invalid settings.  Note that the empty state is considered valid and a correct
 func (c Config) Validate() (Config, error) {
+	var ret error
 	var err error
-	c.Histogram, err = c.Histogram.Validate()
+	if c.Histogram, err = c.Histogram.Validate(); err != nil {
+		ret = multierr.Append(ret, err)
+	}
+
+	if c.Limits, err = c.Limits.Validate(); err != nil {
+		ret = multierr.Append(ret, err)
+	}
 	return c, err
+}
+
+// LimitsConfig specifies configurable instrument limits.
+type LimitsConfig struct {
+	// maxTimeseries is the maximum number of timeseries that can
+	// be written before triggering a builtin circuit breaker.
+	// When this number of concurrent attribute sets is reached
+	// the SDK will ...
+	maxTimeseries uint
+}
+
+// DefaultLimits is the specified default limit for LimitsConfig.MaxTimeseries.
+const DefaultMaxTimeseries = 2000
+
+// Validate fills in defaults and returns whether the limits are invalid.
+func (c LimitsConfig) Validate() (LimitsConfig, error) {
+	if c.maxTimeseries == 0 {
+		c.maxTimeseries = DefaultMaxTimeseries
+	}
+	if c.maxTimeseries < 2 {
+		return c, fmt.Errorf("%w: %d", ErrInvalidLimit, c.maxTimeseries)
+	}
+	return c, nil
+}
+
+// MaxTimeseries returns the maximum allowed number of timeseries per
+// instrument.
+func (c LimitsConfig) MaxTimeseries() uint {
+	return c.maxTimeseries
 }
 
 // Methods implements a specific aggregation behavior for a specific
