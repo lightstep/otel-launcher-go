@@ -19,9 +19,14 @@ import (
 	"testing"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"go.opentelemetry.io/otel/attribute"
 )
+
+var unsafePerf = WithPerformance(sdkinstrument.Performance{
+	IgnoreCollisions: true,
+})
 
 // Tested prior to 0.11.0 release
 // goos: darwin
@@ -64,6 +69,19 @@ func BenchmarkCounterAddOneAttr(b *testing.B) {
 	}
 }
 
+func BenchmarkCounterAddOneAttrUnsafe(b *testing.B) {
+	ctx := context.Background()
+	rdr := NewManualReader("bench")
+	provider := NewMeterProvider(WithReader(rdr), unsafePerf)
+	b.ReportAllocs()
+
+	cntr, _ := provider.Meter("test").SyncInt64().Counter("hello")
+
+	for i := 0; i < b.N; i++ {
+		cntr.Add(ctx, 1, attribute.String("K", "V"))
+	}
+}
+
 func BenchmarkCounterAddOneInvalidAttr(b *testing.B) {
 	ctx := context.Background()
 	rdr := NewManualReader("bench")
@@ -90,10 +108,36 @@ func BenchmarkCounterAddManyAttrs(b *testing.B) {
 	}
 }
 
+func BenchmarkCounterAddManyAttrsUnsafe(b *testing.B) {
+	ctx := context.Background()
+	rdr := NewManualReader("bench")
+	provider := NewMeterProvider(WithReader(rdr), unsafePerf)
+	b.ReportAllocs()
+
+	cntr, _ := provider.Meter("test").SyncInt64().Counter("hello")
+
+	for i := 0; i < b.N; i++ {
+		cntr.Add(ctx, 1, attribute.Int("K", i))
+	}
+}
+
 func BenchmarkCounterAddManyInvalidAttrs(b *testing.B) {
 	ctx := context.Background()
 	rdr := NewManualReader("bench")
 	provider := NewMeterProvider(WithReader(rdr))
+	b.ReportAllocs()
+
+	cntr, _ := provider.Meter("test").SyncInt64().Counter("hello")
+
+	for i := 0; i < b.N; i++ {
+		cntr.Add(ctx, 1, attribute.Int("", i), attribute.Int("K", i))
+	}
+}
+
+func BenchmarkCounterAddManyInvalidAttrsUnsafe(b *testing.B) {
+	ctx := context.Background()
+	rdr := NewManualReader("bench")
+	provider := NewMeterProvider(WithReader(rdr), unsafePerf)
 	b.ReportAllocs()
 
 	cntr, _ := provider.Meter("test").SyncInt64().Counter("hello")

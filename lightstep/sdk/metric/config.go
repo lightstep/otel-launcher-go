@@ -15,6 +15,7 @@
 package metric // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 
 import (
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -32,6 +33,9 @@ type config struct {
 	// views is a slice of *Views instances corresponding with readers.
 	// the i'th views applies to the i'th reader.
 	views []*view.Views
+
+	// performance settings
+	performance sdkinstrument.Performance
 }
 
 // Option applies a configuration option value to a MeterProvider.
@@ -65,6 +69,14 @@ func WithReader(r Reader, opts ...view.Option) Option {
 		}
 		cfg.readers = append(cfg.readers, r)
 		cfg.views = append(cfg.views, v)
+		return cfg
+	})
+}
+
+// WithPerformance supports modifying performance settings.
+func WithPerformance(perf sdkinstrument.Performance) Option {
+	return optionFunction(func(cfg config) config {
+		cfg.performance = perf
 		return cfg
 	})
 }

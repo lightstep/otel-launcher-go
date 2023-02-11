@@ -80,10 +80,14 @@ func NewState(pipe int) *State {
 
 // NewInstrument returns a new Instrument; this compiles individual
 // instruments for each reader.
-func NewInstrument(desc sdkinstrument.Descriptor, opaque interface{}, compiled pipeline.Register[viewstate.Instrument]) *Instrument {
+func NewInstrument(desc sdkinstrument.Descriptor, _ sdkinstrument.Performance, opaque interface{}, compiled pipeline.Register[viewstate.Instrument]) *Instrument {
 	// Note: we return a non-nil instrument even when all readers
 	// disabled the instrument. This ensures that certain error
 	// checks still work (wrong meter, wrong callback, etc).
+	//
+	// Note: performance settings are not used because async
+	// instruments do not use fingerprinting so IgnoreCollisions is
+	// meaningless.
 	return &Instrument{
 		opaque:     opaque,
 		descriptor: desc,

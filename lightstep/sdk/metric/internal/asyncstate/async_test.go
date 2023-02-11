@@ -52,6 +52,10 @@ var (
 		Last:  middleTime,
 		Now:   endTime,
 	}
+
+	ignorePerf = sdkinstrument.Performance{
+		IgnoreCollisions: false,
+	}
 )
 
 type testSDK struct {
@@ -96,7 +100,7 @@ func testState(num int) *State {
 func testObserver[N number.Any, Traits number.Traits[N]](tsdk *testSDK, name string, ik sdkinstrument.Kind, opts ...instrument.Option) Observer[N, Traits] {
 	var t Traits
 	desc := test.Descriptor(name, ik, t.Kind(), opts...)
-	impl := NewInstrument(desc, tsdk, tsdk.compile(desc))
+	impl := NewInstrument(desc, ignorePerf, tsdk, tsdk.compile(desc))
 	return NewObserver[N, Traits](impl)
 }
 

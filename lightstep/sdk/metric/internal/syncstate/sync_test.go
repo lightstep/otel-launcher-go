@@ -51,6 +51,10 @@ var (
 		Last:  middleTime,
 		Now:   endTime,
 	}
+
+	safePerf = sdkinstrument.Performance{
+		IgnoreCollisions: false,
+	}
 )
 
 func deltaUpdate[N number.Any](old, new N) N {
@@ -142,7 +146,7 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 		pipes[vci], _ = vcs[vci].Compile(desc)
 	}
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := NewInstrument(desc, safePerf, nil, pipes)
 	require.NotNil(t, inst)
 
 	cntr := NewCounter[N, Traits](inst)
@@ -244,7 +248,7 @@ func TestSyncStatePartialNoopInstrument(t *testing.T) {
 	require.Nil(t, pipes[0])
 	require.NotNil(t, pipes[1])
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := NewInstrument(desc, safePerf, nil, pipes)
 	require.NotNil(t, inst)
 
 	hist := NewHistogram[float64, number.Float64Traits](inst)
@@ -315,7 +319,7 @@ func TestSyncStateFullNoopInstrument(t *testing.T) {
 	require.Nil(t, pipes[0])
 	require.Nil(t, pipes[1])
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := NewInstrument(desc, safePerf, nil, pipes)
 	require.Nil(t, inst)
 
 	hist := NewHistogram[float64, number.Float64Traits](inst)
@@ -351,7 +355,7 @@ func TestOutOfRangeValues(t *testing.T) {
 		pipes := make(pipeline.Register[viewstate.Instrument], 1)
 		pipes[0], _ = vcs[0].Compile(desc)
 
-		inst := NewInstrument(desc, nil, pipes)
+		inst := NewInstrument(desc, safePerf, nil, pipes)
 		require.NotNil(t, inst)
 
 		var negOne aggregation.Aggregation
@@ -456,7 +460,7 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 
 	require.NotNil(t, pipes[0])
 
-	inst := NewInstrument(indesc, nil, pipes)
+	inst := NewInstrument(indesc, safePerf, nil, pipes)
 	require.NotNil(t, inst)
 
 	sg := NewCounter[float64, number.Float64Traits](inst)
@@ -754,7 +758,7 @@ func TestDuplicateFingerprint(t *testing.T) {
 	require.NotNil(t, pipes[0])
 	require.NotNil(t, pipes[1])
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := NewInstrument(desc, safePerf, nil, pipes)
 	require.NotNil(t, inst)
 
 	sg := NewCounter[float64, number.Float64Traits](inst)
