@@ -35,6 +35,8 @@ var sortableAttributesPool = sync.Pool{
 	},
 }
 
+var overflowAttributesFingerprint = fingerprintAttributes(pipeline.OverflowAttributes)
+
 // Instrument maintains a mapping from attribute.Set to an internal
 // record type for a single API-level instrument.  This type is
 // organized so that a single attribute.Set lookup is performed
@@ -52,6 +54,10 @@ type Instrument struct {
 	// and/or readers; these distinctions do not matter
 	// for synchronous aggregation.
 	compiled viewstate.Instrument
+
+	// maxTimeseries is copied to avoid several repeated function
+	// calls.
+	maxTimeseries uint
 
 	// lock protects current.
 	lock sync.RWMutex
@@ -75,19 +81,20 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 		// When no readers enable the instrument, no need for an instrument.
 		return nil
 	}
+	// Note that viewstate.Combine is used to eliminate
+	// the per-pipeline distinction that is useful in the
+	// asyncstate package.  Here, in the common case there
+	// will be one pipeline and one view, such that
+	// viewstate.Combine produces a single concrete
+	// viewstate.Instrument.  Only when there are multiple
+	// views or multiple pipelines will the combination
+	// produce a viewstate.multiInstrument here.
+	inst := viewstate.Combine(desc, nonnil...)
 	return &Instrument{
-		descriptor: desc,
-		current:    map[uint64]*record{},
-
-		// Note that viewstate.Combine is used to eliminate
-		// the per-pipeline distinction that is useful in the
-		// asyncstate package.  Here, in the common case there
-		// will be one pipeline and one view, such that
-		// viewstate.Combine produces a single concrete
-		// viewstate.Instrument.  Only when there are multiple
-		// views or multiple pipelines will the combination
-		// produce a viewstate.multiInstrument here.
-		compiled: viewstate.Combine(desc, nonnil...),
+		descriptor:    desc,
+		current:       map[uint64]*record{},
+		compiled:      inst,
+		maxTimeseries: inst.Limits().MaxTimeseries,
 	}
 }
 
@@ -335,26 +342,42 @@ func attributesEqual(a, b []attribute.KeyValue) bool {
 }
 
 // acquireRead acquires the read lock and searches for a `*record`.
-func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *record {
+// This also returns the active number of timeseries estimated as the
+// size of the map (i.e., ignoring collisions).
+func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) (uint64, []attribute.KeyValue, *record) {
 	inst.lock.RLock()
 	defer inst.lock.RUnlock()
 
-	rec := inst.current[fp]
+	// This loop can be taken twice.
+	for overflow := false; ; overflow = true {
+		rec := inst.current[fp]
 
-	// Note: we could (optionally) allow collisions and not scan this list.
-	// The copied `attributeList` can be avoided in this case, as well.
-	for rec != nil && !attributesEqual(attrs, rec.attributeList) {
-		rec = rec.next
+		// Note: we could (optionally) allow collisions and not scan this list.
+		// The copied `attributeList` can be avoided in this case, as well.
+		for rec != nil && !attributesEqual(attrs, rec.attributeList) {
+			rec = rec.next
+		}
+
+		// Existing record case.
+		if rec != nil && rec.refMapped.ref() {
+			// At this moment it is guaranteed that the
+			// record is in the map and will not be removed.
+			return fp, attrs, rec
+		}
+
+		// Check for overflow after checking for the original
+		// attribute set.  Note this means we are performing
+		// two map lookups for overflowing attributes and only
+		// one lookup if the attribute set was preexisting.
+		if !overflow && uint(len(inst.current)) >= inst.maxTimeseries {
+			// Use the overflow attributes, repeat.
+			attrs = pipeline.OverflowAttributes
+			fp = overflowAttributesFingerprint
+			continue
+		}
+
+		return fp, attrs, nil
 	}
-
-	// Existing record case.
-	if rec != nil && rec.refMapped.ref() {
-		// At this moment it is guaranteed that the
-		// record is in the map and will not be removed.
-		return rec
-	}
-
-	return nil
 }
 
 // acquireRecord gets or creates a `*record` corresponding to `attrs`,
@@ -362,7 +385,9 @@ func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *recor
 func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *record {
 	fp := fingerprintAttributes(attrs)
 
-	rec := acquireRead(inst, fp, attrs)
+	// acquireRead may replace fp and attrs when there is overflow.
+	var rec *record
+	fp, attrs, rec = acquireRead(inst, fp, attrs)
 	if rec != nil {
 		return rec
 	}

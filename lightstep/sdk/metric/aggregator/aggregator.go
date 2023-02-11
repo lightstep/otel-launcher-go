@@ -120,7 +120,7 @@ type LimitsConfig struct {
 	// be written before triggering a builtin circuit breaker.
 	// When this number of concurrent attribute sets is reached
 	// the SDK will ...
-	maxTimeseries uint
+	MaxTimeseries uint
 }
 
 // DefaultLimits is the specified default limit for LimitsConfig.MaxTimeseries.
@@ -128,19 +128,29 @@ const DefaultMaxTimeseries = 2000
 
 // Validate fills in defaults and returns whether the limits are invalid.
 func (c LimitsConfig) Validate() (LimitsConfig, error) {
-	if c.maxTimeseries == 0 {
-		c.maxTimeseries = DefaultMaxTimeseries
+	if c.MaxTimeseries == 0 {
+		c.MaxTimeseries = DefaultMaxTimeseries
 	}
-	if c.maxTimeseries < 2 {
-		return c, fmt.Errorf("%w: %d", ErrInvalidLimit, c.maxTimeseries)
+	if c.MaxTimeseries < 2 {
+		return c, fmt.Errorf("%w: %d", ErrInvalidLimit, c.MaxTimeseries)
 	}
 	return c, nil
 }
 
-// MaxTimeseries returns the maximum allowed number of timeseries per
-// instrument.
-func (c LimitsConfig) MaxTimeseries() uint {
-	return c.maxTimeseries
+// Combine returns the smaller limits.  Since limits are applied to
+// Instruments, not Views, the smaller of the limits takes effect
+// and overrides larger limits requested by different views.
+func (c LimitsConfig) Combine(o LimitsConfig) LimitsConfig {
+	if c.MaxTimeseries == 0 {
+		return o
+	}
+	if o.MaxTimeseries == 0 {
+		return c
+	}
+	if c.MaxTimeseries < o.MaxTimeseries {
+		return c
+	}
+	return o
 }
 
 // Methods implements a specific aggregation behavior for a specific

@@ -118,7 +118,14 @@ func TestClauseProperties(t *testing.T) {
 	require.Equal(t, []attribute.Key(nil), views.Clauses[2].Keys())
 	require.Equal(t, []attribute.Key{}, views.Clauses[3].Keys())
 	require.Equal(t, aggregation.DropKind, views.Clauses[4].Aggregation())
-	require.Equal(t, aggregator.Config{Histogram: histogram.NewConfig(histogram.WithMaxSize(177))}, views.Clauses[5].AggregatorConfig())
+	require.Equal(t, aggregator.Config{
+		Histogram: histogram.NewConfig(histogram.WithMaxSize(177)),
+		Limits: aggregator.LimitsConfig{
+			MaxTimeseries: aggregator.DefaultMaxTimeseries,
+		},
+	},
+		views.Clauses[5].AggregatorConfig(),
+	)
 }
 
 func TestNameAndRegexp(t *testing.T) {

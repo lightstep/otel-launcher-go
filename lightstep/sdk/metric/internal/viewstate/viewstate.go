@@ -35,6 +35,12 @@ import (
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
+var zeroValidConfig = func() aggregator.Config {
+	var zero aggregator.Config
+	zero, _ = zero.Validate()
+	return zero
+}()
+
 // Compiler implements Views for a single Meter.  A single Compiler
 // controls the namespace of metric instruments output and reports
 // conflicting definitions for the same name.
@@ -42,20 +48,20 @@ import (
 // Information flows through the Compiler as follows:
 //
 // When new instruments are created:
-// - The Compiler.Compile() method returns an Instrument value and possible
-//   duplicate or semantic conflict error.
+//   - The Compiler.Compile() method returns an Instrument value and possible
+//     duplicate or semantic conflict error.
 //
 // When instruments are used:
 // - The Instrument.NewAccumulator() method returns an Accumulator value for each attribute.Set used
 // - The Accumulator.Update() aggregates one value for each measurement.
 //
 // During collection:
-// - The Accumulator.SnapshotAndProcess() method captures the current value
-//   and conveys it to the output storage
-// - The Compiler.Collectors() interface returns one Collector per output
-//   Metric in the Meter (duplicate definitions included).
-// - The Collector.Collect() method outputs one Point for each attribute.Set
-//   in the result.
+//   - The Accumulator.SnapshotAndProcess() method captures the current value
+//     and conveys it to the output storage
+//   - The Compiler.Collectors() interface returns one Collector per output
+//     Metric in the Meter (duplicate definitions included).
+//   - The Collector.Collect() method outputs one Point for each attribute.Set
+//     in the result.
 type Compiler struct {
 	// views is the configuration of this compiler.
 	views *view.Views
@@ -90,6 +96,9 @@ type Instrument interface {
 	// called since the last collection and to ensure that each
 	// of them has SnapshotAndProcess() called.
 	NewAccumulator(kvs attribute.Set) Accumulator
+
+	// Limits indicates the maximum allowed cardinality.
+	Limits() aggregator.LimitsConfig
 }
 
 // Updater captures single measurements, for N an int64 or float64.
@@ -177,6 +186,10 @@ type singleBehavior struct {
 
 // New returns a compiler for library given configured views.
 func New(library instrumentation.Library, views *view.Views) *Compiler {
+	views, err := view.Validate(views)
+	if err != nil {
+		otel.Handle(err)
+	}
 	return &Compiler{
 		library: library,
 		views:   views,
@@ -568,6 +581,14 @@ func (mi multiInstrument[N]) NewAccumulator(kvs attribute.Set) Accumulator {
 	return multiAccumulator[N](accs)
 }
 
+func (mi multiInstrument[N]) Limits() aggregator.LimitsConfig {
+	var empty aggregator.LimitsConfig
+	for _, item := range mi {
+		empty = empty.Combine(item.Limits())
+	}
+	return mi[0].Limits()
+}
+
 // Uses a int(0)-value attribute to identify distinct key sets.
 func keysToSet(keys []attribute.Key) *attribute.Set {
 	attrs := make([]attribute.KeyValue, len(keys))
@@ -604,9 +625,9 @@ func equalConfigs(a, b aggregator.Config) bool {
 }
 
 // pickAggConfig returns the aggregator configuration prescribed by a view clause
-// if it is not empty, otherwise the default value.
+// if it is not equal to the default validated value, otherwise use the default value.
 func pickAggConfig(def, vcfg aggregator.Config) aggregator.Config {
-	if vcfg != (aggregator.Config{}) {
+	if vcfg != zeroValidConfig {
 		return vcfg
 	}
 	return def
