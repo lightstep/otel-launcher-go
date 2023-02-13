@@ -108,11 +108,12 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 	// this code.  The race condition still exists, but the test
 	// no longer covers the call to Gosched() in acquireRecord()
 	// or the return-nil branch in acquireWrite().  This is
-	// because with the RWMutex, the race is much less racey.
+	// because the current code is much less racey or better
+	// tests are needed.
 	const (
-		numReaders  = 2
-		numRoutines = 10
-		numAttrs    = 10
+		numReaders  = 10
+		numRoutines = 50
+		numAttrs    = 30
 		numUpdates  = 1e5
 	)
 
