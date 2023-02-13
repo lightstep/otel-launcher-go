@@ -54,7 +54,7 @@ type Instrument struct {
 	compiled viewstate.Instrument
 
 	// lock protects current.
-	lock sync.RWMutex
+	lock sync.Mutex
 
 	// current is protected by lock.
 	current map[uint64]*record
@@ -336,8 +336,8 @@ func attributesEqual(a, b []attribute.KeyValue) bool {
 
 // acquireRead acquires the read lock and searches for a `*record`.
 func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *record {
-	inst.lock.RLock()
-	defer inst.lock.RUnlock()
+	inst.lock.Lock()
+	defer inst.lock.Unlock()
 
 	rec := inst.current[fp]
 
