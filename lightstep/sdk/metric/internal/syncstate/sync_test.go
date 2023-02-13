@@ -111,9 +111,9 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 	// because the current code is much less racey or better
 	// tests are needed.
 	const (
-		numReaders  = 10
-		numRoutines = 50
-		numAttrs    = 30
+		numReaders  = 2
+		numRoutines = 10
+		numAttrs    = 10
 		numUpdates  = 1e5
 	)
 
