@@ -8,8 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
-## [1.12.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.12.1) - 2022-01-24)
+## [1.12.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.12.1) - 2022-02-13)
 
+- Replace a RWMutex with Mutex. [#378](https://github.com/lightstep/otel-launcher-go/pull/378)
 - Eliminate redundant GC cpu-time metric from lightstep/instrumentation/cputime as
   it is now included in lightstep/instrumentation/runtime from the builtin 
   runtime/metrics package.  [#355](https://github.com/lightstep/otel-launcher-go/pull/355)
