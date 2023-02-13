@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	// Lightstep-alternate metric SDK
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.12.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.12.1
 
 	// Host and runtime instrumentation
 	go.opentelemetry.io/contrib/instrumentation/host v0.36.4
@@ -54,7 +54,7 @@ require (
 )
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.12.0
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.12.1
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.34.0
 )
 
