@@ -27,10 +27,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/asyncfloat64"
-	"go.opentelemetry.io/otel/metric/instrument/asyncint64"
-	"go.opentelemetry.io/otel/metric/instrument/syncfloat64"
-	"go.opentelemetry.io/otel/metric/instrument/syncint64"
+	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
@@ -53,16 +50,6 @@ type meter struct {
 // Compile-time check meter implements metric.Meter.
 var _ metric.Meter = (*meter)(nil)
 
-// AsyncInt64 returns the asynchronous integer instrument provider.
-func (m *meter) AsyncInt64() asyncint64.InstrumentProvider {
-	return asyncint64Instruments{m}
-}
-
-// AsyncFloat64 returns the asynchronous floating-point instrument provider.
-func (m *meter) AsyncFloat64() asyncfloat64.InstrumentProvider {
-	return asyncfloat64Instruments{m}
-}
-
 // RegisterCallback registers the function f to be called when any of the
 // insts Collect method is called.
 func (m *meter) RegisterCallback(insts []instrument.Asynchronous, f func(context.Context)) error {
@@ -76,14 +63,9 @@ func (m *meter) RegisterCallback(insts []instrument.Asynchronous, f func(context
 	return err
 }
 
-// SyncInt64 returns the synchronous integer instrument provider.
-func (m *meter) SyncInt64() syncint64.InstrumentProvider {
-	return syncint64Instruments{m}
-}
-
-// SyncFloat64 returns the synchronous floating-point instrument provider.
-func (m *meter) SyncFloat64() syncfloat64.InstrumentProvider {
-	return syncfloat64Instruments{m}
+type instConfig interface {
+	Description() string
+	Unit() unit.Unit
 }
 
 // instrumentConstructor refers to either the syncstate or asyncstate
@@ -103,14 +85,13 @@ type instrumentConstructor[T any] func(
 func configureInstrument[T any](
 	m *meter,
 	name string,
-	opts []instrument.Option,
+	cfg instConfig,
 	nk number.Kind,
 	ik sdkinstrument.Kind,
 	listPtr *[]*T,
 	ctor instrumentConstructor[T],
 ) (*T, error) {
 	// Compute the instrument descriptor
-	cfg := instrument.NewConfig(opts...)
 	desc := sdkinstrument.NewDescriptor(name, ik, nk, cfg.Description(), cfg.Unit())
 
 	m.lock.Lock()
@@ -156,11 +137,11 @@ func configureInstrument[T any](
 }
 
 // synchronousInstrument configures a synchronous instrument.
-func (m *meter) synchronousInstrument(name string, opts []instrument.Option, nk number.Kind, ik sdkinstrument.Kind) (*syncstate.Instrument, error) {
-	return configureInstrument(m, name, opts, nk, ik, &m.syncInsts, syncstate.NewInstrument)
+func (m *meter) synchronousInstrument(name string, cfg instConfig, nk number.Kind, ik sdkinstrument.Kind) (*syncstate.Instrument, error) {
+	return configureInstrument(m, name, cfg, nk, ik, &m.syncInsts, syncstate.NewInstrument)
 }
 
 // synchronousInstrument configures an asynchronous instrument.
-func (m *meter) asynchronousInstrument(name string, opts []instrument.Option, nk number.Kind, ik sdkinstrument.Kind) (*asyncstate.Instrument, error) {
-	return configureInstrument(m, name, opts, nk, ik, &m.asyncInsts, asyncstate.NewInstrument)
+func (m *meter) asynchronousInstrument(name string, cfg instConfig, nk number.Kind, ik sdkinstrument.Kind) (*asyncstate.Instrument, error) {
+	return configureInstrument(m, name, cfg, nk, ik, &m.asyncInsts, asyncstate.NewInstrument)
 }

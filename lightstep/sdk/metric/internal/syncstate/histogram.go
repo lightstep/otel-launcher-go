@@ -20,8 +20,6 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/syncfloat64"
-	"go.opentelemetry.io/otel/metric/instrument/syncint64"
 )
 
 // Histogram is a synchronous instrument having a Record() method.
@@ -33,8 +31,8 @@ type Histogram[N number.Any, Traits number.Traits[N]] struct {
 
 // Histogram satisfies 2 instrument APIs.
 var (
-	_ syncint64.Histogram   = Histogram[int64, number.Int64Traits]{}
-	_ syncfloat64.Histogram = Histogram[float64, number.Float64Traits]{}
+	_ instrument.Int64Histogram   = Histogram[int64, number.Int64Traits]{}
+	_ instrument.Float64Histogram = Histogram[float64, number.Float64Traits]{}
 )
 
 // NewCounter returns a value that implements the Histogram API.

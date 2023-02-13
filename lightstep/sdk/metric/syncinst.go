@@ -19,41 +19,34 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/syncfloat64"
-	"go.opentelemetry.io/otel/metric/instrument/syncint64"
 )
 
-type (
-	syncint64Instruments   struct{ *meter }
-	syncfloat64Instruments struct{ *meter }
-)
-
-func (i syncint64Instruments) Counter(name string, opts ...instrument.Option) (syncint64.Counter, error) {
-	inst, err := i.synchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.SyncCounter)
+func (m *meter) Int64Counter(name string, opts ...instrument.Int64Option) (instrument.Int64Counter, error) {
+	inst, err := m.synchronousInstrument(name, instrument.NewInt64Config(opts...), number.Int64Kind, sdkinstrument.SyncCounter)
 	return syncstate.NewCounter[int64, number.Int64Traits](inst), err
 }
 
-func (i syncint64Instruments) UpDownCounter(name string, opts ...instrument.Option) (syncint64.UpDownCounter, error) {
-	inst, err := i.synchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.SyncUpDownCounter)
+func (m *meter) Int64UpDownCounter(name string, opts ...instrument.Int64Option) (instrument.Int64UpDownCounter, error) {
+	inst, err := m.synchronousInstrument(name, instrument.NewInt64Config(opts...), number.Int64Kind, sdkinstrument.SyncUpDownCounter)
 	return syncstate.NewCounter[int64, number.Int64Traits](inst), err
 }
 
-func (i syncint64Instruments) Histogram(name string, opts ...instrument.Option) (syncint64.Histogram, error) {
-	inst, err := i.synchronousInstrument(name, opts, number.Int64Kind, sdkinstrument.SyncHistogram)
+func (m *meter) Int64Histogram(name string, opts ...instrument.Int64Option) (instrument.Int64Histogram, error) {
+	inst, err := m.synchronousInstrument(name, instrument.NewInt64Config(opts...), number.Int64Kind, sdkinstrument.SyncHistogram)
 	return syncstate.NewHistogram[int64, number.Int64Traits](inst), err
 }
 
-func (f syncfloat64Instruments) Counter(name string, opts ...instrument.Option) (syncfloat64.Counter, error) {
-	inst, err := f.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.SyncCounter)
+func (m *meter) Float64Counter(name string, opts ...instrument.Float64Option) (instrument.Float64Counter, error) {
+	inst, err := m.synchronousInstrument(name, instrument.NewFloat64Config(opts...), number.Float64Kind, sdkinstrument.SyncCounter)
 	return syncstate.NewCounter[float64, number.Float64Traits](inst), err
 }
 
-func (f syncfloat64Instruments) UpDownCounter(name string, opts ...instrument.Option) (syncfloat64.UpDownCounter, error) {
-	inst, err := f.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.SyncUpDownCounter)
+func (m *meter) Float64UpDownCounter(name string, opts ...instrument.Float64Option) (instrument.Float64UpDownCounter, error) {
+	inst, err := m.synchronousInstrument(name, instrument.NewFloat64Config(opts...), number.Float64Kind, sdkinstrument.SyncUpDownCounter)
 	return syncstate.NewCounter[float64, number.Float64Traits](inst), err
 }
 
-func (f syncfloat64Instruments) Histogram(name string, opts ...instrument.Option) (syncfloat64.Histogram, error) {
-	inst, err := f.synchronousInstrument(name, opts, number.Float64Kind, sdkinstrument.SyncHistogram)
+func (m *meter) Float64Histogram(name string, opts ...instrument.Float64Option) (instrument.Float64Histogram, error) {
+	inst, err := m.synchronousInstrument(name, instrument.NewFloat64Config(opts...), number.Float64Kind, sdkinstrument.SyncHistogram)
 	return syncstate.NewHistogram[float64, number.Float64Traits](inst), err
 }

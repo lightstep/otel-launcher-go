@@ -19,30 +19,35 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/asyncfloat64"
-	"go.opentelemetry.io/otel/metric/instrument/asyncint64"
 )
 
 // Observer is a generic (int64 or float64) instrument which
 // satisfies any of the asynchronous instrument API interfaces.
 type Observer[N number.Any, Traits number.Traits[N]] struct {
-	instrument.Asynchronous // Note: wasted space
-
 	inst *Instrument
+
+	// instrument.Asynchronous // Note: wasted space
+}
+
+type Int64Observer struct {
+	Observer[int64, number.Int64Traits]
+}
+
+type Float64Observer struct {
+	Observer[float64, number.Float64Traits]
 }
 
 // Observer implements 6 instruments and memberInstrument.
 var (
-	_ asyncint64.Counter       = Observer[int64, number.Int64Traits]{}
-	_ asyncint64.UpDownCounter = Observer[int64, number.Int64Traits]{}
-	_ asyncint64.Gauge         = Observer[int64, number.Int64Traits]{}
-	_ memberInstrument         = Observer[int64, number.Int64Traits]{}
+	// _ instrument.Int64ObservableCounter       = Observer[int64, number.Int64Traits]{}
+	// _ instrument.Int64ObservableUpDownCounter = Observer[int64, number.Int64Traits]{}
+	// _ instrument.Int64ObservableGauge         = Observer[int64, number.Int64Traits]{}
+	_ memberInstrument = Observer[int64, number.Int64Traits]{}
 
-	_ asyncfloat64.Counter       = Observer[float64, number.Float64Traits]{}
-	_ asyncfloat64.UpDownCounter = Observer[float64, number.Float64Traits]{}
-	_ asyncfloat64.Gauge         = Observer[float64, number.Float64Traits]{}
-	_ memberInstrument           = Observer[float64, number.Float64Traits]{}
+	// _ instrument.Float64ObservableCounter       = Observer[float64, number.Float64Traits]{}
+	// _ instrument.Float64ObservableUpDownCounter = Observer[float64, number.Float64Traits]{}
+	// _ instrument.Float64ObservableGauge         = Observer[float64, number.Float64Traits]{}
+	_ memberInstrument = Observer[float64, number.Float64Traits]{}
 )
 
 // memberInstrument indicates whether a user-provided

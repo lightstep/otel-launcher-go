@@ -34,7 +34,13 @@ import (
 )
 
 func Descriptor(name string, ik sdkinstrument.Kind, nk number.Kind, opts ...instrument.Option) sdkinstrument.Descriptor {
-	cfg := instrument.NewConfig(opts...)
+	// Note: use of Float64 is arbitrary, below, as the int and
+	// float options are equivalent structs.
+	fopts := make([]instrument.Float64Option, len(opts))
+	for _, fo := range opts {
+		fopts = append(fopts, fo)
+	}
+	cfg := instrument.NewFloat64Config(fopts...)
 	return sdkinstrument.NewDescriptor(name, ik, nk, cfg.Description(), cfg.Unit())
 }
 

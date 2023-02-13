@@ -20,8 +20,6 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/syncfloat64"
-	"go.opentelemetry.io/otel/metric/instrument/syncint64"
 )
 
 // Counter is a synchronous instrument having an Add() method.
@@ -33,10 +31,10 @@ type Counter[N number.Any, Traits number.Traits[N]] struct {
 
 // Counter satisfies 4 instrument APIs.
 var (
-	_ syncint64.Counter         = Counter[int64, number.Int64Traits]{}
-	_ syncint64.UpDownCounter   = Counter[int64, number.Int64Traits]{}
-	_ syncfloat64.Counter       = Counter[float64, number.Float64Traits]{}
-	_ syncfloat64.UpDownCounter = Counter[float64, number.Float64Traits]{}
+	_ instrument.Int64Counter         = Counter[int64, number.Int64Traits]{}
+	_ instrument.Int64UpDownCounter   = Counter[int64, number.Int64Traits]{}
+	_ instrument.Float64Counter       = Counter[float64, number.Float64Traits]{}
+	_ instrument.Float64UpDownCounter = Counter[float64, number.Float64Traits]{}
 )
 
 // NewCounter returns a value that implements the Counter and UpDownCounter APIs.
