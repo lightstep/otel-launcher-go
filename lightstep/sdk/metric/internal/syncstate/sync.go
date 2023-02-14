@@ -29,6 +29,16 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
+// Instrument indicates whether a user-provided instrument was
+// returned by this SDK.
+type Instrument interface {
+	implementation() *Capturer
+}
+
+func (o *Capturer) implementation() *Capturer {
+	return o
+}
+
 var sortableAttributesPool = sync.Pool{
 	New: func() any {
 		return new(attribute.Sortable)
@@ -42,7 +52,7 @@ var sortableAttributesPool = sync.Pool{
 // Entries in the map have their accumulator's SnapshotAndProcess()
 // method called whenever they are removed from the map, which can
 // happen when any reader collects the instrument.
-type Instrument struct {
+type Capturer struct {
 	// descriptor is the API-provided descriptor for the
 	// instrument, unmodified by views.
 	descriptor sdkinstrument.Descriptor
@@ -64,7 +74,7 @@ type Instrument struct {
 // per-pipeline instrument-views compiled.  Note that the unused
 // second parameter is an opaque value used in the asyncstate package,
 // passed here to make these two packages generalize.
-func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeline.Register[viewstate.Instrument]) *Instrument {
+func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeline.Register[viewstate.Instrument]) *Capturer {
 	var nonnil []viewstate.Instrument
 	for _, comp := range compiled {
 		if comp != nil {
@@ -75,7 +85,7 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 		// When no readers enable the instrument, no need for an instrument.
 		return nil
 	}
-	return &Instrument{
+	return &Capturer{
 		descriptor: desc,
 		current:    map[uint64]*record{},
 
@@ -94,7 +104,7 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 // SnapshotAndProcess calls SnapshotAndProcess() for all live
 // accumulators of this instrument.  Inactive accumulators will be
 // subsequently removed from the map.
-func (inst *Instrument) SnapshotAndProcess() {
+func (inst *Capturer) SnapshotAndProcess() {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
@@ -143,7 +153,7 @@ func (inst *Instrument) SnapshotAndProcess() {
 }
 
 // singleSnapshotAndProcess
-func (inst *Instrument) singleSnapshotAndProcess(fp uint64, rec *record) bool {
+func (inst *Capturer) singleSnapshotAndProcess(fp uint64, rec *record) bool {
 	if rec.conditionalSnapshotAndProcess(false) {
 		return true
 	}
@@ -219,7 +229,7 @@ func (rec *record) conditionalSnapshotAndProcess(release bool) bool {
 }
 
 // capture performs a single update for any synchronous instrument.
-func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Instrument, num N, attrs []attribute.KeyValue) {
+func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Capturer, num N, attrs []attribute.KeyValue) {
 	if inst == nil {
 		// Instrument was completely disabled by the view.
 		return
@@ -335,7 +345,7 @@ func attributesEqual(a, b []attribute.KeyValue) bool {
 }
 
 // acquireRead acquires the read lock and searches for a `*record`.
-func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *record {
+func acquireRead(inst *Capturer, fp uint64, attrs []attribute.KeyValue) *record {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
@@ -359,7 +369,7 @@ func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *recor
 
 // acquireRecord gets or creates a `*record` corresponding to `attrs`,
 // the input attributes.
-func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *record {
+func acquireRecord[N number.Any](inst *Capturer, attrs []attribute.KeyValue) *record {
 	fp := fingerprintAttributes(attrs)
 
 	rec := acquireRead(inst, fp, attrs)
@@ -404,7 +414,7 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *
 }
 
 // acquireWrite acquires the write lock and gets or sets a `*record`.
-func acquireWrite(inst *Instrument, fp uint64, newRec *record) (*record, bool) {
+func acquireWrite(inst *Capturer, fp uint64, newRec *record) (*record, bool) {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 

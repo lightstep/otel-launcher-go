@@ -19,6 +19,8 @@ import (
 	"fmt"
 	"sync"
 
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/instrument"
 )
 
@@ -26,16 +28,16 @@ import (
 // asynchronous callback.
 type Callback struct {
 	// function is the user-provided callback function.
-	function func(context.Context)
+	function metric.Callback
 
 	// instruments are the set of instruments permitted to be used
 	// inside this callback.
-	instruments map[*Instrument]struct{}
+	instruments map[*Observer]struct{}
 }
 
 // NewCallback returns a new Callback; this checks that each of the
 // provided instruments belongs to the same meter provider.
-func NewCallback(instruments []instrument.Asynchronous, opaque interface{}, function func(context.Context)) (*Callback, error) {
+func NewCallback(instruments []instrument.Asynchronous, opaque interface{}, function metric.Callback) (*Callback, error) {
 	if len(instruments) == 0 {
 		return nil, fmt.Errorf("asynchronous callback without instruments")
 	}
@@ -45,15 +47,15 @@ func NewCallback(instruments []instrument.Asynchronous, opaque interface{}, func
 
 	cb := &Callback{
 		function:    function,
-		instruments: map[*Instrument]struct{}{},
+		instruments: map[*Observer]struct{}{},
 	}
 
 	for _, inst := range instruments {
-		ai, ok := inst.(memberInstrument)
+		ai, ok := inst.(Instrument)
 		if !ok {
 			return nil, fmt.Errorf("asynchronous instrument does not belong to this SDK: %T", inst)
 		}
-		thisInst := ai.instrument()
+		thisInst := ai.implementation()
 		if thisInst.opaque != opaque {
 			return nil, fmt.Errorf("asynchronous instrument belongs to a different meter")
 		}
@@ -71,7 +73,7 @@ func (c *Callback) Run(ctx context.Context, state *State) {
 		callback: c,
 		state:    state,
 	}
-	c.function(context.WithValue(ctx, contextKey{}, cp))
+	c.function(ctx, cp)
 	cp.invalidate()
 }
 
@@ -89,14 +91,21 @@ type callbackState struct {
 	state *State
 }
 
-func (cp *callbackState) invalidate() {
-	cp.lock.Lock()
-	defer cp.lock.Unlock()
-	cp.callback = nil
+func (cs *callbackState) invalidate() {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+	cs.callback = nil
 }
 
-func (cp *callbackState) getCallback() *Callback {
-	cp.lock.Lock()
-	defer cp.lock.Unlock()
-	return cp.callback
+func (cs *callbackState) getCallback() *Callback {
+	cs.lock.Lock()
+	defer cs.lock.Unlock()
+	return cs.callback
+}
+
+func (cs *callbackState) ObserveFloat64(obsrv instrument.Float64Observable, value float64, attributes ...attribute.KeyValue) {
+}
+
+func (cs *callbackState) ObserveInt64(obsrv instrument.Int64Observable, value int64, attributes ...attribute.KeyValue) {
+
 }

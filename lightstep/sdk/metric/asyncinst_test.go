@@ -25,8 +25,9 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/test"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -35,25 +36,26 @@ func TestAsyncInsts(t *testing.T) {
 	res := resource.Empty()
 	provider := NewMeterProvider(WithReader(rdr), WithResource(res))
 
-	ci := must(provider.Meter("test").AsyncInt64().Counter("icount"))
-	cf := must(provider.Meter("test").AsyncFloat64().Counter("fcount"))
-	ui := must(provider.Meter("test").AsyncInt64().UpDownCounter("iupcount"))
-	uf := must(provider.Meter("test").AsyncFloat64().UpDownCounter("fupcount"))
-	gi := must(provider.Meter("test").AsyncInt64().Gauge("igauge"))
-	gf := must(provider.Meter("test").AsyncFloat64().Gauge("fgauge"))
+	ci := must(provider.Meter("test").Int64ObservableCounter("icount"))
+	cf := must(provider.Meter("test").Float64ObservableCounter("fcount"))
+	ui := must(provider.Meter("test").Int64ObservableUpDownCounter("iupcount"))
+	uf := must(provider.Meter("test").Float64ObservableUpDownCounter("fupcount"))
+	gi := must(provider.Meter("test").Int64ObservableGauge("igauge"))
+	gf := must(provider.Meter("test").Float64ObservableGauge("fgauge"))
 
 	attr := attribute.String("a", "B")
 
-	_ = provider.Meter("test").RegisterCallback([]instrument.Asynchronous{
-		ci, cf, ui, uf, gi, gf,
-	}, func(ctx context.Context) {
-		ci.Observe(ctx, 2, attr)
-		cf.Observe(ctx, 3, attr)
-		ui.Observe(ctx, 4, attr)
-		uf.Observe(ctx, 5, attr)
-		gi.Observe(ctx, 6, attr)
-		gf.Observe(ctx, 7, attr)
-	})
+	reg, err := provider.Meter("test").RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
+		observer.ObserveInt64(ci, 2, attr)
+		observer.ObserveFloat64(cf, 3, attr)
+		observer.ObserveInt64(ui, 4, attr)
+		observer.ObserveFloat64(uf, 5, attr)
+		observer.ObserveInt64(gi, 6, attr)
+		observer.ObserveFloat64(gf, 7, attr)
+		return nil
+	}, ci, cf, ui, uf, gi, gf)
+
+	require.NoError(t, err)
 
 	data := rdr.Produce(nil)
 	notime := time.Time{}
@@ -89,4 +91,5 @@ func TestAsyncInsts(t *testing.T) {
 			),
 		),
 	)
+	require.NoError(t, reg.Unregister())
 }
