@@ -75,7 +75,7 @@ func BenchmarkCounterAddOneAttrUnsafe(b *testing.B) {
 	provider := NewMeterProvider(WithReader(rdr), unsafePerf)
 	b.ReportAllocs()
 
-	cntr, _ := provider.Meter("test").SyncInt64().Counter("hello")
+	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
 		cntr.Add(ctx, 1, attribute.String("K", "V"))
@@ -114,7 +114,7 @@ func BenchmarkCounterAddManyAttrsUnsafe(b *testing.B) {
 	provider := NewMeterProvider(WithReader(rdr), unsafePerf)
 	b.ReportAllocs()
 
-	cntr, _ := provider.Meter("test").SyncInt64().Counter("hello")
+	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
 		cntr.Add(ctx, 1, attribute.Int("K", i))
@@ -140,7 +140,7 @@ func BenchmarkCounterAddManyInvalidAttrsUnsafe(b *testing.B) {
 	provider := NewMeterProvider(WithReader(rdr), unsafePerf)
 	b.ReportAllocs()
 
-	cntr, _ := provider.Meter("test").SyncInt64().Counter("hello")
+	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
 		cntr.Add(ctx, 1, attribute.Int("", i), attribute.Int("K", i))

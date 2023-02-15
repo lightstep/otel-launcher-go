@@ -98,15 +98,6 @@ func testState(num int) *State {
 	return NewState(num)
 }
 
-// <<<<<<< HEAD
-//
-//	func testObserver[N number.Any, Traits number.Traits[N]](tsdk *testSDK, name string, ik sdkinstrument.Kind, opts ...instrument.Option) Observer[N, Traits] {
-//		var t Traits
-//		desc := test.Descriptor(name, ik, t.Kind(), opts...)
-//		impl := NewInstrument(desc, ignorePerf, tsdk, tsdk.compile(desc))
-//		return NewObserver[N, Traits](impl)
-//
-// =======
 type intObserver struct {
 	*Observer
 	instrument.Int64Observable
@@ -119,12 +110,12 @@ type floatObserver struct {
 
 func testIntObserver(tsdk *testSDK, name string, ik sdkinstrument.Kind) intObserver {
 	desc := test.Descriptor(name, ik, number.Int64Kind)
-	return intObserver{Observer: New(desc, tsdk, tsdk.compile(desc))}
+	return intObserver{Observer: New(desc, ignorePerf, tsdk, tsdk.compile(desc))}
 }
 
 func testFloatObserver(tsdk *testSDK, name string, ik sdkinstrument.Kind) floatObserver {
 	desc := test.Descriptor(name, ik, number.Float64Kind)
-	return floatObserver{Observer: New(desc, tsdk, tsdk.compile(desc))}
+	return floatObserver{Observer: New(desc, ignorePerf, tsdk, tsdk.compile(desc))}
 }
 
 func nopCB(context.Context, metric.Observer) error {

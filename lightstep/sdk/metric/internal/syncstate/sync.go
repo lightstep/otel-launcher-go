@@ -170,7 +170,7 @@ func (inst *Observer) singleSnapshotAndProcess(fp uint64, rec *record) bool {
 // updates, and the number of collected updates.
 type record struct {
 	// inst allows referring to performance settings.
-	inst *Instrument
+	inst *Observer
 
 	// refMapped tracks concurrent references to the record in
 	// order to keep the record mapped as long as it is active or
@@ -401,7 +401,7 @@ func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) *record 
 // acquireUninitialized gets or creates a `*record` corresponding to
 // `attrs`, the input attributes.  The returned record is mapped but
 // possibly not initialized.
-func acquireUninitialized[N number.Any](inst *Observe, attrs []attribute.KeyValue) *record {
+func acquireUninitialized[N number.Any](inst *Observer, attrs []attribute.KeyValue) *record {
 	fp := fingerprintAttributes(attrs)
 
 	rec := acquireRead(inst, fp, attrs)
