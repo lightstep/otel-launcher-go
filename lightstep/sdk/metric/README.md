@@ -122,3 +122,15 @@ For example, to configure a synchronous Gauge:
 	)
 ```
 
+
+### Performance settings
+
+The `WithPerformance()` option supports control over performance
+settings.
+
+#### IgnoreCollisions
+
+With `IgnoreCollisions` set to true, the SDK will ignore fingerprint
+collisions and bypass a safety mechanism that ensures correctness in
+spite of fingerprint collisions in the fast path for synchronous
+instruments.

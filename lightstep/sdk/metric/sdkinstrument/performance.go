@@ -1,4 +1,4 @@
-// Copyright Lightstep Authors
+// Copyright The OpenTelemetry Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,6 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package launcher
+package sdkinstrument
 
-const version = "1.13.1"
+// Performace configures features that allow the user to control
+// performance.
+type Performance struct {
+	// IgnoreCollisions indicates the user is willing to bypass an
+	// attributes-set comparison after finding a fingerprint
+	// match.
+	IgnoreCollisions bool
+}
