@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/instrument"
@@ -51,11 +52,11 @@ func NewCallback(instruments []instrument.Asynchronous, opaque interface{}, func
 	}
 
 	for _, inst := range instruments {
-		ai, ok := inst.(Instrument)
+		thisInstImpl, ok := inst.(implementation)
 		if !ok {
 			return nil, fmt.Errorf("asynchronous instrument does not belong to this SDK: %T", inst)
 		}
-		thisInst := ai.implementation()
+		thisInst := thisInstImpl.get()
 		if thisInst.opaque != opaque {
 			return nil, fmt.Errorf("asynchronous instrument belongs to a different meter")
 		}
@@ -104,8 +105,9 @@ func (cs *callbackState) getCallback() *Callback {
 }
 
 func (cs *callbackState) ObserveFloat64(obsrv instrument.Float64Observable, value float64, attributes ...attribute.KeyValue) {
+	Observe[float64, number.Float64Traits](obsrv, cs, value, attributes)
 }
 
 func (cs *callbackState) ObserveInt64(obsrv instrument.Int64Observable, value int64, attributes ...attribute.KeyValue) {
-
+	Observe[int64, number.Int64Traits](obsrv, cs, value, attributes)
 }

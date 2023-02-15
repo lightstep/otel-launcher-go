@@ -25,6 +25,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 type (
@@ -46,6 +47,8 @@ type (
 	// Observer is the implementation object associated with one
 	// asynchronous instrument.
 	Observer struct {
+		instrument.Asynchronous
+
 		// opaque is used to ensure that callbacks are
 		// registered with instruments from the same provider.
 		opaque interface{}
@@ -63,6 +66,10 @@ type (
 		// aggregation, not the original instrument?
 		descriptor sdkinstrument.Descriptor
 	}
+
+	implementation interface {
+		get() *Observer
+	}
 )
 
 func NewState(pipe int) *State {
@@ -72,9 +79,9 @@ func NewState(pipe int) *State {
 	}
 }
 
-// NewInstrument returns a new Instrument; this compiles individual
+// New returns a new Instrument; this compiles individual
 // instruments for each reader.
-func NewInstrument(desc sdkinstrument.Descriptor, opaque interface{}, compiled pipeline.Register[viewstate.Instrument]) *Observer {
+func New(desc sdkinstrument.Descriptor, opaque interface{}, compiled pipeline.Register[viewstate.Instrument]) *Observer {
 	// Note: we return a non-nil instrument even when all readers
 	// disabled the instrument. This ensures that certain error
 	// checks still work (wrong meter, wrong callback, etc).
@@ -83,6 +90,11 @@ func NewInstrument(desc sdkinstrument.Descriptor, opaque interface{}, compiled p
 		descriptor: desc,
 		compiled:   compiled,
 	}
+}
+
+// get returns this instance, used for unwrapping the instrument.
+func (obs *Observer) get() *Observer {
+	return obs
 }
 
 // SnapshotAndProcess calls SnapshotAndProcess() on each of the pending
@@ -125,12 +137,18 @@ func (obs *Observer) getOrCreate(cs *callbackState, attrs []attribute.KeyValue) 
 	return se
 }
 
-func capture[N number.Any, Traits number.Traits[N]](obs *Observer, cs *callbackState, value N, attrs []attribute.KeyValue) {
+func Observe[N number.Any, Traits number.Traits[N]](inst instrument.Asynchronous, cs *callbackState, value N, attrs []attribute.KeyValue) {
 	cb := cs.getCallback()
 	if cb == nil {
 		otel.Handle(fmt.Errorf("async instrument used after callback return"))
 		return
 	}
+	obsImpl, ok := inst.(implementation)
+	if !ok {
+		otel.Handle(fmt.Errorf("asynchronous instrument does not belong to this SDK: %T", inst))
+		return
+	}
+	obs := obsImpl.get()
 	if _, ok := cb.instruments[obs]; !ok {
 		otel.Handle(fmt.Errorf("async instrument not declared for use in callback"))
 		return

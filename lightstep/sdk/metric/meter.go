@@ -43,7 +43,7 @@ type (
 
 		lock       sync.Mutex
 		byDesc     map[sdkinstrument.Descriptor]interface{}
-		syncInsts  []*syncstate.Capturer
+		syncInsts  []*syncstate.Observer
 		asyncInsts []*asyncstate.Observer
 		callbacks  []*asyncstate.Callback
 	}
@@ -180,11 +180,11 @@ func configureInstrument[T any](
 }
 
 // synchronousInstrument configures a synchronous instrument.
-func (m *meter) synchronousInstrument(name string, cfg instConfig, nk number.Kind, ik sdkinstrument.Kind) (syncstate.Instrument, error) {
-	return configureInstrument(m, name, cfg, nk, ik, &m.syncInsts, syncstate.NewInstrument)
+func (m *meter) synchronousInstrument(name string, cfg instConfig, nk number.Kind, ik sdkinstrument.Kind) (*syncstate.Observer, error) {
+	return configureInstrument(m, name, cfg, nk, ik, &m.syncInsts, syncstate.New)
 }
 
 // synchronousInstrument configures an asynchronous instrument.
-func (m *meter) asynchronousInstrument(name string, cfg instConfig, nk number.Kind, ik sdkinstrument.Kind) (asyncstate.Instrument, error) {
-	return configureInstrument(m, name, cfg, nk, ik, &m.asyncInsts, asyncstate.NewInstrument)
+func (m *meter) asynchronousInstrument(name string, cfg instConfig, nk number.Kind, ik sdkinstrument.Kind) (*asyncstate.Observer, error) {
+	return configureInstrument(m, name, cfg, nk, ik, &m.asyncInsts, asyncstate.New)
 }

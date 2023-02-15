@@ -28,20 +28,17 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
-func Descriptor(name string, ik sdkinstrument.Kind, nk number.Kind, opts ...instrument.Option) sdkinstrument.Descriptor {
-	// Note: use of Float64 is arbitrary, below, as the int and
-	// float options are equivalent structs.
-	fopts := make([]instrument.Float64Option, len(opts))
-	for _, fo := range opts {
-		fopts = append(fopts, fo)
-	}
-	cfg := instrument.NewFloat64Config(fopts...)
-	return sdkinstrument.NewDescriptor(name, ik, nk, cfg.Description(), cfg.Unit())
+func Descriptor(name string, ik sdkinstrument.Kind, nk number.Kind) sdkinstrument.Descriptor {
+	return sdkinstrument.NewDescriptor(name, ik, nk, "", "")
+}
+
+func DescriptorDescUnit(name string, ik sdkinstrument.Kind, nk number.Kind, desc string, unit unit.Unit) sdkinstrument.Descriptor {
+	return sdkinstrument.NewDescriptor(name, ik, nk, desc, unit)
 }
 
 func Point(start, end time.Time, agg aggregation.Aggregation, tempo aggregation.Temporality, kvs ...attribute.KeyValue) data.Point {

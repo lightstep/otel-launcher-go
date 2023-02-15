@@ -28,27 +28,27 @@ import (
 type (
 	int64ObservableCounter struct {
 		instrument.Int64ObservableCounter
-		asyncstate.Instrument
+		*asyncstate.Observer
 	}
 	int64ObservableUpDownCounter struct {
 		instrument.Int64ObservableUpDownCounter
-		asyncstate.Instrument
+		*asyncstate.Observer
 	}
 	int64ObservableGauge struct {
 		instrument.Int64ObservableGauge
-		asyncstate.Instrument
+		*asyncstate.Observer
 	}
 	float64ObservableCounter struct {
 		instrument.Float64ObservableCounter
-		asyncstate.Instrument
+		*asyncstate.Observer
 	}
 	float64ObservableUpDownCounter struct {
 		instrument.Float64ObservableUpDownCounter
-		asyncstate.Instrument
+		*asyncstate.Observer
 	}
 	float64ObservableGauge struct {
 		instrument.Float64ObservableGauge
-		asyncstate.Instrument
+		*asyncstate.Observer
 	}
 
 	intObserver struct {
@@ -95,7 +95,7 @@ func (m *meter) Int64ObservableCounter(name string, opts ...instrument.Int64Obse
 	cfg := instrument.NewInt64ObserverConfig(opts...)
 	impl, err := m.asynchronousInstrument(name, cfg, number.Int64Kind, sdkinstrument.AsyncCounter)
 	inst := int64ObservableCounter{
-		Instrument: impl,
+		Observer: impl,
 	}
 	registerIntCallbacks(m, inst, cfg.Callbacks())
 	return inst, err
@@ -105,7 +105,7 @@ func (m *meter) Int64ObservableUpDownCounter(name string, opts ...instrument.Int
 	cfg := instrument.NewInt64ObserverConfig(opts...)
 	impl, err := m.asynchronousInstrument(name, cfg, number.Int64Kind, sdkinstrument.AsyncUpDownCounter)
 	inst := int64ObservableUpDownCounter{
-		Instrument: impl,
+		Observer: impl,
 	}
 	registerIntCallbacks(m, inst, cfg.Callbacks())
 	return inst, err
@@ -115,7 +115,7 @@ func (m *meter) Int64ObservableGauge(name string, opts ...instrument.Int64Observ
 	cfg := instrument.NewInt64ObserverConfig(opts...)
 	impl, err := m.asynchronousInstrument(name, cfg, number.Int64Kind, sdkinstrument.AsyncGauge)
 	inst := int64ObservableGauge{
-		Instrument: impl,
+		Observer: impl,
 	}
 	registerIntCallbacks(m, inst, cfg.Callbacks())
 	return inst, err
@@ -125,7 +125,7 @@ func (m *meter) Float64ObservableCounter(name string, opts ...instrument.Float64
 	cfg := instrument.NewFloat64ObserverConfig(opts...)
 	impl, err := m.asynchronousInstrument(name, cfg, number.Float64Kind, sdkinstrument.AsyncCounter)
 	inst := float64ObservableCounter{
-		Instrument: impl,
+		Observer: impl,
 	}
 	registerFloatCallbacks(m, inst, cfg.Callbacks())
 	return inst, err
@@ -135,7 +135,7 @@ func (m *meter) Float64ObservableUpDownCounter(name string, opts ...instrument.F
 	cfg := instrument.NewFloat64ObserverConfig(opts...)
 	impl, err := m.asynchronousInstrument(name, cfg, number.Float64Kind, sdkinstrument.AsyncUpDownCounter)
 	inst := float64ObservableUpDownCounter{
-		Instrument: impl,
+		Observer: impl,
 	}
 	registerFloatCallbacks(m, inst, cfg.Callbacks())
 	return inst, err
@@ -145,7 +145,7 @@ func (m *meter) Float64ObservableGauge(name string, opts ...instrument.Float64Ob
 	cfg := instrument.NewFloat64ObserverConfig(opts...)
 	impl, err := m.asynchronousInstrument(name, cfg, number.Float64Kind, sdkinstrument.AsyncGauge)
 	inst := float64ObservableGauge{
-		Instrument: impl,
+		Observer: impl,
 	}
 	registerFloatCallbacks(m, inst, cfg.Callbacks())
 	return inst, err
