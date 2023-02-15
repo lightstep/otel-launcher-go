@@ -191,7 +191,7 @@ type record struct {
 
 	// once governs access to `attrsUnsafe` and
 	// `accumulatorsUnsafe`.  The caller that created the `record`
-	// must call once.Do(initilize) on its own code path, although
+	// must call once.Do(initialize) on its own code path, although
 	// another goroutine might actually perform the
 	// initialization.  This is arranged with the use of
 	// readAccumulator() and readAttributes().
