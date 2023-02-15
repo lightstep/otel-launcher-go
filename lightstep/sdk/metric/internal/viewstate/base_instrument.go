@@ -55,11 +55,6 @@ type instrumentBase[N number.Any, Storage, Auxiliary any, Methods aggregator.Met
 	keysFilter *attribute.Filter
 }
 
-// Limits reports configured limits for the instrument.
-func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) Limits() aggregator.LimitsConfig {
-	return metric.acfg.Limits
-}
-
 // Size reports the size of the data map.
 func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) Size() int {
 	metric.instLock.Lock()

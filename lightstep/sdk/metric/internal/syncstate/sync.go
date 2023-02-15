@@ -58,10 +58,6 @@ type Observer struct {
 	// for synchronous aggregation.
 	compiled viewstate.Instrument
 
-	// maxTimeseries is copied to avoid several repeated function
-	// calls.
-	maxTimeseries uint
-
 	// lock protects current.
 	lock sync.Mutex
 
@@ -84,20 +80,19 @@ func New(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeline.Registe
 		// When no readers enable the instrument, no need for an instrument.
 		return nil
 	}
-	// Note that viewstate.Combine is used to eliminate
-	// the per-pipeline distinction that is useful in the
-	// asyncstate package.  Here, in the common case there
-	// will be one pipeline and one view, such that
-	// viewstate.Combine produces a single concrete
-	// viewstate.Instrument.  Only when there are multiple
-	// views or multiple pipelines will the combination
-	// produce a viewstate.multiInstrument here.
-	inst := viewstate.Combine(desc, nonnil...)
 	return &Observer{
-		descriptor:    desc,
-		current:       map[uint64]*record{},
-		compiled:      inst,
-		maxTimeseries: inst.Limits().MaxTimeseries,
+		descriptor: desc,
+		current:    map[uint64]*record{},
+
+		// Note that viewstate.Combine is used to eliminate
+		// the per-pipeline distinction that is useful in the
+		// asyncstate package.  Here, in the common case there
+		// will be one pipeline and one view, such that
+		// viewstate.Combine produces a single concrete
+		// viewstate.Instrument.  Only when there are multiple
+		// views or multiple pipelines will the combination
+		// produce a viewstate.multiInstrument here.
+		compiled: viewstate.Combine(desc, nonnil...),
 	}
 }
 
@@ -352,43 +347,63 @@ func attributesEqual(a, b []attribute.KeyValue) bool {
 	return true
 }
 
-// acquireRead acquires the read lock and searches for a `*record`.
-// This returns the effective attributes and fingerprint, considering
-// the cardinality limit.
+// acquireRead acquires the lock and searches for a `*record`.
+// This returns the overflow attributes and fingerprint in case the
+// the cardinality limit is reached.  The caller should exchange their
+// fp and attrs for the ones returned by this call.
 func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) (uint64, []attribute.KeyValue, *record) {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
-	// This loop can be taken twice.
-	for overflow := false; ; overflow = true {
-		rec := inst.current[fp]
+	overflow := false
+	fp, attrs, rec := acquireReadLocked(inst, fp, attrs, &overflow)
 
-		// Note: we could (optionally) allow collisions and not scan this list.
-		// The copied `attributeList` can be avoided in this case, as well.
-		for rec != nil && !attributesEqual(attrs, rec.attributeList) {
-			rec = rec.next
-		}
-
-		// Existing record case.
-		if rec != nil && rec.refMapped.ref() {
-			// At this moment it is guaranteed that the
-			// record is in the map and will not be removed.
-			return fp, attrs, rec
-		}
-
-		// Check for overflow after checking for the original
-		// attribute set.  Note this means we are performing
-		// two map lookups for overflowing attributes and only
-		// one lookup if the attribute set was preexisting.
-		if !overflow && uint(len(inst.current)) >= inst.maxTimeseries {
-			// Use the overflow attributes, repeat.
-			attrs = pipeline.OverflowAttributes
-			fp = overflowAttributesFingerprint
-			continue
-		}
-
+	if rec != nil {
+		return fp, attrs, rec
+	}
+	// The overflow signal indicates another call is needed w/ the
+	// same logic but updated fp and attrs.
+	if !overflow {
+		// Otherwise, this is the first appearance of an overflow.
 		return fp, attrs, nil
 	}
+	// In which case fp and attrs are now the overflow attributes.
+	return acquireReadLocked(inst, fp, attrs, &overflow)
+}
+
+func acquireReadLocked(inst *Observer, fp uint64, attrs []attribute.KeyValue, overflow *bool) (uint64, []attribute.KeyValue, *record) {
+	rec := inst.current[fp]
+
+	// Note: we could (optionally) allow collisions and not scan this list.
+	// The copied `attributeList` can be avoided in this case, as well.
+	for rec != nil && !attributesEqual(attrs, rec.attributeList) {
+		rec = rec.next
+	}
+
+	// Existing record case.
+	if rec != nil && rec.refMapped.ref() {
+		// At this moment it is guaranteed that the
+		// record is in the map and will not be removed.
+		return fp, attrs, rec
+	}
+
+	// Check for overflow after checking for the original
+	// attribute set.  Note this means we are performing
+	// two map lookups for overflowing attributes and only
+	// one lookup if the attribute set was preexisting.
+	//
+	// Note! This 10000 is hard-coded until merging with
+	// https://github.com/lightstep/otel-launcher-go/pull/384,
+	// when the cardinality limit will become part of the
+	// performance settings.
+	if !*overflow && uint(len(inst.current)) >= 10000 {
+		// Use the overflow attributes, repeat.
+		attrs = pipeline.OverflowAttributes
+		fp = overflowAttributesFingerprint
+		*overflow = true
+	}
+
+	return fp, attrs, nil
 }
 
 // acquireRecord gets or creates a `*record` corresponding to `attrs`,

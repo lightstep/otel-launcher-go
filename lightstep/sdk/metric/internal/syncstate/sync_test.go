@@ -419,11 +419,6 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 		deltaSelector,
 		view.WithClause(
 			view.WithKeys([]attribute.Key{"A", "C"}),
-			view.WithAggregatorConfig(aggregator.Config{
-				Limits: aggregator.LimitsConfig{
-					MaxTimeseries: 10000,
-				},
-			}),
 		),
 	))
 
@@ -906,10 +901,5 @@ func TestDuplicateFingerprint(t *testing.T) {
 			),
 		),
 	)
-}
 
-func TestOverflowBehavior(t *testing.T) {
-	const defLimit = aggregator.DefaultMaxTimeseries
-
-	// TODO
 }

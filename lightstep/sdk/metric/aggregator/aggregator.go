@@ -24,7 +24,6 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
-	"go.uber.org/multierr"
 )
 
 // Sentinel errors for Aggregator interface.
@@ -32,7 +31,6 @@ var (
 	ErrNegativeInput = fmt.Errorf("negative value is out of range for this instrument")
 	ErrNaNInput      = fmt.Errorf("NaN value is an invalid input")
 	ErrInfInput      = fmt.Errorf("±Inf value is an invalid input")
-	ErrInvalidLimit  = fmt.Errorf("limit is invalid")
 )
 
 // RangeTest is a common routine for testing for valid input values.
@@ -90,7 +88,6 @@ func (jc JSONConfig) ToConfig() Config {
 // Config supports the configuration for all aggregators in a single struct.
 type Config struct {
 	Histogram histostruct.Config
-	Limits    LimitsConfig
 }
 
 // Valid returns true for valid configurations.
@@ -102,55 +99,9 @@ func (c Config) Valid() bool {
 // Valid returns a valid Configuration along with an error if there
 // were invalid settings.  Note that the empty state is considered valid and a correct
 func (c Config) Validate() (Config, error) {
-	var ret error
 	var err error
-	if c.Histogram, err = c.Histogram.Validate(); err != nil {
-		ret = multierr.Append(ret, err)
-	}
-
-	if c.Limits, err = c.Limits.Validate(); err != nil {
-		ret = multierr.Append(ret, err)
-	}
+	c.Histogram, err = c.Histogram.Validate()
 	return c, err
-}
-
-// LimitsConfig specifies configurable instrument limits.
-type LimitsConfig struct {
-	// maxTimeseries is the maximum number of timeseries that can
-	// be written before triggering a builtin circuit breaker.
-	// When this number of concurrent attribute sets is reached
-	// the SDK will ...
-	MaxTimeseries uint
-}
-
-// DefaultLimits is the specified default limit for LimitsConfig.MaxTimeseries.
-const DefaultMaxTimeseries = 2000
-
-// Validate fills in defaults and returns whether the limits are invalid.
-func (c LimitsConfig) Validate() (LimitsConfig, error) {
-	if c.MaxTimeseries == 0 {
-		c.MaxTimeseries = DefaultMaxTimeseries
-	}
-	if c.MaxTimeseries < 2 {
-		return c, fmt.Errorf("%w: %d", ErrInvalidLimit, c.MaxTimeseries)
-	}
-	return c, nil
-}
-
-// Combine returns the smaller limits.  Since limits are applied to
-// Instruments, not Views, the smaller of the limits takes effect
-// and overrides larger limits requested by different views.
-func (c LimitsConfig) Combine(o LimitsConfig) LimitsConfig {
-	if c.MaxTimeseries == 0 {
-		return o
-	}
-	if o.MaxTimeseries == 0 {
-		return c
-	}
-	if c.MaxTimeseries < o.MaxTimeseries {
-		return c
-	}
-	return o
 }
 
 // Methods implements a specific aggregation behavior for a specific
