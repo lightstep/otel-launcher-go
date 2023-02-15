@@ -148,37 +148,36 @@ func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 
 		description := fmt.Sprintf("%s from runtime/metrics", pattern)
 
-		opts := []instrument.Option{
-			instrument.WithUnit(unit.Unit(munit)),
-			instrument.WithDescription(description),
-		}
+		unitOpt := instrument.WithUnit(unit.Unit(munit))
+		descOpt := instrument.WithDescription(description)
+
 		var inst instrument.Asynchronous
 		switch kind {
 		case builtinCounter:
 			switch m.Kind {
 			case metrics.KindUint64:
 				// e.g., alloc bytes
-				inst, err = r.meter.AsyncInt64().Counter(mname, opts...)
+				inst, err = r.meter.Int64ObservableCounter(mname, unitOpt, descOpt)
 			case metrics.KindFloat64:
 				// e.g., cpu time (1.20)
-				inst, err = r.meter.AsyncFloat64().Counter(mname, opts...)
+				inst, err = r.meter.Float64ObservableCounter(mname, unitOpt, descOpt)
 			}
 		case builtinUpDownCounter:
 			switch m.Kind {
 			case metrics.KindUint64:
 				// e.g., memory size
-				inst, err = r.meter.AsyncInt64().UpDownCounter(mname, opts...)
+				inst, err = r.meter.Int64ObservableUpDownCounter(mname, unitOpt, descOpt)
 			case metrics.KindFloat64:
 				// not used through 1.20
-				inst, err = r.meter.AsyncFloat64().UpDownCounter(mname, opts...)
+				inst, err = r.meter.Float64ObservableUpDownCounter(mname, unitOpt, descOpt)
 			}
 		case builtinGauge:
 			switch m.Kind {
 			case metrics.KindUint64:
-				inst, err = r.meter.AsyncInt64().Gauge(mname, opts...)
+				inst, err = r.meter.Int64ObservableGauge(mname, unitOpt, descOpt)
 			case metrics.KindFloat64:
 				// not used through 1.20
-				inst, err = r.meter.AsyncFloat64().Gauge(mname, opts...)
+				inst, err = r.meter.Float64ObservableGauge(mname, unitOpt, descOpt)
 			}
 		}
 		if err != nil {
@@ -197,24 +196,24 @@ func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 		instAttrs = append(instAttrs, attrs)
 	}
 
-	if err := r.meter.RegisterCallback(instruments, func(ctx context.Context) {
+	if _, err := r.meter.RegisterCallback(func(ctx context.Context, obs metric.Observer) error {
 		r.readFunc(samples)
 
 		for idx, samp := range samples {
-
 			switch samp.Value.Kind() {
 			case metrics.KindUint64:
-				instruments[idx].(int64Observer).Observe(ctx, int64(samp.Value.Uint64()), instAttrs[idx]...)
+				obs.ObserveInt64(instruments[idx].(instrument.Int64Observable), int64(samp.Value.Uint64()), instAttrs[idx]...)
 			case metrics.KindFloat64:
-				instruments[idx].(float64Observer).Observe(ctx, samp.Value.Float64(), instAttrs[idx]...)
+				obs.ObserveFloat64(instruments[idx].(instrument.Float64Observable), samp.Value.Float64(), instAttrs[idx]...)
 			default:
 				// KindFloat64Histogram (unsupported in OTel) and KindBad
 				// (unsupported by runtime/metrics).  Neither should happen
 				// if runtime/metrics and the code above are working correctly.
-				otel.Handle(fmt.Errorf("invalid runtime/metrics value kind: %v", samp.Value.Kind()))
+				return fmt.Errorf("invalid runtime/metrics value kind: %v", samp.Value.Kind())
 			}
 		}
-	}); err != nil {
+		return nil
+	}, instruments...); err != nil {
 		return err
 	}
 	return nil
