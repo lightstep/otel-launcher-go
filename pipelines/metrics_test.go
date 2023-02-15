@@ -75,7 +75,7 @@ func testInsecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 	assert.NoError(t, err)
 
 	meter := metricglobal.Meter("test-library")
-	counter, err := meter.SyncFloat64().Counter("test-counter")
+	counter, err := meter.Float64Counter("test-counter")
 	assert.NoError(t, err)
 	counter.Add(context.Background(), 1)
 
@@ -124,7 +124,7 @@ func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 	assert.NoError(t, err)
 
 	meter := metricglobal.Meter("test-library")
-	counter, err := meter.SyncFloat64().Counter("test-counter")
+	counter, err := meter.Float64Counter("test-counter")
 	assert.NoError(t, err)
 	counter.Add(context.Background(), 1)
 
