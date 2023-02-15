@@ -184,21 +184,39 @@ type record struct {
 	// supports checking for no updates during a round.
 	collectedCount int64
 
-	// once
+	// once governs access to `attrsUnsafe` and
+	// `accumulatorsUnsafe`.  The caller that created the `record`
+	// must call once.Do(initilize) on its own code path, although
+	// another goroutine might actually perform the
+	// initialization.  This is arranged with the use of
+	// readAccumulator() and readAttributes().
 	once sync.Once
 
 	// accumulatorUnsafe can be a multi-accumulator if there
 	// are multiple behaviors or multiple readers, but
 	// these distinctions are not relevant for synchronous
 	// instruments.
+	//
+	// Note: use record.readAccumulator() to access this value,
+	// to ensure that once.Do(initialize) is called.
 	accumulatorUnsafe viewstate.Accumulator
 
-	// attrsUnsafe is in user-specified order, may contain duplicates.
-	// only used when Performance.DetectConflicts is true.
+	// attrsUnsafe is set in acquireUninitialized by the caller that
+	// creates the provisional new record, after not finding it in
+	// acquireRead.
+	//
+	// These attributes are in user-specified order and may contain
+	// duplicates.  When the record is initialized, this field is
+	// set to a copy of the attribute set that first observed the
+	// fingerprint.
+	//
+	// When IgnoreCollisions is true, this field is used as a temporary
+	// in building a new attribute set, then set to nil.
 	attrsUnsafe attribute.Sortable
 
 	// next is protected by the instrument's RWLock.
-	// only used when Performance.DetectConflicts is true.
+	//
+	// this field is unused when Performance.IgnoreCollisions is true.
 	next *record
 }
 
@@ -224,16 +242,24 @@ func (rec *record) conditionalSnapshotAndProcess(release bool) bool {
 	return true
 }
 
+// readAttributes gets a copy of the attributes matching a fingerprint after
+// once.Do(initialize).
 func (rec *record) readAttributes() []attribute.KeyValue {
 	rec.once.Do(rec.initialize)
 	return []attribute.KeyValue(rec.attrsUnsafe)
 }
 
+// readAttributes gets the accumulator for this record after once.Do(initialize).
 func (rec *record) readAccumulator() viewstate.Accumulator {
 	rec.once.Do(rec.initialize)
 	return rec.accumulatorUnsafe
 }
 
+// initialize ensures that accumulatorUnsafe and attrsUnsafe are correctly initialized.
+//
+// readAttributes() and readAccumulator() call this inside a sync.Once.Do(). The
+// behavior of this method depends on IgnoreCollisions, as documented in the
+// corresponding "unsafe" fields.
 func (rec *record) initialize() {
 
 	var aset attribute.Set
