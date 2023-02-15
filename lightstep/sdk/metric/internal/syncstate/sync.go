@@ -169,9 +169,6 @@ func (inst *Observer) singleSnapshotAndProcess(fp uint64, rec *record) bool {
 // record consists of an accumulator, a reference count, the number of
 // updates, and the number of collected updates.
 type record struct {
-	// inst allows referring to performance settings.
-	inst *Observer
-
 	// refMapped tracks concurrent references to the record in
 	// order to keep the record mapped as long as it is active or
 	// uncollected.
@@ -183,6 +180,14 @@ type record struct {
 	// collectedCount is set to updateCount on collection,
 	// supports checking for no updates during a round.
 	collectedCount int64
+
+	// inst allows referring to performance settings.
+	inst *Observer
+
+	// next is protected by the instrument's RWLock.
+	//
+	// this field is unused when Performance.IgnoreCollisions is true.
+	next *record
 
 	// once governs access to `attrsUnsafe` and
 	// `accumulatorsUnsafe`.  The caller that created the `record`
@@ -213,11 +218,6 @@ type record struct {
 	// When IgnoreCollisions is true, this field is used as a temporary
 	// in building a new attribute set, then set to nil.
 	attrsUnsafe attribute.Sortable
-
-	// next is protected by the instrument's RWLock.
-	//
-	// this field is unused when Performance.IgnoreCollisions is true.
-	next *record
 }
 
 // conditionalSnapshotAndProcess checks whether the accumulator has been
