@@ -33,7 +33,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/sdk/resource"
 	metricspb "go.opentelemetry.io/proto/otlp/metrics/v1"
 	"google.golang.org/protobuf/testing/protocmp"
@@ -86,7 +85,7 @@ var (
 
 func testInst(nk number.Kind) sdkinstrument.Descriptor {
 	kind := sdkinstrument.Kind(-1) // the exporter doesn't inspect this field, test doesn't care
-	return test.Descriptor(testName, kind, nk, instrument.WithUnit(testUnit), instrument.WithDescription(testDesc))
+	return sdkinstrument.NewDescriptor(testName, kind, nk, testDesc, testUnit)
 }
 
 func testInt64() sdkinstrument.Descriptor {

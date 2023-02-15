@@ -22,7 +22,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/asyncfloat64"
 )
 
 // processStartTime should be initialized before the first GC, ideally.
@@ -91,11 +90,11 @@ func (c *cputime) register() error {
 	var (
 		err error
 
-		processCPUTime   asyncfloat64.Counter
-		processUptime    asyncfloat64.UpDownCounter
+		processCPUTime instrument.Float64ObservableCounter
+		processUptime  instrument.Float64ObservableUpDownCounter
 	)
 
-	if processCPUTime, err = c.meter.AsyncFloat64().Counter(
+	if processCPUTime, err = c.meter.Float64ObservableCounter(
 		"process.cpu.time",
 		instrument.WithUnit("s"),
 		instrument.WithDescription(
@@ -105,7 +104,7 @@ func (c *cputime) register() error {
 		return err
 	}
 
-	if processUptime, err = c.meter.AsyncFloat64().UpDownCounter(
+	if processUptime, err = c.meter.Float64ObservableUpDownCounter(
 		"process.uptime",
 		instrument.WithUnit("s"),
 		instrument.WithDescription("Seconds since application was initialized"),
@@ -113,20 +112,20 @@ func (c *cputime) register() error {
 		return err
 	}
 
-	return c.meter.RegisterCallback(
-		[]instrument.Asynchronous{
-			processCPUTime,
-			processUptime,
-		},
-		func(ctx context.Context) {
+	_, err = c.meter.RegisterCallback(
+		func(ctx context.Context, obs metric.Observer) error {
 			processUser, processSystem, uptime := c.getProcessTimes(ctx)
 
 			// Uptime
-			processUptime.Observe(ctx, uptime)
+			obs.ObserveFloat64(processUptime, uptime)
 
 			// Process CPU time
-			processCPUTime.Observe(ctx, processUser, AttributeCPUTimeUser...)
-			processCPUTime.Observe(ctx, processSystem, AttributeCPUTimeSystem...)
+			obs.ObserveFloat64(processCPUTime, processUser, AttributeCPUTimeUser...)
+			obs.ObserveFloat64(processCPUTime, processSystem, AttributeCPUTimeSystem...)
+			return nil
 		},
+		processCPUTime,
+		processUptime,
 	)
+	return err
 }

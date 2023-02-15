@@ -54,7 +54,7 @@ func ExampleMinimumConfig() {
 
 	// Configure a Meter and instrument.
 	meter := sdk.Meter("meter")
-	counter, _ := meter.SyncInt64().Counter("how-many")
+	counter, _ := meter.Int64Counter("how-many")
 
 	// Count once and shutdown.
 	counter.Add(ctx, 1)

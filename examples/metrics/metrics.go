@@ -52,10 +52,10 @@ func main() {
 	// There are 2 example Gauge instruments (one a Gaussian, one
 	// a Sine wave), and one Histogram.
 
-	c1, _ := meter.SyncInt64().Counter(prefix + "counter")
-	c2, _ := meter.SyncInt64().UpDownCounter(prefix + "updowncounter")
-	hist, _ := meter.SyncFloat64().Histogram(prefix + "histogram")
-	mmsc, _ := meter.SyncFloat64().Histogram(prefix + "mmsc",
+	c1, _ := meter.Int64Counter(prefix + "counter")
+	c2, _ := meter.Int64UpDownCounter(prefix + "updowncounter")
+	hist, _ := meter.Float64Histogram(prefix + "histogram")
+	mmsc, _ := meter.Float64Histogram(prefix+"mmsc",
 		instrument.WithDescription(`{
   "aggregation": "minmaxsumcount"
 }`),
@@ -70,7 +70,7 @@ func main() {
 			mult *= mult
 
 			for i := 0; i < 10000; i++ {
-				value := math.Abs(mult*(100+rand.NormFloat64()*100))
+				value := math.Abs(mult * (100 + rand.NormFloat64()*100))
 				hist.Record(ctx, value)
 				mmsc.Record(ctx, value)
 			}
@@ -81,61 +81,61 @@ func main() {
 
 	startTime := time.Now()
 
-	counterObserver, _ := meter.AsyncInt64().Counter(
-		prefix + "counterobserver",
-	)
-
-	err := meter.RegisterCallback([]instrument.Asynchronous{counterObserver},
-		func(ctx context.Context) {
-			counterObserver.Observe(ctx, int64(time.Since(startTime).Seconds()))
-		},
-	)
-
-	if err != nil {
-		fmt.Printf("%v", err)
-	}
-
-	updownCounterObserver, _ := meter.AsyncInt64().UpDownCounter(
-		prefix + "updowncounterobserver",
-	)
-
-	err = meter.RegisterCallback([]instrument.Asynchronous{updownCounterObserver},
-		func(ctx context.Context) {
-			updownCounterObserver.Observe(ctx, -int64(time.Since(startTime).Seconds()))
-		},
+	_, err := meter.Int64ObservableCounter(
+		prefix+"counterobserver",
+		instrument.WithInt64Callback(
+			func(ctx context.Context, obs instrument.Int64Observer) error {
+				obs.Observe(int64(time.Since(startTime).Seconds()))
+				return nil
+			},
+		),
 	)
 
 	if err != nil {
 		fmt.Printf("%v", err)
 	}
 
-	gauge, _ := meter.AsyncInt64().Gauge(
-		prefix + "gauge",
-	)
-
-	err = meter.RegisterCallback([]instrument.Asynchronous{gauge},
-		func(ctx context.Context) {
-			gauge.Observe(ctx, int64(50+rand.NormFloat64()*50))
-		},
+	_, err = meter.Int64ObservableUpDownCounter(
+		prefix+"updowncounterobserver",
+		instrument.WithInt64Callback(
+			func(ctx context.Context, obs instrument.Int64Observer) error {
+				obs.Observe(-int64(time.Since(startTime).Seconds()))
+				return nil
+			},
+		),
 	)
 
 	if err != nil {
 		fmt.Printf("%v", err)
 	}
 
-	sineWave, _ := meter.AsyncFloat64().Gauge(
-		prefix + "sine_wave",
+	_, err = meter.Int64ObservableGauge(
+		prefix+"gauge",
+		instrument.WithInt64Callback(
+			func(ctx context.Context, obs instrument.Int64Observer) error {
+				obs.Observe(int64(50 + rand.NormFloat64()*50))
+				return nil
+			},
+		),
 	)
 
-	err = meter.RegisterCallback([]instrument.Asynchronous{sineWave},
-		func(ctx context.Context) {
-			secs := float64(time.Now().UnixNano()) / float64(time.Second)
+	if err != nil {
+		fmt.Printf("%v", err)
+	}
 
-			sineWave.Observe(ctx, math.Sin(secs/(50*math.Pi)), attribute.String("period", "fastest"))
-			sineWave.Observe(ctx, math.Sin(secs/(200*math.Pi)), attribute.String("period", "fast"))
-			sineWave.Observe(ctx, math.Sin(secs/(1000*math.Pi)), attribute.String("period", "regular"))
-			sineWave.Observe(ctx, math.Sin(secs/(5000*math.Pi)), attribute.String("period", "slow"))
-		},
+	_, err = meter.Float64ObservableGauge(
+		prefix+"sine_wave",
+		instrument.WithFloat64Callback(
+			func(ctx context.Context, obs instrument.Float64Observer) error {
+				secs := float64(time.Now().UnixNano()) / float64(time.Second)
+
+				obs.Observe(math.Sin(secs/(50*math.Pi)), attribute.String("period", "fastest"))
+				obs.Observe(math.Sin(secs/(200*math.Pi)), attribute.String("period", "fast"))
+				obs.Observe(math.Sin(secs/(1000*math.Pi)), attribute.String("period", "regular"))
+				obs.Observe(math.Sin(secs/(5000*math.Pi)), attribute.String("period", "slow"))
+				return nil
+			},
+		),
 	)
 
 	if err != nil {
