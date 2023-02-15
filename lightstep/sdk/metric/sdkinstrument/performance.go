@@ -14,6 +14,11 @@
 
 package sdkinstrument
 
+// Performace configures features that allow the user to control
+// performance.
 type Performance struct {
+	// IgnoreCollisions indicates the user is willing to bypass an
+	// attributes-set comparison after finding a fingerprint
+	// match.
 	IgnoreCollisions bool
 }
