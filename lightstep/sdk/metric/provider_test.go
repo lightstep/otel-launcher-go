@@ -48,7 +48,7 @@ func TestOutputReuse(t *testing.T) {
 	res := resource.Empty()
 	provider := NewMeterProvider(WithReader(rdr), WithResource(res))
 
-	cntr := must(provider.Meter("test").SyncInt64().Counter("hello"))
+	cntr := must(provider.Meter("test").Int64Counter("hello"))
 
 	var reuse data.Metrics
 	var notime time.Time
@@ -132,7 +132,7 @@ func TestOutputReuse(t *testing.T) {
 	// >1 after (but still the same point addresses).
 	require.Equal(t, 1, cap(reuse.Scopes))
 
-	fcntr := must(provider.Meter("real").SyncFloat64().Counter("goodbye"))
+	fcntr := must(provider.Meter("real").Float64Counter("goodbye"))
 
 	fcntr.Add(ctx, 2, attr)
 
@@ -278,8 +278,8 @@ func TestDuplicateInstrumentConflict(t *testing.T) {
 	provider := NewMeterProvider(WithReader(rdr), WithResource(res))
 
 	// int64/float64 conflicting registration
-	icntr := must(provider.Meter("test").SyncInt64().Counter("counter"))
-	fcntr, err := provider.Meter("test").SyncFloat64().Counter("counter")
+	icntr := must(provider.Meter("test").Int64Counter("counter"))
+	fcntr, err := provider.Meter("test").Float64Counter("counter")
 
 	require.NotNil(t, icntr)
 	require.NotNil(t, fcntr)
@@ -291,7 +291,7 @@ func TestDuplicateInstrumentConflict(t *testing.T) {
 	require.Contains(t, err.Error(), expected)
 
 	// re-register the first instrument, get a failure
-	icntr2, err := provider.Meter("test").SyncInt64().Counter("counter")
+	icntr2, err := provider.Meter("test").Int64Counter("counter")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), expected)
 	require.Equal(t, icntr, icntr2)

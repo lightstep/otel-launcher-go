@@ -37,7 +37,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
@@ -120,8 +120,12 @@ const (
 	delta      = aggregation.DeltaTemporality
 )
 
-func testCompile(vc *Compiler, name string, ik sdkinstrument.Kind, nk number.Kind, opts ...instrument.Option) (Instrument, error) {
-	inst, conflicts := vc.Compile(test.Descriptor(name, ik, nk, opts...))
+func testCompile(vc *Compiler, name string, ik sdkinstrument.Kind, nk number.Kind) (Instrument, error) {
+	return testCompileDescUnit(vc, name, ik, nk, "", "")
+}
+
+func testCompileDescUnit(vc *Compiler, name string, ik sdkinstrument.Kind, nk number.Kind, desc string, unit unit.Unit) (Instrument, error) {
+	inst, conflicts := vc.Compile(sdkinstrument.NewDescriptor(name, ik, nk, desc, unit))
 	return inst, conflicts.AsError()
 }
 
@@ -227,11 +231,11 @@ func TestDuplicateSyncAsyncConflict(t *testing.T) {
 func TestDuplicateUnitConflict(t *testing.T) {
 	vc := New(testLib, view.New("test"))
 
-	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind, instrument.WithUnit("gal_us"))
+	inst1, err1 := testCompileDescUnit(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind, "", "gal_us")
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
 
-	inst2, err2 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind, instrument.WithUnit("cft_i"))
+	inst2, err2 := testCompileDescUnit(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind, "", "cft_i")
 	require.Error(t, err2)
 	require.NotNil(t, inst2)
 	require.True(t, errors.Is(err2, ViewConflictsError{}))
@@ -418,11 +422,11 @@ func TestDuplicatesMergeDescriptor(t *testing.T) {
 	require.NotNil(t, inst1)
 
 	// This is the winning description:
-	inst2, err2 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind, instrument.WithDescription("very long"))
+	inst2, err2 := testCompileDescUnit(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind, "very long", "")
 	require.NoError(t, err2)
 	require.NotNil(t, inst2)
 
-	inst3, err3 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind, instrument.WithDescription("shorter"))
+	inst3, err3 := testCompileDescUnit(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind, "shorter", "")
 	require.NoError(t, err3)
 	require.NotNil(t, inst3)
 
@@ -438,7 +442,7 @@ func TestDuplicatesMergeDescriptor(t *testing.T) {
 
 	require.Equal(t, 1, len(output))
 	require.Equal(t, test.Instrument(
-		test.Descriptor("bar", sdkinstrument.SyncCounter, number.Int64Kind, instrument.WithDescription("very long")),
+		sdkinstrument.NewDescriptor("bar", sdkinstrument.SyncCounter, number.Int64Kind, "very long", ""),
 		test.Point(startTime, endTime, sum.NewMonotonicInt64(1), cumulative)), output[0],
 	)
 }
@@ -455,9 +459,9 @@ func TestViewDescription(t *testing.T) {
 
 	vc := New(testLib, views)
 
-	inst1, err1 := testCompile(vc,
+	inst1, err1 := testCompileDescUnit(vc,
 		"foo", sdkinstrument.SyncCounter, number.Int64Kind,
-		instrument.WithDescription("other description"),
+		"other description", "",
 	)
 	require.NoError(t, err1)
 	require.NotNil(t, inst1)
@@ -475,9 +479,9 @@ func TestViewDescription(t *testing.T) {
 	require.Equal(t, 1, len(output))
 	require.Equal(t,
 		test.Instrument(
-			test.Descriptor(
+			sdkinstrument.NewDescriptor(
 				"foo", sdkinstrument.SyncCounter, number.Int64Kind,
-				instrument.WithDescription("something helpful"),
+				"something helpful", "",
 			),
 			test.Point(startTime, endTime, sum.NewMonotonicInt64(1), cumulative, attribute.String("K", "V")),
 		),
@@ -1096,16 +1100,16 @@ func TestDeltaTemporalitySyncGauge(t *testing.T) {
 				return aggregation.DeltaTemporality
 			}),
 	)
-	asGauge := instrument.WithDescription(`{
+	const asGaugeDesc = `{
   "aggregation": "gauge"
-}`)
+}`
 
 	vc := New(testLib, views)
 
-	instF, err := testCompile(vc, "gaugeF", sdkinstrument.SyncUpDownCounter, number.Float64Kind, asGauge)
+	instF, err := testCompileDescUnit(vc, "gaugeF", sdkinstrument.SyncUpDownCounter, number.Float64Kind, asGaugeDesc, "")
 	require.NoError(t, err)
 
-	instI, err := testCompile(vc, "gaugeI", sdkinstrument.SyncUpDownCounter, number.Int64Kind, asGauge)
+	instI, err := testCompileDescUnit(vc, "gaugeI", sdkinstrument.SyncUpDownCounter, number.Int64Kind, asGaugeDesc, "")
 	require.NoError(t, err)
 
 	set := attribute.NewSet()
@@ -1505,41 +1509,45 @@ func TestViewHints(t *testing.T) {
 	vc := New(testLib, views)
 	otelErrs := test.OTelErrors()
 
-	histo, err := testCompile(
+	histo, err := testCompileDescUnit(
 		vc,
 		"histo",
 		sdkinstrument.SyncCounter, // counter->small histogram
 		number.Float64Kind,
-		instrument.WithDescription(`{
+		`{
   "aggregation": "histogram",
   "config": {
     "histogram": {
       "max_size": 3
     }
   }
-}`))
+}`,
+		"")
 	require.NoError(t, err)
 
-	mmsc, err := testCompile(
+	mmsc, err := testCompileDescUnit(
 		vc,
 		"mmsc",
 		sdkinstrument.SyncHistogram, // histogram->minmaxsumcount
 		number.Float64Kind,
-		instrument.WithDescription(`{
+		`{
   "description": "heyyy",
   "aggregation": "minmaxsumcount"
-}`))
+}`,
+		"")
 	require.NoError(t, err)
 
-	gg, err := testCompile(
+	gg, err := testCompileDescUnit(
 		vc,
 		"gauge",
 		sdkinstrument.SyncUpDownCounter, // updowncounter->gauge
 		number.Float64Kind,
-		instrument.WithDescription(`{
+		`{
   "description": "check it",
   "aggregation": "gauge"
-}`))
+}`,
+		"",
+	)
 	require.NoError(t, err)
 
 	set := attribute.NewSet(attribute.String("test", "attr"))
@@ -1568,11 +1576,11 @@ func TestViewHints(t *testing.T) {
 			test.Point(seq.Start, seq.Now, histogram.NewFloat64(histogram.NewConfig(histogram.WithMaxSize(3)), inputs...), cumulative, set.ToSlice()...),
 		),
 		test.Instrument(
-			test.Descriptor("mmsc", sdkinstrument.SyncHistogram, number.Float64Kind, instrument.WithDescription("heyyy")),
+			test.DescriptorDescUnit("mmsc", sdkinstrument.SyncHistogram, number.Float64Kind, "heyyy", ""),
 			test.Point(seq.Start, seq.Now, minmaxsumcount.NewFloat64(inputs...), cumulative, set.ToSlice()...),
 		),
 		test.Instrument(
-			test.Descriptor("gauge", sdkinstrument.SyncUpDownCounter, number.Float64Kind, instrument.WithDescription("check it")),
+			test.DescriptorDescUnit("gauge", sdkinstrument.SyncUpDownCounter, number.Float64Kind, "check it", ""),
 			test.Point(seq.Start, seq.Now, gauge.NewFloat64(inputs[numInputs-1]), cumulative, set.ToSlice()...),
 		),
 	)
@@ -1585,47 +1593,52 @@ func TestViewHintErrors(t *testing.T) {
 	vc := New(testLib, views)
 	otelErrs := test.OTelErrors()
 
-	_, err := testCompile(
+	_, err := testCompileDescUnit(
 		vc,
 		"extra_comma",
 		sdkinstrument.SyncCounter,
 		number.Float64Kind,
-		instrument.WithDescription(`{
+		`{
   "aggregation": "histogram",
-}`))
+}`,
+		"",
+	)
 	require.NoError(t, err)
 
-	_, err = testCompile(
+	_, err = testCompileDescUnit(
 		vc,
 		"accidental_json_parse",
 		sdkinstrument.SyncHistogram,
 		number.Float64Kind,
-		instrument.WithDescription("accidental { parse"))
+		"accidental { parse", "")
 	require.NoError(t, err)
 
-	_, err = testCompile(
+	_, err = testCompileDescUnit(
 		vc,
 		"invalid_aggregation",
 		sdkinstrument.SyncUpDownCounter,
 		number.Float64Kind,
-		instrument.WithDescription(`{
+		`{
   "aggregation": "cardinality"
-}`))
+}`,
+		"")
 	require.NoError(t, err)
 
-	_, err = testCompile(
+	_, err = testCompileDescUnit(
 		vc,
 		"bad_max_size",
 		sdkinstrument.SyncCounter,
 		number.Float64Kind,
-		instrument.WithDescription(`{
+		`{
   "aggregation": "histogram",
   "config": {
     "histogram": {
       "max_size": -3
     }
   }
-}`))
+}`,
+		"",
+	)
 	require.NoError(t, err)
 
 	require.Equal(t, 4, len(*otelErrs))
@@ -1649,15 +1662,16 @@ func TestViewHintNoOverrideEmpty(t *testing.T) {
 	vc := New(testLib, views)
 	otelErrs := test.OTelErrors()
 
-	inst, err := testCompile(
+	inst, err := testCompileDescUnit(
 		vc,
 		"histo",
 		sdkinstrument.SyncCounter,
 		// sdkinstrument.SyncHistogram,
 		number.Float64Kind,
-		instrument.WithDescription(`{
+		`{
   "aggregation": "histogram"
-}`),
+}`,
+		"",
 	)
 	// note empty config
 	require.NoError(t, err)

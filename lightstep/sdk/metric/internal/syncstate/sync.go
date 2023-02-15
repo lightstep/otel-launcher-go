@@ -27,6 +27,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 // Instrument maintains a mapping from attribute.Set to an internal
@@ -36,7 +37,9 @@ import (
 // Entries in the map have their accumulator's SnapshotAndProcess()
 // method called whenever they are removed from the map, which can
 // happen when any reader collects the instrument.
-type Instrument struct {
+type Observer struct {
+	instrument.Synchronous
+
 	// descriptor is the API-provided descriptor for the
 	// instrument, unmodified by views.
 	descriptor sdkinstrument.Descriptor
@@ -57,11 +60,11 @@ type Instrument struct {
 	current map[uint64]*record
 }
 
-// NewInstruments builds a new synchronous instrument given the
+// New builds a new synchronous instrument *Observer given the
 // per-pipeline instrument-views compiled.  Note that the unused
 // third parameter is an opaque value used in the asyncstate package,
 // passed here to make these two packages generalize.
-func NewInstrument(desc sdkinstrument.Descriptor, performance sdkinstrument.Performance, _ interface{}, compiled pipeline.Register[viewstate.Instrument]) *Instrument {
+func New(desc sdkinstrument.Descriptor, performance sdkinstrument.Performance, _ interface{}, compiled pipeline.Register[viewstate.Instrument]) *Observer {
 	var nonnil []viewstate.Instrument
 	for _, comp := range compiled {
 		if comp != nil {
@@ -72,7 +75,7 @@ func NewInstrument(desc sdkinstrument.Descriptor, performance sdkinstrument.Perf
 		// When no readers enable the instrument, no need for an instrument.
 		return nil
 	}
-	return &Instrument{
+	return &Observer{
 		descriptor:  desc,
 		current:     map[uint64]*record{},
 		performance: performance,
@@ -92,7 +95,7 @@ func NewInstrument(desc sdkinstrument.Descriptor, performance sdkinstrument.Perf
 // SnapshotAndProcess calls SnapshotAndProcess() for all live
 // accumulators of this instrument.  Inactive accumulators will be
 // subsequently removed from the map.
-func (inst *Instrument) SnapshotAndProcess() {
+func (inst *Observer) SnapshotAndProcess() {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
@@ -141,7 +144,7 @@ func (inst *Instrument) SnapshotAndProcess() {
 }
 
 // singleSnapshotAndProcess
-func (inst *Instrument) singleSnapshotAndProcess(fp uint64, rec *record) bool {
+func (inst *Observer) singleSnapshotAndProcess(fp uint64, rec *record) bool {
 	if rec.conditionalSnapshotAndProcess(false) {
 		return true
 	}
@@ -247,8 +250,16 @@ func (rec *record) initialize() {
 	rec.accumulatorUnsafe = rec.inst.compiled.NewAccumulator(aset)
 }
 
-// capture performs a single update for any synchronous instrument.
-func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Instrument, num N, attrs []attribute.KeyValue) {
+func (inst *Observer) ObserveInt64(ctx context.Context, num int64, attrs ...attribute.KeyValue) {
+	Observe[int64, number.Int64Traits](ctx, inst, num, attrs...)
+}
+
+func (inst *Observer) ObserveFloat64(ctx context.Context, num float64, attrs ...attribute.KeyValue) {
+	Observe[float64, number.Float64Traits](ctx, inst, num, attrs...)
+}
+
+// Observe performs a generic update for any synchronous instrument.
+func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Observer, num N, attrs ...attribute.KeyValue) {
 	if inst == nil {
 		// Instrument was completely disabled by the view.
 		return
@@ -364,7 +375,7 @@ func attributesEqual(a, b []attribute.KeyValue) bool {
 }
 
 // acquireRead acquires the read lock and searches for a `*record`.
-func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *record {
+func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) *record {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
@@ -390,7 +401,7 @@ func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *recor
 // acquireUninitialized gets or creates a `*record` corresponding to
 // `attrs`, the input attributes.  The returned record is mapped but
 // possibly not initialized.
-func acquireUninitialized[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *record {
+func acquireUninitialized[N number.Any](inst *Observe, attrs []attribute.KeyValue) *record {
 	fp := fingerprintAttributes(attrs)
 
 	rec := acquireRead(inst, fp, attrs)
@@ -420,7 +431,7 @@ func acquireUninitialized[N number.Any](inst *Instrument, attrs []attribute.KeyV
 }
 
 // acquireWrite acquires the write lock and gets or sets a `*record`.
-func acquireWrite(inst *Instrument, fp uint64, newRec *record) (*record, bool) {
+func acquireWrite(inst *Observer, fp uint64, newRec *record) (*record, bool) {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
