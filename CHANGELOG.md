@@ -10,8 +10,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## [1.13.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.0) - 2022-02-15)
 
-- Updates OTel-Go version dependencies to `trace@v1.13.0`, `metrics@v0.35.0`, 
-  `contrib-trace@v1.14.0`, `contrib-metrics@v0.38.0`:
+- Updates OTel-Go version dependencies to `trace@v1.12.0`, `metrics@v0.35.0`, 
+  `contrib-trace@v1.13.0`, `contrib-metrics@v0.38.0`:
   - Note the corresponding metrics API changes are 🛑 [BREAKING]
     between releases `v0.35.0` and `v0.36.0`.  Because this release
     depends on metrics API `v0.35.0` it continues to support the
