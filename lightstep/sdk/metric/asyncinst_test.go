@@ -28,10 +28,11 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
-func TestAsyncInsts(t *testing.T) {
+func TestAsyncInstsMultiCallback(t *testing.T) {
 	rdr := NewManualReader("test")
 	res := resource.Empty()
 	provider := NewMeterProvider(WithReader(rdr), WithResource(res))
@@ -91,5 +92,131 @@ func TestAsyncInsts(t *testing.T) {
 			),
 		),
 	)
+
+	// Unregister it, get no points in the following collection.
 	require.NoError(t, reg.Unregister())
+
+	data = rdr.Produce(nil)
+	test.RequireEqualResourceMetrics(
+		t, data, res,
+		test.Scope(
+			test.Library("test"),
+			test.Instrument(
+				test.Descriptor("icount", sdkinstrument.AsyncCounter, number.Int64Kind),
+			),
+			test.Instrument(
+				test.Descriptor("fcount", sdkinstrument.AsyncCounter, number.Float64Kind),
+			),
+			test.Instrument(
+				test.Descriptor("iupcount", sdkinstrument.AsyncUpDownCounter, number.Int64Kind),
+			),
+			test.Instrument(
+				test.Descriptor("fupcount", sdkinstrument.AsyncUpDownCounter, number.Float64Kind),
+			),
+			test.Instrument(
+				test.Descriptor("igauge", sdkinstrument.AsyncGauge, number.Int64Kind),
+			),
+			test.Instrument(
+				test.Descriptor("fgauge", sdkinstrument.AsyncGauge, number.Float64Kind),
+			),
+		),
+	)
+
+	// Unregister it again, get an error.
+	err = reg.Unregister()
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "already unregistered")
+}
+
+func TestAsyncInstsSingleCallback(t *testing.T) {
+	rdr := NewManualReader("test")
+	res := resource.Empty()
+	provider := NewMeterProvider(WithReader(rdr), WithResource(res))
+	tm := provider.Meter("test")
+
+	attr := attribute.String("a", "B")
+
+	_ = must(tm.Int64ObservableCounter("icount",
+		instrument.WithInt64Callback(
+			func(ctx context.Context, obs instrument.Int64Observer) error {
+				obs.Observe(2, attr)
+				return nil
+			},
+		),
+	))
+	_ = must(tm.Float64ObservableCounter("fcount",
+		instrument.WithFloat64Callback(
+			func(ctx context.Context, obs instrument.Float64Observer) error {
+				obs.Observe(3, attr)
+				return nil
+			},
+		),
+	))
+	_ = must(tm.Int64ObservableUpDownCounter("iupcount",
+		instrument.WithInt64Callback(
+			func(ctx context.Context, obs instrument.Int64Observer) error {
+				obs.Observe(4, attr)
+				return nil
+			},
+		),
+	))
+	_ = must(tm.Float64ObservableUpDownCounter("fupcount",
+		instrument.WithFloat64Callback(
+			func(ctx context.Context, obs instrument.Float64Observer) error {
+				obs.Observe(5, attr)
+				return nil
+			},
+		),
+	))
+	_ = must(tm.Int64ObservableGauge("igauge",
+		instrument.WithInt64Callback(
+			func(ctx context.Context, obs instrument.Int64Observer) error {
+				obs.Observe(6, attr)
+				return nil
+			},
+		),
+	))
+	_ = must(tm.Float64ObservableGauge("fgauge",
+		instrument.WithFloat64Callback(
+			func(ctx context.Context, obs instrument.Float64Observer) error {
+				obs.Observe(7, attr)
+				return nil
+			},
+		),
+	))
+
+	data := rdr.Produce(nil)
+	notime := time.Time{}
+	cumulative := aggregation.CumulativeTemporality
+
+	test.RequireEqualResourceMetrics(
+		t, data, res,
+		test.Scope(
+			test.Library("test"),
+			test.Instrument(
+				test.Descriptor("icount", sdkinstrument.AsyncCounter, number.Int64Kind),
+				test.Point(notime, notime, sum.NewMonotonicInt64(2), cumulative, attr),
+			),
+			test.Instrument(
+				test.Descriptor("fcount", sdkinstrument.AsyncCounter, number.Float64Kind),
+				test.Point(notime, notime, sum.NewMonotonicFloat64(3), cumulative, attr),
+			),
+			test.Instrument(
+				test.Descriptor("iupcount", sdkinstrument.AsyncUpDownCounter, number.Int64Kind),
+				test.Point(notime, notime, sum.NewNonMonotonicInt64(4), cumulative, attr),
+			),
+			test.Instrument(
+				test.Descriptor("fupcount", sdkinstrument.AsyncUpDownCounter, number.Float64Kind),
+				test.Point(notime, notime, sum.NewNonMonotonicFloat64(5), cumulative, attr),
+			),
+			test.Instrument(
+				test.Descriptor("igauge", sdkinstrument.AsyncGauge, number.Int64Kind),
+				test.Point(notime, notime, gauge.NewInt64(6), cumulative, attr),
+			),
+			test.Instrument(
+				test.Descriptor("fgauge", sdkinstrument.AsyncGauge, number.Float64Kind),
+				test.Point(notime, notime, gauge.NewFloat64(7), cumulative, attr),
+			),
+		),
+	)
 }

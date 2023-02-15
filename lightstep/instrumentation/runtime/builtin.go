@@ -98,16 +98,6 @@ type builtinRuntime struct {
 	readFunc readFunc
 }
 
-// int64Observer is any async int64 instrument.
-type int64Observer interface {
-	Observe(ctx context.Context, x int64, attrs ...attribute.KeyValue)
-}
-
-// float64Observer is any async float64 instrument.
-type float64Observer interface {
-	Observe(ctx context.Context, x float64, attrs ...attribute.KeyValue)
-}
-
 func newBuiltinRuntime(meter metric.Meter, af allFunc, rf readFunc) *builtinRuntime {
 	return &builtinRuntime{
 		meter:    meter,

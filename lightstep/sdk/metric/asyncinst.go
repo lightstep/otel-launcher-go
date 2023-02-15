@@ -76,7 +76,7 @@ func registerIntCallbacks[T instrument.Int64Observable](m *meter, inst T, cbs []
 				observer:   obs,
 				observable: inst,
 			})
-		})
+		}, inst)
 	}
 }
 
@@ -87,7 +87,7 @@ func registerFloatCallbacks[T instrument.Float64Observable](m *meter, inst T, cb
 				observer:   obs,
 				observable: inst,
 			})
-		})
+		}, inst)
 	}
 }
 
