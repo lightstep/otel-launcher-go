@@ -8,6 +8,14 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.13.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.1) - 2022-02-15)
+
+- Adds performance improvements for concurrent use of synchronous
+  instruments. [#384](https://github.com/lightstep/otel-launcher-go/pull/384)
+- Adds `WithPerformance()` and `IgnoreCollisions` setting which offers
+  around 10% faster operations in exchange for safety and correctness.  This
+  setting is off by default. [#384](https://github.com/lightstep/otel-launcher-go/pull/384)
+
 ## [1.13.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.0) - 2022-02-15)
 
 - Updates OTel-Go version dependencies to `trace@v1.12.0`, `metrics@v0.35.0`, 
