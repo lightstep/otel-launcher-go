@@ -3,7 +3,7 @@ module github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/example
 go 1.18
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.12.1
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.13.0
 	github.com/lightstep/otel-launcher-go/pipelines v1.8.0
 	go.opentelemetry.io/proto/otlp v0.19.0
 )
@@ -17,9 +17,9 @@ require (
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
 	go.opentelemetry.io/otel v1.13.0 // indirect
-	go.opentelemetry.io/otel/metric v0.36.0 // indirect
+	go.opentelemetry.io/otel/metric v0.35.0 // indirect
 	go.opentelemetry.io/otel/sdk v1.13.0 // indirect
-	go.opentelemetry.io/otel/sdk/metric v0.36.0 // indirect
+	go.opentelemetry.io/otel/sdk/metric v0.35.0 // indirect
 	go.opentelemetry.io/otel/trace v1.13.0 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
