@@ -51,12 +51,12 @@ func TestSyncInsts(t *testing.T) {
 		),
 	)
 
-	ci := must(provider.Meter("test").SyncInt64().Counter("icount"))
-	cf := must(provider.Meter("test").SyncFloat64().Counter("fcount"))
-	ui := must(provider.Meter("test").SyncInt64().UpDownCounter("iupcount"))
-	uf := must(provider.Meter("test").SyncFloat64().UpDownCounter("fupcount"))
-	hi := must(provider.Meter("test").SyncInt64().Histogram("ihistogram"))
-	hf := must(provider.Meter("test").SyncFloat64().Histogram("fhistogram"))
+	ci := must(provider.Meter("test").Int64Counter("icount"))
+	cf := must(provider.Meter("test").Float64Counter("fcount"))
+	ui := must(provider.Meter("test").Int64UpDownCounter("iupcount"))
+	uf := must(provider.Meter("test").Float64UpDownCounter("fupcount"))
+	hi := must(provider.Meter("test").Int64Histogram("ihistogram"))
+	hf := must(provider.Meter("test").Float64Histogram("fhistogram"))
 
 	attr := attribute.String("a", "B")
 

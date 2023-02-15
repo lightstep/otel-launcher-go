@@ -27,6 +27,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 var sortableAttributesPool = sync.Pool{
@@ -44,7 +45,9 @@ var overflowAttributesFingerprint = fingerprintAttributes(pipeline.OverflowAttri
 // Entries in the map have their accumulator's SnapshotAndProcess()
 // method called whenever they are removed from the map, which can
 // happen when any reader collects the instrument.
-type Instrument struct {
+type Observer struct {
+	instrument.Synchronous
+
 	// descriptor is the API-provided descriptor for the
 	// instrument, unmodified by views.
 	descriptor sdkinstrument.Descriptor
@@ -60,17 +63,17 @@ type Instrument struct {
 	maxTimeseries uint
 
 	// lock protects current.
-	lock sync.RWMutex
+	lock sync.Mutex
 
 	// current is protected by lock.
 	current map[uint64]*record
 }
 
-// NewInstruments builds a new synchronous instrument given the
+// New builds a new synchronous instrument given the
 // per-pipeline instrument-views compiled.  Note that the unused
 // second parameter is an opaque value used in the asyncstate package,
 // passed here to make these two packages generalize.
-func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeline.Register[viewstate.Instrument]) *Instrument {
+func New(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeline.Register[viewstate.Instrument]) *Observer {
 	var nonnil []viewstate.Instrument
 	for _, comp := range compiled {
 		if comp != nil {
@@ -90,7 +93,7 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 	// views or multiple pipelines will the combination
 	// produce a viewstate.multiInstrument here.
 	inst := viewstate.Combine(desc, nonnil...)
-	return &Instrument{
+	return &Observer{
 		descriptor:    desc,
 		current:       map[uint64]*record{},
 		compiled:      inst,
@@ -101,7 +104,7 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 // SnapshotAndProcess calls SnapshotAndProcess() for all live
 // accumulators of this instrument.  Inactive accumulators will be
 // subsequently removed from the map.
-func (inst *Instrument) SnapshotAndProcess() {
+func (inst *Observer) SnapshotAndProcess() {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
@@ -150,7 +153,7 @@ func (inst *Instrument) SnapshotAndProcess() {
 }
 
 // singleSnapshotAndProcess
-func (inst *Instrument) singleSnapshotAndProcess(fp uint64, rec *record) bool {
+func (inst *Observer) singleSnapshotAndProcess(fp uint64, rec *record) bool {
 	if rec.conditionalSnapshotAndProcess(false) {
 		return true
 	}
@@ -225,8 +228,16 @@ func (rec *record) conditionalSnapshotAndProcess(release bool) bool {
 	return true
 }
 
-// capture performs a single update for any synchronous instrument.
-func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Instrument, num N, attrs []attribute.KeyValue) {
+func (inst *Observer) ObserveInt64(ctx context.Context, num int64, attrs ...attribute.KeyValue) {
+	Observe[int64, number.Int64Traits](ctx, inst, num, attrs...)
+}
+
+func (inst *Observer) ObserveFloat64(ctx context.Context, num float64, attrs ...attribute.KeyValue) {
+	Observe[float64, number.Float64Traits](ctx, inst, num, attrs...)
+}
+
+// Observe performs a generic update for any synchronous instrument.
+func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Observer, num N, attrs ...attribute.KeyValue) {
 	if inst == nil {
 		// Instrument was completely disabled by the view.
 		return
@@ -342,11 +353,11 @@ func attributesEqual(a, b []attribute.KeyValue) bool {
 }
 
 // acquireRead acquires the read lock and searches for a `*record`.
-// This also returns the active number of timeseries estimated as the
-// size of the map (i.e., ignoring collisions).
-func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) (uint64, []attribute.KeyValue, *record) {
-	inst.lock.RLock()
-	defer inst.lock.RUnlock()
+// This returns the effective attributes and fingerprint, considering
+// the cardinality limit.
+func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) (uint64, []attribute.KeyValue, *record) {
+	inst.lock.Lock()
+	defer inst.lock.Unlock()
 
 	// This loop can be taken twice.
 	for overflow := false; ; overflow = true {
@@ -382,7 +393,7 @@ func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) (uint6
 
 // acquireRecord gets or creates a `*record` corresponding to `attrs`,
 // the input attributes.
-func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *record {
+func acquireRecord[N number.Any](inst *Observer, attrs []attribute.KeyValue) *record {
 	fp := fingerprintAttributes(attrs)
 
 	// acquireRead may replace fp and attrs when there is overflow.
@@ -429,7 +440,7 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *
 }
 
 // acquireWrite acquires the write lock and gets or sets a `*record`.
-func acquireWrite(inst *Instrument, fp uint64, newRec *record) (*record, bool) {
+func acquireWrite(inst *Observer, fp uint64, newRec *record) (*record, bool) {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 

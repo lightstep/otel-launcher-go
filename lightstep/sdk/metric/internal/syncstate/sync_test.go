@@ -37,7 +37,6 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
@@ -108,7 +107,8 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 	// this code.  The race condition still exists, but the test
 	// no longer covers the call to Gosched() in acquireRecord()
 	// or the return-nil branch in acquireWrite().  This is
-	// because with the RWMutex, the race is much less racey.
+	// because the current code is much less racey or better
+	// tests are needed.
 	const (
 		numReaders  = 2
 		numRoutines = 10
@@ -142,11 +142,8 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 		pipes[vci], _ = vcs[vci].Compile(desc)
 	}
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := New(desc, nil, pipes)
 	require.NotNil(t, inst)
-
-	cntr := NewCounter[N, Traits](inst)
-	require.NotNil(t, cntr)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -202,7 +199,7 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 			rnd := rand.New(rand.NewSource(rand.Int63()))
 
 			for j := 0; j < numUpdates/numRoutines; j++ {
-				cntr.Add(ctx, 1, attrs[rnd.Intn(len(attrs))])
+				Observe[N, Traits](ctx, inst, 1, attrs[rnd.Intn(len(attrs))])
 			}
 		}()
 	}
@@ -244,15 +241,12 @@ func TestSyncStatePartialNoopInstrument(t *testing.T) {
 	require.Nil(t, pipes[0])
 	require.NotNil(t, pipes[1])
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := New(desc, nil, pipes)
 	require.NotNil(t, inst)
 
-	hist := NewHistogram[float64, number.Float64Traits](inst)
-	require.NotNil(t, hist)
-
-	hist.Record(ctx, 1)
-	hist.Record(ctx, 2)
-	hist.Record(ctx, 3)
+	inst.ObserveFloat64(ctx, 1)
+	inst.ObserveFloat64(ctx, 2)
+	inst.ObserveFloat64(ctx, 3)
 
 	inst.SnapshotAndProcess()
 
@@ -315,15 +309,12 @@ func TestSyncStateFullNoopInstrument(t *testing.T) {
 	require.Nil(t, pipes[0])
 	require.Nil(t, pipes[1])
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := New(desc, nil, pipes)
 	require.Nil(t, inst)
 
-	hist := NewHistogram[float64, number.Float64Traits](inst)
-	require.NotNil(t, hist)
-
-	hist.Record(ctx, 1)
-	hist.Record(ctx, 2)
-	hist.Record(ctx, 3)
+	inst.ObserveFloat64(ctx, 1)
+	inst.ObserveFloat64(ctx, 2)
+	inst.ObserveFloat64(ctx, 3)
 
 	// There's no instrument, nothing to Snapshot
 	require.Equal(t, 0, len(vcs[0].Collectors()))
@@ -351,23 +342,19 @@ func TestOutOfRangeValues(t *testing.T) {
 		pipes := make(pipeline.Register[viewstate.Instrument], 1)
 		pipes[0], _ = vcs[0].Compile(desc)
 
-		inst := NewInstrument(desc, nil, pipes)
+		inst := New(desc, nil, pipes)
 		require.NotNil(t, inst)
 
 		var negOne aggregation.Aggregation
 
 		if desc.NumberKind == number.Float64Kind {
-			cntr := NewCounter[float64, number.Float64Traits](inst)
-
-			cntr.Add(ctx, -1)
-			cntr.Add(ctx, math.NaN())
-			cntr.Add(ctx, math.Inf(+1))
-			cntr.Add(ctx, math.Inf(-1))
+			inst.ObserveFloat64(ctx, -1)
+			inst.ObserveFloat64(ctx, math.NaN())
+			inst.ObserveFloat64(ctx, math.Inf(+1))
+			inst.ObserveFloat64(ctx, math.Inf(-1))
 			negOne = sum.NewNonMonotonicFloat64(-1)
 		} else {
-			cntr := NewCounter[int64, number.Int64Traits](inst)
-
-			cntr.Add(ctx, -1)
+			inst.ObserveInt64(ctx, -1)
 			negOne = sum.NewNonMonotonicInt64(-1)
 		}
 
@@ -443,33 +430,29 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	indesc := test.Descriptor(
 		"syncgauge",
 		sdkinstrument.SyncUpDownCounter,
-		number.Float64Kind,
-		instrument.WithDescription(`{
+		number.Float64Kind)
+	indesc.Description = `{
   "aggregation": "gauge",
   "description": "incredible"
-}`))
+}`
 
 	outdesc := test.Descriptor(
 		"syncgauge",
 		sdkinstrument.SyncUpDownCounter,
-		number.Float64Kind,
-		instrument.WithDescription("incredible"),
-	)
+		number.Float64Kind)
+	outdesc.Description = "incredible"
 
 	pipes := make(pipeline.Register[viewstate.Instrument], 1)
 	pipes[0], _ = vcs[0].Compile(indesc)
 
 	require.NotNil(t, pipes[0])
 
-	inst := NewInstrument(indesc, nil, pipes)
+	inst := New(indesc, nil, pipes)
 	require.NotNil(t, inst)
 
-	sg := NewCounter[float64, number.Float64Traits](inst)
-	require.NotNil(t, sg)
-
-	sg.Add(ctx, 1)
-	sg.Add(ctx, 2)
-	sg.Add(ctx, 3)
+	inst.ObserveFloat64(ctx, 1)
+	inst.ObserveFloat64(ctx, 2)
+	inst.ObserveFloat64(ctx, 3)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -503,8 +486,8 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	)
 
 	// Set again
-	sg.Add(ctx, 172)
-	sg.Add(ctx, 175)
+	inst.ObserveFloat64(ctx, 172)
+	inst.ObserveFloat64(ctx, 175)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -524,8 +507,8 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	)
 
 	// Set different attribute sets, leave the first (empty set) unused.
-	sg.Add(ctx, 1333, attribute.String("A", "B"))
-	sg.Add(ctx, 1337, attribute.String("C", "D"))
+	inst.ObserveFloat64(ctx, 1333, attribute.String("A", "B"))
+	inst.ObserveFloat64(ctx, 1337, attribute.String("C", "D"))
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -554,10 +537,10 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	// sequence number (as opposed to random choice, which would
 	// happen naturally b/c of map iteration).
 	for i := 0; i < 1000; i++ {
-		sg.Add(ctx, float64(i), attribute.Int("ignored", i), attribute.String("A", "B"))
+		inst.ObserveFloat64(ctx, float64(i), attribute.Int("ignored", i), attribute.String("A", "B"))
 	}
 	for i := 1000; i > 0; i-- {
-		sg.Add(ctx, float64(i), attribute.Int("ignored", i), attribute.String("C", "D"))
+		inst.ObserveFloat64(ctx, float64(i), attribute.Int("ignored", i), attribute.String("C", "D"))
 	}
 
 	inst.SnapshotAndProcess()
@@ -759,17 +742,14 @@ func TestDuplicateFingerprint(t *testing.T) {
 	require.NotNil(t, pipes[0])
 	require.NotNil(t, pipes[1])
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := New(desc, nil, pipes)
 	require.NotNil(t, inst)
-
-	sg := NewCounter[float64, number.Float64Traits](inst)
-	require.NotNil(t, sg)
 
 	attr1 := attribute.Int64(fpKey, fpInt1)
 	attr2 := attribute.Int64(fpKey, fpInt2)
 
-	sg.Add(ctx, 1, attr1)
-	sg.Add(ctx, 2, attr2)
+	inst.ObserveFloat64(ctx, 1, attr1)
+	inst.ObserveFloat64(ctx, 2, attr2)
 
 	// collect reader 0
 	inst.SnapshotAndProcess()
@@ -816,8 +796,8 @@ func TestDuplicateFingerprint(t *testing.T) {
 	require.Equal(t, 0, vcs[0].Collectors()[0].Size())
 
 	// Use both again, collect reader 0 again
-	sg.Add(ctx, 5, attr1)
-	sg.Add(ctx, 6, attr2)
+	inst.ObserveFloat64(ctx, 5, attr1)
+	inst.ObserveFloat64(ctx, 6, attr2)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -846,7 +826,7 @@ func TestDuplicateFingerprint(t *testing.T) {
 	require.Equal(t, 2, vcs[0].Collectors()[0].Size())
 
 	// Update attr1, collect reader 0
-	sg.Add(ctx, 25, attr1)
+	inst.ObserveFloat64(ctx, 25, attr1)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -870,7 +850,7 @@ func TestDuplicateFingerprint(t *testing.T) {
 	require.Equal(t, 1, vcs[0].Collectors()[0].Size())
 
 	// Update attr2, collect reader 0
-	sg.Add(ctx, 32, attr2)
+	inst.ObserveFloat64(ctx, 32, attr2)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
