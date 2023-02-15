@@ -8,9 +8,9 @@ require (
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.38.0
 
 	// b3 and opentracing propagators
-	go.opentelemetry.io/contrib/propagators/b3 v1.13.0
+	go.opentelemetry.io/contrib/propagators/b3 v1.14.0
 	go.opentelemetry.io/contrib/propagators/ot v1.13.0
-	go.opentelemetry.io/otel v1.12.0
+	go.opentelemetry.io/otel v1.13.0
 
 	// Standard trace SDK and gRPC OTLP exporter
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.12.0
@@ -39,7 +39,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.13.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.35.0 // indirect
-	go.opentelemetry.io/otel/trace v1.12.0 // indirect
+	go.opentelemetry.io/otel/trace v1.13.0 // indirect
 	go.opentelemetry.io/proto/otlp v0.19.0
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.9.0 // indirect
