@@ -1096,7 +1096,7 @@ func TestRecordInactivity(t *testing.T) {
 			inst.SnapshotAndProcess()
 			expectSomething(23)
 
-			// There is still 1 entry in memory.
+			// There is still 1 entry in memory, the count has reset.
 			require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
 
 			// Inactive for the up to the allowed inactivity.

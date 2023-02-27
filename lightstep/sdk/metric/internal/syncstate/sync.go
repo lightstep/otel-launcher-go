@@ -169,6 +169,9 @@ func (inst *Observer) collect(fp uint64, rec *record) bool {
 	// (b) if this is indeed the last reference, the collector needs the release signal.
 	_ = rec.scavengeCollect(unmapped)
 
+	// reset inactivity in case of !unmapped.
+	rec.inactiveCount = 0
+
 	// When `unmapped` is true, any other goroutines are now
 	// trying to re-insert this entry in the map, they are busy
 	// calling Gosched() waiting for this record to disappear.
