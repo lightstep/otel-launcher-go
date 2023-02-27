@@ -17,6 +17,7 @@ package syncstate
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
 	"sync"
@@ -52,7 +53,8 @@ var (
 	}
 
 	safePerf = sdkinstrument.Performance{
-		IgnoreCollisions: false,
+		IgnoreCollisions:          false,
+		InactiveCollectionPeriods: 1,
 	}
 )
 
@@ -775,7 +777,7 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 	)
 
 	// There are 2 entries in memory
-	require.Equal(t, 2, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 2, vcs[0].Collectors()[0].InMemorySize())
 
 	// collect reader 0 again
 	inst.SnapshotAndProcess()
@@ -792,7 +794,7 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 	)
 
 	// There are 0 entries in memory
-	require.Equal(t, 0, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 0, vcs[0].Collectors()[0].InMemorySize())
 
 	// Use both again, collect reader 0 again
 	inst.ObserveFloat64(ctx, 5, attr1)
@@ -822,7 +824,7 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 	)
 
 	// There are 2 entries in memory again
-	require.Equal(t, 2, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 2, vcs[0].Collectors()[0].InMemorySize())
 
 	// Update attr1, collect reader 0
 	inst.ObserveFloat64(ctx, 25, attr1)
@@ -846,7 +848,7 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 	)
 
 	// Only 1 entry in memory
-	require.Equal(t, 1, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
 
 	// Update attr2, collect reader 0
 	inst.ObserveFloat64(ctx, 32, attr2)
@@ -870,7 +872,7 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 	)
 
 	// Only 1 entry in memory
-	require.Equal(t, 1, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
 
 	// No updates, clear memory
 	inst.SnapshotAndProcess()
@@ -886,7 +888,7 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 		),
 	)
 
-	require.Equal(t, 0, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 0, vcs[0].Collectors()[0].InMemorySize())
 
 	// collect reader 1
 	test.RequireEqualMetrics(
@@ -928,7 +930,8 @@ func TestDuplicateFingerprintCollisionIgnored(t *testing.T) {
 
 	inst := New(desc, sdkinstrument.Performance{
 		// Do not check the collision.
-		IgnoreCollisions: true,
+		IgnoreCollisions:          true,
+		InactiveCollectionPeriods: 1,
 	}, nil, pipes)
 	require.NotNil(t, inst)
 
@@ -959,7 +962,7 @@ func TestDuplicateFingerprintCollisionIgnored(t *testing.T) {
 	)
 
 	// There is 1 entry in memory
-	require.Equal(t, 1, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
 
 	// collect reader again
 	inst.SnapshotAndProcess()
@@ -976,7 +979,7 @@ func TestDuplicateFingerprintCollisionIgnored(t *testing.T) {
 	)
 
 	// There are 0 entries in memory
-	require.Equal(t, 0, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 0, vcs[0].Collectors()[0].InMemorySize())
 
 	// Use both attribute sets in the opposite order, collect
 	// reader again.
@@ -1000,4 +1003,91 @@ func TestDuplicateFingerprintCollisionIgnored(t *testing.T) {
 			),
 		),
 	)
+}
+
+func TestRecordInactivity(t *testing.T) {
+	for inactive := uint32(1); inactive < 10; inactive++ {
+		t.Run(fmt.Sprint(inactive), func(t *testing.T) {
+			ctx := context.Background()
+			lib := instrumentation.Library{
+				Name: "testlib",
+			}
+			vcs := make([]*viewstate.Compiler, 1)
+			vcs[0] = viewstate.New(lib, view.New(
+				"test",
+				deltaSelector,
+			))
+
+			desc := test.Descriptor("c", sdkinstrument.SyncCounter, number.Float64Kind)
+
+			pipes := make(pipeline.Register[viewstate.Instrument], 1)
+			pipes[0], _ = vcs[0].Compile(desc)
+
+			require.NotNil(t, pipes[0])
+
+			inst := New(desc, sdkinstrument.Performance{
+				InactiveCollectionPeriods: inactive,
+			}, nil, pipes)
+			require.NotNil(t, inst)
+
+			attr := attribute.Int64(fpKey, fpInt1)
+
+			expectNothing := func() {
+				test.RequireEqualMetrics(
+					t,
+					test.CollectScope(
+						t,
+						vcs[0].Collectors(),
+						testSequence,
+					),
+					test.Instrument(
+						desc,
+					),
+				)
+			}
+
+			inst.ObserveFloat64(ctx, 17, attr)
+
+			// collect reader
+			inst.SnapshotAndProcess()
+			test.RequireEqualMetrics(
+				t,
+				test.CollectScope(
+					t,
+					vcs[0].Collectors(),
+					testSequence,
+				),
+				test.Instrument(
+					desc,
+					test.Point(middleTime, endTime,
+						sum.NewMonotonicFloat64(17),
+						aggregation.DeltaTemporality,
+						attr,
+					),
+				),
+			)
+
+			// There is 1 entry in memory
+			require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
+
+			// For 1 less than the inactive allowance,
+			// expect nothing collected and one record
+			// remaining in memory.
+			for i := uint32(1); i < inactive; i++ {
+				// collect reader again.
+				inst.SnapshotAndProcess()
+				expectNothing()
+
+				// There is still 1 entry in memory.
+				require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
+			}
+
+			// collect reader again.
+			inst.SnapshotAndProcess()
+			expectNothing()
+
+			// There are now 0 entries in memory.
+			require.Equal(t, 0, vcs[0].Collectors()[0].InMemorySize())
+		})
+	}
 }
