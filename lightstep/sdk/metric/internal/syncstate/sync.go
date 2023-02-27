@@ -148,7 +148,7 @@ func (inst *Observer) SnapshotAndProcess() {
 // collect collects the record.  When the record has been inactive for
 // the configured number of periods, it is removed from memory.
 func (inst *Observer) collect(fp uint64, rec *record) bool {
-	if rec.compulsoryCollect() {
+	if rec.normalCollect() {
 		rec.inactiveCount = 0
 		return true
 	}
@@ -164,10 +164,10 @@ func (inst *Observer) collect(fp uint64, rec *record) bool {
 	// Having no updates since last collection, try to unmap:
 	unmapped := rec.refMapped.tryUnmap()
 
-	// compulsoryCollect returned false indicating no change, except:
+	// normalCollect returned false indicating no change, except:
 	// (a) it's now possible there was a race, the collector needs to see it.
 	// (b) if this is indeed the last reference, the collector needs the release signal.
-	_ = rec.scavengerCollect(unmapped)
+	_ = rec.scavengeCollect(unmapped)
 
 	// When `unmapped` is true, any other goroutines are now
 	// trying to re-insert this entry in the map, they are busy
@@ -237,11 +237,15 @@ type record struct {
 	attrsUnsafe attribute.Sortable
 }
 
-func (rec *record) compulsoryCollect() bool {
+// normalCollect equals conditionalCollect(false), is named
+// differently from scavengeCollect for profiling.
+func (rec *record) normalCollect() bool {
 	return rec.conditionalCollect(false)
 }
 
-func (rec *record) scavengerCollect(release bool) bool {
+// scavengeCollect equals conditionalCollect(false), is named
+// differently from normalCollect for profiling.
+func (rec *record) scavengeCollect(release bool) bool {
 	return rec.conditionalCollect(release)
 }
 
