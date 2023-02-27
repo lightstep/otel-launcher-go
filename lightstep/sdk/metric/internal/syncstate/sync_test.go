@@ -1045,49 +1045,70 @@ func TestRecordInactivity(t *testing.T) {
 					),
 				)
 			}
+			expectSomething := func(value float64) {
+				test.RequireEqualMetrics(
+					t,
+					test.CollectScope(
+						t,
+						vcs[0].Collectors(),
+						testSequence,
+					),
+					test.Instrument(
+						desc,
+						test.Point(middleTime, endTime,
+							sum.NewMonotonicFloat64(value),
+							aggregation.DeltaTemporality,
+							attr,
+						),
+					),
+				)
+			}
 
 			inst.ObserveFloat64(ctx, 17, attr)
 
 			// collect reader
 			inst.SnapshotAndProcess()
-			test.RequireEqualMetrics(
-				t,
-				test.CollectScope(
-					t,
-					vcs[0].Collectors(),
-					testSequence,
-				),
-				test.Instrument(
-					desc,
-					test.Point(middleTime, endTime,
-						sum.NewMonotonicFloat64(17),
-						aggregation.DeltaTemporality,
-						attr,
-					),
-				),
-			)
+			expectSomething(17)
 
 			// There is 1 entry in memory
 			require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
 
-			// For 1 less than the inactive allowance,
-			// expect nothing collected and one record
-			// remaining in memory.
-			for i := uint32(1); i < inactive; i++ {
-				// collect reader again.
-				inst.SnapshotAndProcess()
-				expectNothing()
+			repeatedlyNothing := func() {
+				// For 1 less than the inactive allowance,
+				// expect nothing collected and one record
+				// remaining in memory.
+				for i := uint32(1); i < inactive; i++ {
+					// collect reader again.
+					inst.SnapshotAndProcess()
+					expectNothing()
 
-				// There is still 1 entry in memory.
-				require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
+					// There is still 1 entry in memory.
+					require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
+				}
 			}
 
-			// collect reader again.
+			// Inactive for the up to the allowed inactivity.
+			repeatedlyNothing()
+
+			inst.ObserveFloat64(ctx, 23, attr)
+
+			// collect reader again, but an update came in.
+			inst.SnapshotAndProcess()
+			expectSomething(23)
+
+			// There is still 1 entry in memory.
+			require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
+
+			// Inactive for the up to the allowed inactivity.
+			repeatedlyNothing()
+
+			// collect reader again
 			inst.SnapshotAndProcess()
 			expectNothing()
 
 			// There are now 0 entries in memory.
 			require.Equal(t, 0, vcs[0].Collectors()[0].InMemorySize())
+
 		})
 	}
 }
