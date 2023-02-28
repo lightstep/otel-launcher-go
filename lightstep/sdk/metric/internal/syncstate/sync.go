@@ -75,6 +75,8 @@ func New(desc sdkinstrument.Descriptor, performance sdkinstrument.Performance, _
 		// When no readers enable the instrument, no need for an instrument.
 		return nil
 	}
+	// validate so that 0 is replaced w/ a better default.
+	performance = performance.Validate()
 	return &Observer{
 		descriptor:  desc,
 		current:     map[uint64]*record{},
@@ -110,7 +112,7 @@ func (inst *Observer) SnapshotAndProcess() {
 		// linked list after filtering records that are no longer
 		// in use.
 		for rec := reclist; rec != nil; rec = rec.next {
-			if inst.singleSnapshotAndProcess(key, rec) {
+			if inst.collect(key, rec) {
 				if head == nil {
 					// The first time a record will be kept,
 					// it becomes the head and tail.
@@ -143,22 +145,32 @@ func (inst *Observer) SnapshotAndProcess() {
 	}
 }
 
-// singleSnapshotAndProcess
-func (inst *Observer) singleSnapshotAndProcess(fp uint64, rec *record) bool {
-	if rec.conditionalSnapshotAndProcess(false) {
+// collect collects the record.  When the record has been inactive for
+// the configured number of periods, it is removed from memory.
+func (inst *Observer) collect(fp uint64, rec *record) bool {
+	if rec.normalCollect() {
+		rec.inactiveCount = 0
+		return true
+	}
+
+	// Allow the record to remain in an inactive state for a number
+	// of collections.
+	rec.inactiveCount++
+
+	if rec.inactiveCount < inst.performance.InactiveCollectionPeriods {
 		return true
 	}
 
 	// Having no updates since last collection, try to unmap:
 	unmapped := rec.refMapped.tryUnmap()
 
-	// The first rec.conditionalSnapshotAndProcess
-	// returned false indicating no change, except:
-	// (a) it's now possible there was a race, the collector needs to
-	// see it.
-	// (b) if this is indeed the last reference, the collector needs the
-	// release signal.
-	_ = rec.conditionalSnapshotAndProcess(unmapped)
+	// normalCollect returned false indicating no change, except:
+	// (a) it's now possible there was a race, the collector needs to see it.
+	// (b) if this is indeed the last reference, the collector needs the release signal.
+	_ = rec.scavengeCollect(unmapped)
+
+	// reset inactivity in case of !unmapped.
+	rec.inactiveCount = 0
 
 	// When `unmapped` is true, any other goroutines are now
 	// trying to re-insert this entry in the map, they are busy
@@ -174,12 +186,20 @@ type record struct {
 	// uncollected.
 	refMapped refcountMapped
 
-	// updateCount is incremented on every Update.
-	updateCount int64
+	// updateCount is incremented on every Update.  This field
+	// uses atomic load/store operations.
+	updateCount uint32
 
 	// collectedCount is set to updateCount on collection,
-	// supports checking for no updates during a round.
-	collectedCount int64
+	// supports checking for no updates during a round.  This
+	// field is read/written under the Observer lock.
+	collectedCount uint32
+
+	// inactiveCount is incremented when the record is collected
+	// but has not been updated.  This is used to compare against
+	// the Performance InactiveCollectionPeriods setting.  This
+	// field is read/written under the Observer lock.
+	inactiveCount uint32
 
 	// inst allows referring to performance settings.
 	inst *Observer
@@ -220,17 +240,29 @@ type record struct {
 	attrsUnsafe attribute.Sortable
 }
 
-// conditionalSnapshotAndProcess checks whether the accumulator has been
-// modified since the last collection (by any reader), returns a
-// boolean indicating whether the record is active.  If active, calls
+// normalCollect equals conditionalCollect(false), is named
+// differently from scavengeCollect for profiling.
+func (rec *record) normalCollect() bool {
+	return rec.conditionalCollect(false)
+}
+
+// scavengeCollect equals conditionalCollect(false), is named
+// differently from normalCollect for profiling.
+func (rec *record) scavengeCollect(release bool) bool {
+	return rec.conditionalCollect(release)
+}
+
+// conditionalCollect checks whether the accumulator has been modified
+// since the last collection (by any reader), returns a boolean
+// indicating whether the record is active.  If modified, calls
 // SnapshotAndProcess on the associated accumulator and returns true.
 // If updates happened since the last collection (by any reader),
 // returns false.
-func (rec *record) conditionalSnapshotAndProcess(release bool) bool {
-	mods := atomic.LoadInt64(&rec.updateCount)
+func (rec *record) conditionalCollect(release bool) bool {
+	mods := atomic.LoadUint32(&rec.updateCount)
 
 	if !release {
-		if mods == atomic.LoadInt64(&rec.collectedCount) {
+		if mods == rec.collectedCount {
 			return false
 		}
 	}
@@ -238,7 +270,7 @@ func (rec *record) conditionalSnapshotAndProcess(release bool) bool {
 	rec.readAccumulator().SnapshotAndProcess(release)
 
 	// Updates happened in this interval, collect and continue.
-	atomic.StoreInt64(&rec.collectedCount, mods)
+	rec.collectedCount = mods
 	return true
 }
 
@@ -303,7 +335,7 @@ func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Obs
 	rec.readAccumulator().(viewstate.Updater[N]).Update(num)
 
 	// Record was modified.
-	atomic.AddInt64(&rec.updateCount, 1)
+	atomic.AddUint32(&rec.updateCount, 1)
 }
 
 func fingerprintAttributes(attrs []attribute.KeyValue) uint64 {
@@ -430,11 +462,16 @@ func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) *record 
 func acquireUninitialized[N number.Any](inst *Observer, attrs []attribute.KeyValue) *record {
 	fp := fingerprintAttributes(attrs)
 
-	rec := acquireRead(inst, fp, attrs)
-	if rec != nil {
+	if rec := acquireRead(inst, fp, attrs); rec != nil {
 		return rec
 	}
 
+	return acquireNotfound[N](inst, fp, attrs)
+}
+
+// acquireNotfound is the code path taken when acquireRead does not
+// locate a record.
+func acquireNotfound[N number.Any](inst *Observer, fp uint64, attrs []attribute.KeyValue) *record {
 	newRec := &record{
 		inst:        inst,
 		refMapped:   newRefcountMapped(),

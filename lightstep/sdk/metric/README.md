@@ -134,3 +134,16 @@ With `IgnoreCollisions` set to true, the SDK will ignore fingerprint
 collisions and bypass a safety mechanism that ensures correctness in
 spite of fingerprint collisions in the fast path for synchronous
 instruments.
+
+#### InactiveCollectionPeriods
+
+The `InactiveCollectionPeriods` setting controls how many `Collect()`
+cycles with no updates are allowed before a record is removed from
+intermediate state.  Larger values indicate more memory will be used
+and that callers are less likely to block while creating new
+aggregators.
+
+Setting this field to 1 means records will be removed from memory
+after one inactive collection cycle.
+
+Setting this field to 0 causes the default value 10 to be used.

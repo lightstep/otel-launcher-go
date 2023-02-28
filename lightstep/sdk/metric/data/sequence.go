@@ -39,7 +39,7 @@ type Collector interface {
 	// snapshots into output.
 	Collect(sequence Sequence, output *[]Instrument)
 
-	// Size returns the number of entries held in memory.  Size()
+	// InMemorySize returns the number of entries held in memory.  InMemorySize()
 	// is meant to be called following Collect().
-	Size() int
+	InMemorySize() int
 }

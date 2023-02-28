@@ -8,6 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.13.2](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.2) - 2022-02-28)
+
+- Adds performance setting `InactiveCollectionPeriods` allowing
+  control over how fast records are removed from memory. [#396](https://github.com/lightstep/otel-launcher-go/pull/396)
+
 ## [1.13.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.1) - 2022-02-15)
 
 - Adds performance improvements for concurrent use of synchronous

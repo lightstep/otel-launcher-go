@@ -14,6 +14,10 @@
 
 package sdkinstrument
 
+// DefaultInactiveCollectionPeriods is how many collection periods to
+// delay before removing records from memory.
+const DefaultInactiveCollectionPeriods = 10
+
 // Performace configures features that allow the user to control
 // performance.
 type Performance struct {
@@ -21,4 +25,21 @@ type Performance struct {
 	// attributes-set comparison after finding a fingerprint
 	// match.
 	IgnoreCollisions bool
+
+	// InactiveCollectionPeriods is the number of allowed
+	// collection periods having no updates before the record is
+	// removed from memory.
+	InactiveCollectionPeriods uint32
+}
+
+// Validate returns a Performance object with 0 values replaced by
+// defaults and errors checked.
+func (p Performance) Validate() Performance {
+	// If InactiveCollectionPeriods 0 is a valid setting, but can
+	// lead to poor performance, so we let it use the default. The
+	// user can configure 1 for the same effect as 0.
+	if p.InactiveCollectionPeriods == 0 {
+		p.InactiveCollectionPeriods = DefaultInactiveCollectionPeriods
+	}
+	return p
 }
