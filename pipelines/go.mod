@@ -51,8 +51,8 @@ require (
 )
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.13.1
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.13.1
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.13.2
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.13.2
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.35.0
 )
 
