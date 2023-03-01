@@ -225,22 +225,18 @@ type record struct {
 	// to ensure that once.Do(initialize) is called.
 	accumulatorUnsafe viewstate.Accumulator
 
-	// attrsListUnsafe is used as a temporary to calculate the
-	// attrsSet, which depends on whether collisions are checked.
-	//
-	// if IgnoreCollisions is true, this value is non-nil from the
-	// point of construction until once.Do(initialize) is called
-	// in the Update or Collect code path.  After once.Do(initialize),
-	// this field is nil.
-	//
-	// if IgnoreCollisions is false, this value is set to a copy
-	// of the original input attribute list, for comparison,
-	// insife computeAttrsUnderLock.
-	attrsListUnsafe attribute.Sortable
+	// attrsListInputUnsafe is a temporary copy of the caller's
+	// attribute list in its original order, possibly having duplicates.
+	// this is passed to attribute.NewSetWithSortable, which performs a
+	// stable-sort of the slice and resets the pointer to nil inside
+	// once.Do(initialize).  This field is used consistently regardless
+	// of IgnoreCollisions.
+	attrsListInputUnsafe attribute.Sortable
 
-	// attrsSet is the attributeSet computed from the input attributes.
-	// when the accumulator has been computed, this is set to nil.
-	attrsSet attribute.Set
+	// attrsListCopy is a copy of the original attribute list, only
+	// used when checking collisions (i.e., IgnoreCollisions is false).
+	// set in computeAttrsUnderLock.
+	attrsListCopy []attribute.KeyValue
 }
 
 // normalCollect equals conditionalCollect(false), is named
@@ -277,7 +273,7 @@ func (rec *record) conditionalCollect(release bool) bool {
 	return true
 }
 
-// readAttributes gets the accumulator for this record after once.Do(initialize).
+// readAccumulator gets the accumulator for this record after once.Do(initialize).
 func (rec *record) readAccumulator() viewstate.Accumulator {
 	rec.once.Do(rec.initialize)
 	return rec.accumulatorUnsafe
@@ -285,34 +281,28 @@ func (rec *record) readAccumulator() viewstate.Accumulator {
 
 // initialize ensures that accumulatorUnsafe and attrsUnsafe are correctly initialized.
 //
-// readAttributes() and readAccumulator() call this inside a sync.Once.Do(). The
-// behavior of this method depends on IgnoreCollisions, as documented in the
-// corresponding "unsafe" fields.
+// readAccumulator() calls this inside a sync.Once.Do().
 func (rec *record) initialize() {
-	if rec.inst.performance.IgnoreCollisions {
-		rec.attrsSet = attribute.NewSetWithSortable(rec.attrsListUnsafe, &rec.attrsListUnsafe)
-	}
+	// Note that rec.attrsListInputUnsafe is set to nil in NewSetWithSortable().
+	aset := attribute.NewSetWithSortable(rec.attrsListInputUnsafe, &rec.attrsListInputUnsafe)
 
-	rec.accumulatorUnsafe = rec.inst.compiled.NewAccumulator(rec.attrsSet)
-	rec.attrsSet = attribute.Set{}
+	rec.accumulatorUnsafe = rec.inst.compiled.NewAccumulator(aset)
 }
 
 // computeAttrsUnderLock sets the attribute.Set that will be used to
 // construct the accumulator.
 func (rec *record) computeAttrsUnderLock(attrs []attribute.KeyValue) {
+	// The work of NewSetWithSortable and NewAccumulator is
+	// deferred until once.Do(initialize) outside of the lock.
+	rec.attrsListInputUnsafe = attrs
+
 	if rec.inst.performance.IgnoreCollisions {
-		// The work of NewSetWithSortable is deferred until
-		// once.Do(initialize) outside of the lock.
-		rec.attrsListUnsafe = attrs
 		return
 	}
 
-	acpy := make(attribute.Sortable, len(attrs))
+	acpy := make([]attribute.KeyValue, len(attrs))
 	copy(acpy, attrs)
-	rec.attrsSet = attribute.NewSetWithSortable(acpy, &rec.attrsListUnsafe)
-
-	// Note the next assignment has to follow NewSetWithSortable(), which clears the field.
-	rec.attrsListUnsafe = acpy
+	rec.attrsListCopy = acpy
 }
 
 func (inst *Observer) ObserveInt64(ctx context.Context, num int64, attrs ...attribute.KeyValue) {
@@ -448,7 +438,7 @@ func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) *record 
 
 	// Potentially test for hash collisions.
 	if !inst.performance.IgnoreCollisions {
-		for rec != nil && !attributesEqual(attrs, rec.attrsListUnsafe) {
+		for rec != nil && !attributesEqual(attrs, rec.attrsListCopy) {
 			rec = rec.next
 		}
 	}
@@ -507,7 +497,7 @@ func acquireWrite(inst *Observer, fp uint64, newRec *record) (*record, bool) {
 
 	for oldRec := inst.current[fp]; oldRec != nil; oldRec = oldRec.next {
 
-		if inst.performance.IgnoreCollisions || attributesEqual(oldRec.attrsListUnsafe, newRec.attrsListUnsafe) {
+		if inst.performance.IgnoreCollisions || attributesEqual(oldRec.attrsListCopy, newRec.attrsListCopy) {
 			if oldRec.refMapped.ref() {
 				return oldRec, true
 			}
