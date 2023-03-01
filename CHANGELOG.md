@@ -8,6 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.13.4](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.3) - 2023-03-01)
+
+- Minor performance improvement, one less allocation under the lock
+  when fingerprint collisions are being checked. [#407](https://github.com/lightstep/otel-launcher-go/pull/407)
+
 ## [1.13.3](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.3) - 2023-03-01)
 
 - Fixes performance regressions introduced in version 1.13.1 and 1.12.1.
