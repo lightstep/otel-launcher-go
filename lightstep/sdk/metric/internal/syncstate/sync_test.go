@@ -56,6 +56,11 @@ var (
 		IgnoreCollisions:          false,
 		InactiveCollectionPeriods: 1,
 	}
+
+	unsafePerf = sdkinstrument.Performance{
+		IgnoreCollisions:          true,
+		InactiveCollectionPeriods: 1,
+	}
 )
 
 func deltaUpdate[N number.Any](old, new N) N {
@@ -107,6 +112,11 @@ func TestSyncStateCumulativeConcurrencyFloatFiltered(t *testing.T) {
 }
 
 func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.T, update func(old, new N) N, vopts ...view.Option) {
+	t.Run("unsafe_collisions", func(t *testing.T) { testSyncStateConcurrencyWithPerf[N, Traits](t, unsafePerf, update, vopts...) })
+	t.Run("safe_collisions", func(t *testing.T) { testSyncStateConcurrencyWithPerf[N, Traits](t, safePerf, update, vopts...) })
+}
+
+func testSyncStateConcurrencyWithPerf[N number.Any, Traits number.Traits[N]](t *testing.T, perf sdkinstrument.Performance, update func(old, new N) N, vopts ...view.Option) {
 	// Note: prior to
 	// https://github.com/lightstep/otel-launcher-go/pull/206 this
 	// code was able to reproduce the race condition handled in
@@ -148,7 +158,7 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 		pipes[vci], _ = vcs[vci].Compile(desc)
 	}
 
-	inst := New(desc, safePerf, nil, pipes)
+	inst := New(desc, perf, nil, pipes)
 	require.NotNil(t, inst)
 
 	ctx, cancel := context.WithCancel(context.Background())
