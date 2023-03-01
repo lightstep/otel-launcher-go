@@ -209,7 +209,7 @@ type record struct {
 	// this field is unused when Performance.IgnoreCollisions is true.
 	next *record
 
-	// once governs access to `accumulatorsUnsafe.  The caller
+	// once governs access to `accumulatorsUnsafe`.  The caller
 	// that created the `record` must call once.Do(initialize) on
 	// its own code path, although another goroutine might
 	// actually perform the initialization.  This is arranged with
@@ -273,7 +273,7 @@ func (rec *record) conditionalCollect(release bool) bool {
 	return true
 }
 
-// readAttributes gets the accumulator for this record after once.Do(initialize).
+// readAccumulator gets the accumulator for this record after once.Do(initialize).
 func (rec *record) readAccumulator() viewstate.Accumulator {
 	rec.once.Do(rec.initialize)
 	return rec.accumulatorUnsafe
