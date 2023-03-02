@@ -17,5 +17,5 @@ package pipeline // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/
 import "go.opentelemetry.io/otel/attribute"
 
 var OverflowAttributes = []attribute.KeyValue{
-	attribute.Bool("overflow", true),
+	attribute.Bool("otel.metric.overflow", true),
 }

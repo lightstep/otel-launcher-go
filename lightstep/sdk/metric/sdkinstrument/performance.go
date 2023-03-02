@@ -30,6 +30,10 @@ type Performance struct {
 	// collection periods having no updates before the record is
 	// removed from memory.
 	InactiveCollectionPeriods uint32
+
+	// InstrumentCardinalityOverflow is the point at which the
+	// SDK's emergency overflow breaker begins dropping attributes.
+	InstrumentCardinalityOverflow uint32
 }
 
 // Validate returns a Performance object with 0 values replaced by
