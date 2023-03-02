@@ -30,17 +30,22 @@ type Views struct {
 
 	// Config is the configuration for these views.
 	Config
+
+	// Performance defaults used in these views.
+	sdkinstrument.Performance
 }
 
 // New configures the clauses and default settings of a Views.
-func New(name string, opts ...Option) *Views {
+func New(name string, perf sdkinstrument.Performance, opts ...Option) *Views {
+	perf = perf.Validate()
 	return &Views{
-		Name:   name,
-		Config: NewConfig(opts...),
+		Name:        name,
+		Config:      NewConfig(perf, opts...),
+		Performance: perf,
 	}
 }
 
-func checkAggregation(err error, agg *aggregation.Kind, def aggregation.Kind) error {
+func (v *Views) checkAggregation(err error, agg *aggregation.Kind, def aggregation.Kind) error {
 	if !agg.Valid() {
 		err = multierr.Append(err, fmt.Errorf("invalid aggregation: %v", *agg))
 		*agg = def
@@ -48,7 +53,7 @@ func checkAggregation(err error, agg *aggregation.Kind, def aggregation.Kind) er
 	return err
 }
 
-func checkTemporality(err error, tempo *aggregation.Temporality, def aggregation.Temporality) error {
+func (v *Views) checkTemporality(err error, tempo *aggregation.Temporality, def aggregation.Temporality) error {
 	if !tempo.Valid() {
 		err = multierr.Append(err, fmt.Errorf("invalid temporality: %v", *tempo))
 		*tempo = def
@@ -56,8 +61,14 @@ func checkTemporality(err error, tempo *aggregation.Temporality, def aggregation
 	return err
 }
 
-func checkAggConfig(err error, acfg *aggregator.Config) error {
+func (v *Views) checkAggConfig(err error, acfg *aggregator.Config) error {
 	var newErr error
+	// Use performance-specific defaults.
+	if acfg.CardinalityLimit == 0 {
+		acfg.CardinalityLimit = v.AggregatorCardinalityLimit
+	}
+	// TODO: Use a Performance setting for default histogram size.
+	// the call to Validate below fills in the hard-coded default.
 	*acfg, newErr = acfg.Validate()
 	if newErr != nil {
 		err = multierr.Append(err, newErr)
@@ -86,10 +97,10 @@ func Validate(v *Views) (*Views, error) {
 	for i := range valid.Defaults.ByInstrumentKind {
 		kind := sdkinstrument.Kind(i)
 
-		err = checkAggregation(err, &valid.Defaults.ByInstrumentKind[i].Aggregation, StandardAggregationKind(kind))
-		err = checkTemporality(err, &valid.Defaults.ByInstrumentKind[i].Temporality, StandardTemporality(kind))
-		err = checkAggConfig(err, &valid.Defaults.ByInstrumentKind[i].Int64)
-		err = checkAggConfig(err, &valid.Defaults.ByInstrumentKind[i].Float64)
+		err = v.checkAggregation(err, &valid.Defaults.ByInstrumentKind[i].Aggregation, StandardAggregationKind(kind))
+		err = v.checkTemporality(err, &valid.Defaults.ByInstrumentKind[i].Temporality, StandardTemporality(kind))
+		err = v.checkAggConfig(err, &valid.Defaults.ByInstrumentKind[i].Int64)
+		err = v.checkAggConfig(err, &valid.Defaults.ByInstrumentKind[i].Float64)
 	}
 
 	for i := range valid.Clauses {
@@ -100,8 +111,8 @@ func Validate(v *Views) (*Views, error) {
 			err = multierr.Append(err, fmt.Errorf("multi-instrument view specifies a single name"))
 		}
 
-		err = checkAggregation(err, &clause.aggregation, aggregation.UndefinedKind)
-		err = checkAggConfig(err, &clause.acfg)
+		err = v.checkAggregation(err, &clause.aggregation, aggregation.UndefinedKind)
+		err = v.checkAggConfig(err, &clause.acfg)
 
 		if clause.instrumentName != "" && clause.instrumentNameRegexp != nil {
 			err = multierr.Append(err, fmt.Errorf("view has instrument name and regexp matches"))

@@ -29,6 +29,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
+var safePerf sdkinstrument.Performance
+
 func TestClauseMatches(t *testing.T) {
 	re := regexp.MustCompile("s.+")
 	lib0 := instrumentation.Library{
@@ -39,6 +41,7 @@ func TestClauseMatches(t *testing.T) {
 		Version: "vF.G.H",
 	}
 	views := New("test",
+		sdkinstrument.Performance{},
 		WithClause(MatchInstrumentName("single")),
 		WithClause(MatchInstrumentNameRegexp(re)),
 		WithClause(MatchInstrumentKind(sdkinstrument.AsyncCounter)),
@@ -101,6 +104,9 @@ func TestClauseMatches(t *testing.T) {
 
 func TestClauseProperties(t *testing.T) {
 	views := New("test",
+		sdkinstrument.Performance{
+			AggregatorCardinalityLimit: 1777,
+		},
 		WithClause(WithName("longname"), MatchInstrumentName("single")),
 		WithClause(WithDescription("very interesting")),
 		WithClause(WithKeys(nil)),
@@ -118,11 +124,14 @@ func TestClauseProperties(t *testing.T) {
 	require.Equal(t, []attribute.Key(nil), views.Clauses[2].Keys())
 	require.Equal(t, []attribute.Key{}, views.Clauses[3].Keys())
 	require.Equal(t, aggregation.DropKind, views.Clauses[4].Aggregation())
-	require.Equal(t, aggregator.Config{Histogram: histogram.NewConfig(histogram.WithMaxSize(177))}, views.Clauses[5].AggregatorConfig())
+	require.Equal(t, aggregator.Config{
+		Histogram:        histogram.NewConfig(histogram.WithMaxSize(177)),
+		CardinalityLimit: 1777,
+	}, views.Clauses[5].AggregatorConfig())
 }
 
 func TestNameAndRegexp(t *testing.T) {
-	views := New("test", WithClause(
+	views := New("test", safePerf, WithClause(
 		MatchInstrumentName("yes"),
 		MatchInstrumentNameRegexp(regexp.MustCompile("no")),
 	))
@@ -134,7 +143,7 @@ func TestNameAndRegexp(t *testing.T) {
 }
 
 func TestEmptyKeyString(t *testing.T) {
-	views := New("test", WithClause(
+	views := New("test", safePerf, WithClause(
 		WithKeys([]attribute.Key{
 			attribute.Key(""),
 		}),
@@ -147,7 +156,7 @@ func TestEmptyKeyString(t *testing.T) {
 }
 
 func TestSingleNameConflict(t *testing.T) {
-	views := New("test", WithClause(
+	views := New("test", safePerf, WithClause(
 		WithName("aha"),
 	))
 
@@ -158,7 +167,7 @@ func TestSingleNameConflict(t *testing.T) {
 }
 
 func TestStandardTemporality(t *testing.T) {
-	views := New("test",
+	views := New("test", safePerf,
 		WithDefaultAggregationTemporalitySelector(StandardTemporality),
 	)
 	expectStandardTemporality(t, views)
@@ -171,7 +180,7 @@ func expectStandardTemporality(t *testing.T, v *Views) {
 }
 
 func TestDeltaPreferredTemporality(t *testing.T) {
-	views := New("test",
+	views := New("test", safePerf,
 		WithDefaultAggregationTemporalitySelector(DeltaPreferredTemporality),
 	)
 	for i := sdkinstrument.Kind(0); i < sdkinstrument.NumKinds; i++ {
@@ -185,7 +194,7 @@ func TestDeltaPreferredTemporality(t *testing.T) {
 }
 
 func TestStandardAggregation(t *testing.T) {
-	views := New("test",
+	views := New("test", safePerf,
 		WithDefaultAggregationKindSelector(StandardAggregationKind),
 	)
 	expectStandardAggregation(t, views)
@@ -209,7 +218,7 @@ func expectStandardAggregation(t *testing.T, v *Views) {
 }
 
 func TestInvalidViewDefaults(t *testing.T) {
-	views := New("",
+	views := New("", safePerf,
 		WithDefaultAggregationKindSelector(func(_ sdkinstrument.Kind) aggregation.Kind {
 			return 1999
 		}),

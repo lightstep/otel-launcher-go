@@ -23,6 +23,8 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
@@ -38,6 +40,7 @@ type MeterProvider struct {
 	startTime time.Time
 	lock      sync.Mutex
 	ordered   []*meter
+	views     []*view.Views
 	meters    map[instrumentation.Library]*meter
 }
 
@@ -60,13 +63,22 @@ func NewMeterProvider(options ...Option) *MeterProvider {
 		cfg = option.apply(cfg)
 	}
 	cfg.performance = cfg.performance.Validate()
+
 	p := &MeterProvider{
 		cfg:       cfg,
 		startTime: time.Now(),
 		meters:    map[instrumentation.Library]*meter{},
 	}
 	for pipe := 0; pipe < len(cfg.readers); pipe++ {
-		cfg.readers[pipe].Register(p.producerFor(pipe))
+		r := cfg.readers[pipe]
+
+		v, err := view.Validate(view.New(r.String(), cfg.performance, cfg.vopts[pipe]...))
+		if err != nil {
+			otel.Handle(err)
+		}
+		p.views = append(p.views, v)
+
+		r.Register(p.producerFor(pipe))
 	}
 	return p
 }
@@ -106,7 +118,7 @@ func (mp *MeterProvider) Meter(name string, options ...metric.MeterOption) metri
 		compilers: pipeline.NewRegister[*viewstate.Compiler](len(mp.cfg.readers)),
 	}
 	for pipe := range m.compilers {
-		m.compilers[pipe] = viewstate.New(lib, mp.cfg.views[pipe])
+		m.compilers[pipe] = viewstate.New(lib, mp.views[pipe])
 	}
 	mp.ordered = append(mp.ordered, m)
 	mp.meters[lib] = m

@@ -144,7 +144,7 @@ func testSyncStateConcurrencyWithPerf[N number.Any, Traits number.Traits[N]](t *
 	}
 	vcs := make([]*viewstate.Compiler, numReaders)
 	for vci := range vcs {
-		vcs[vci] = viewstate.New(lib, view.New("test", vopts...))
+		vcs[vci] = viewstate.New(lib, view.New("test", safePerf, vopts...))
 	}
 	attrs := make([]attribute.KeyValue, numAttrs)
 	for i := range attrs {
@@ -245,8 +245,8 @@ func TestSyncStatePartialNoopInstrument(t *testing.T) {
 		Name: "testlib",
 	}
 	vcs := make([]*viewstate.Compiler, 2)
-	vcs[0] = viewstate.New(lib, view.New("dropper", vopts...))
-	vcs[1] = viewstate.New(lib, view.New("keeper"))
+	vcs[0] = viewstate.New(lib, view.New("dropper", safePerf, vopts...))
+	vcs[1] = viewstate.New(lib, view.New("keeper", safePerf))
 
 	desc := test.Descriptor("dropme", sdkinstrument.SyncHistogram, number.Float64Kind)
 
@@ -313,8 +313,8 @@ func TestSyncStateFullNoopInstrument(t *testing.T) {
 		Name: "testlib",
 	}
 	vcs := make([]*viewstate.Compiler, 2)
-	vcs[0] = viewstate.New(lib, view.New("dropper", vopts...))
-	vcs[1] = viewstate.New(lib, view.New("keeper", vopts...))
+	vcs[0] = viewstate.New(lib, view.New("dropper", safePerf, vopts...))
+	vcs[1] = viewstate.New(lib, view.New("keeper", safePerf, vopts...))
 
 	desc := test.Descriptor("dropme", sdkinstrument.SyncHistogram, number.Float64Kind)
 
@@ -353,7 +353,7 @@ func TestOutOfRangeValues(t *testing.T) {
 			Name: "testlib",
 		}
 		vcs := make([]*viewstate.Compiler, 1)
-		vcs[0] = viewstate.New(lib, view.New("test"))
+		vcs[0] = viewstate.New(lib, view.New("test", safePerf))
 
 		pipes := make(pipeline.Register[viewstate.Instrument], 1)
 		pipes[0], _ = vcs[0].Compile(desc)
@@ -432,6 +432,7 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	vcs := make([]*viewstate.Compiler, 2)
 	vcs[0] = viewstate.New(lib, view.New(
 		"test",
+		safePerf,
 		deltaSelector,
 		view.WithClause(
 			view.WithKeys([]attribute.Key{"A", "C"}),
@@ -731,6 +732,7 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 	vcs := make([]*viewstate.Compiler, 2)
 	vcs[0] = viewstate.New(lib, view.New(
 		"test",
+		safePerf,
 		deltaSelector,
 		view.WithClause(
 			view.WithKeys([]attribute.Key{fpKey}),
@@ -738,6 +740,7 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 	))
 	vcs[1] = viewstate.New(lib, view.New(
 		"test",
+		safePerf,
 		deltaSelector,
 		view.WithClause(
 			view.WithKeys([]attribute.Key{}),
@@ -928,6 +931,7 @@ func TestDuplicateFingerprintCollisionIgnored(t *testing.T) {
 	vcs := make([]*viewstate.Compiler, 1)
 	vcs[0] = viewstate.New(lib, view.New(
 		"test",
+		safePerf,
 		deltaSelector,
 	))
 
@@ -1025,6 +1029,7 @@ func TestRecordInactivity(t *testing.T) {
 			vcs := make([]*viewstate.Compiler, 1)
 			vcs[0] = viewstate.New(lib, view.New(
 				"test",
+				safePerf,
 				deltaSelector,
 			))
 

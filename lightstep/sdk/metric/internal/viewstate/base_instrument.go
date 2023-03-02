@@ -158,7 +158,9 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) getOrCreateEntry(k
 		// The boundary condtions in the branch below ensures
 		// this won't happen, but fall through to create an
 		// overflow entry above the limit to avoid panic.
-		otel.Handle(errInternalOverflowError)
+		doevery.TimePeriod(time.Minute, func() {
+			otel.Handle(fmt.Errorf("limit passed %d: %w", len(metric.data), errInternalOverflowError))
+		})
 	} else if sz == lim-1 {
 		// If this is not the overflow set, check whether the
 		// overflow aggregator already exists.  If it already

@@ -144,7 +144,7 @@ func testCollectSequenceReuse(t *testing.T, vc *Compiler, seq data.Sequence, out
 // TestDeduplicateNoConflict verifies that two identical instruments
 // have the same collector.
 func TestDeduplicateNoConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -160,7 +160,7 @@ func TestDeduplicateNoConflict(t *testing.T) {
 // TestDeduplicateRenameNoConflict verifies that one instrument can be renamed
 // such that it becomes identical to another, so no conflict.
 func TestDeduplicateRenameNoConflict(t *testing.T) {
-	vc := New(testLib, view.New("test", fooToBarView))
+	vc := New(testLib, view.New("test", safePerf, fooToBarView))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -176,7 +176,7 @@ func TestDeduplicateRenameNoConflict(t *testing.T) {
 // TestNoRenameNoConflict verifies that one instrument does not
 // conflict with another differently-named instrument.
 func TestNoRenameNoConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -192,7 +192,7 @@ func TestNoRenameNoConflict(t *testing.T) {
 // TestDuplicateNumberConflict verifies that two same instruments
 // except different number kind conflict.
 func TestDuplicateNumberConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -212,7 +212,7 @@ func TestDuplicateNumberConflict(t *testing.T) {
 // TestDuplicateSyncAsyncConflict verifies that two same instruments
 // except one synchonous, one asynchronous conflict.
 func TestDuplicateSyncAsyncConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err1)
@@ -229,7 +229,7 @@ func TestDuplicateSyncAsyncConflict(t *testing.T) {
 // TestDuplicateUnitConflict verifies that two same instruments
 // except different units conflict.
 func TestDuplicateUnitConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompileDescUnit(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind, "", "gal_us")
 	require.NoError(t, err1)
@@ -247,7 +247,7 @@ func TestDuplicateUnitConflict(t *testing.T) {
 // TestDuplicateMonotonicConflict verifies that two same instruments
 // except different monotonic values.
 func TestDuplicateMonotonicConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err1)
@@ -265,7 +265,7 @@ func TestDuplicateMonotonicConflict(t *testing.T) {
 // TestDuplicateAggregatorConfigConflict verifies that two same instruments
 // except different aggregator.Config values.
 func TestDuplicateAggregatorConfigConflict(t *testing.T) {
-	vc := New(testLib, view.New("test", fooToBarAltHistView))
+	vc := New(testLib, view.New("test", safePerf, fooToBarAltHistView))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncHistogram, number.Float64Kind)
 	require.NoError(t, err1)
@@ -287,6 +287,7 @@ func TestDuplicateAggregatorConfigNoConflict(t *testing.T) {
 		t.Run(nk.String(), func(t *testing.T) {
 			views := view.New(
 				"test",
+				safePerf,
 				view.WithDefaultAggregationConfigSelector(
 					func(_ sdkinstrument.Kind) (int64Config, float64Config aggregator.Config) {
 						if nk == number.Int64Kind {
@@ -316,7 +317,7 @@ func TestDuplicateAggregatorConfigNoConflict(t *testing.T) {
 // TestDuplicateAggregationKindConflict verifies that two instruments
 // with different aggregation kinds conflict.
 func TestDuplicateAggregationKindConflict(t *testing.T) {
-	vc := New(testLib, view.New("test", fooToBarView))
+	vc := New(testLib, view.New("test", safePerf, fooToBarView))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncHistogram, number.Int64Kind)
 	require.NoError(t, err1)
@@ -335,7 +336,7 @@ func TestDuplicateAggregationKindConflict(t *testing.T) {
 // instruments with different aggregation kinds do not conflict when
 // the view drops one of the instruments.
 func TestDuplicateAggregationKindNoConflict(t *testing.T) {
-	vc := New(testLib, view.New("test", dropHistInstView))
+	vc := New(testLib, view.New("test", safePerf, dropHistInstView))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncHistogram, number.Int64Kind)
 	require.NoError(t, err1)
@@ -349,7 +350,7 @@ func TestDuplicateAggregationKindNoConflict(t *testing.T) {
 // TestDuplicateMultipleConflicts verifies that multiple duplicate
 // instrument conflicts include sufficient explanatory information.
 func TestDuplicateMultipleConflicts(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", instrumentKinds[0], number.Float64Kind)
 	require.NoError(t, err1)
@@ -380,7 +381,7 @@ func TestDuplicateFilterConflicts(t *testing.T) {
 		fooToBarDifferentFiltersViews,
 	} {
 		t.Run(fmt.Sprint(idx), func(t *testing.T) {
-			vc := New(testLib, view.New("test", vws...))
+			vc := New(testLib, view.New("test", safePerf, vws...))
 
 			inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 			require.NoError(t, err1)
@@ -400,7 +401,7 @@ func TestDuplicateFilterConflicts(t *testing.T) {
 // renamed to match another exactly, including filters, they are not
 // in conflict.
 func TestDeduplicateSameFilters(t *testing.T) {
-	vc := New(testLib, view.New("test", fooToBarSameFiltersViews...))
+	vc := New(testLib, view.New("test", safePerf, fooToBarSameFiltersViews...))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -415,7 +416,7 @@ func TestDeduplicateSameFilters(t *testing.T) {
 
 // TestDuplicatesMergeDescriptor ensures that the longest description string is used.
 func TestDuplicatesMergeDescriptor(t *testing.T) {
-	vc := New(testLib, view.New("test", fooToBarSameFiltersViews...))
+	vc := New(testLib, view.New("test", safePerf, fooToBarSameFiltersViews...))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -451,6 +452,7 @@ func TestDuplicatesMergeDescriptor(t *testing.T) {
 func TestViewDescription(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentName("foo"),
 			view.WithDescription("something helpful"),
@@ -492,7 +494,7 @@ func TestViewDescription(t *testing.T) {
 // TestKeyFilters verifies that keys are filtred and metrics are
 // correctly aggregated.
 func TestKeyFilters(t *testing.T) {
-	views := view.New("test",
+	views := view.New("test", safePerf,
 		view.WithClause(view.WithKeys([]attribute.Key{"a", "b"})),
 	)
 
@@ -532,6 +534,7 @@ func TestKeyFilters(t *testing.T) {
 func TestTwoViewsOneInt64Instrument(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentName("foo"),
 			view.WithName("foo_a"),
@@ -600,6 +603,7 @@ func TestTwoViewsOneInt64Instrument(t *testing.T) {
 func TestHistogramTwoAggregations(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentName("foo"),
 			view.WithName("foo_sum"),
@@ -648,6 +652,7 @@ func TestHistogramTwoAggregations(t *testing.T) {
 func TestAllKeysFilter(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(view.WithKeys([]attribute.Key{})),
 	)
 
@@ -682,6 +687,7 @@ func TestAllKeysFilter(t *testing.T) {
 func TestAnySumAggregation(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(view.WithAggregation(aggregation.AnySumKind)),
 	)
 
@@ -746,7 +752,7 @@ func TestAnySumAggregation(t *testing.T) {
 // instrument accumulators keep only the last observed value, while
 // synchronous instruments correctly snapshotAndProcess them all.
 func TestDuplicateAsyncMeasurementsIngored(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err := testCompile(vc, "async", sdkinstrument.AsyncCounter, number.Float64Kind)
 	require.NoError(t, err)
@@ -788,6 +794,7 @@ func TestDuplicateAsyncMeasurementsIngored(t *testing.T) {
 func TestCumulativeTemporality(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			// Dropping all keys
 			view.WithKeys([]attribute.Key{}),
@@ -841,6 +848,7 @@ func TestCumulativeTemporality(t *testing.T) {
 func TestDeltaTemporalityCounter(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			// Dropping all keys
 			view.WithKeys([]attribute.Key{}),
@@ -902,6 +910,7 @@ func TestDeltaTemporalityCounter(t *testing.T) {
 func TestDeltaTemporalityAsyncCounter(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithDefaultAggregationTemporalitySelector(view.DeltaPreferredTemporality),
 	)
 
@@ -1008,6 +1017,7 @@ func TestDeltaTemporalityAsyncCounter(t *testing.T) {
 func TestDeltaTemporalityAsyncGauge(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithDefaultAggregationTemporalitySelector(view.DeltaPreferredTemporality),
 	)
 
@@ -1095,6 +1105,7 @@ func TestDeltaTemporalityAsyncGauge(t *testing.T) {
 func TestDeltaTemporalitySyncGauge(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithDefaultAggregationTemporalitySelector(
 			func(ik sdkinstrument.Kind) aggregation.Temporality {
 				return aggregation.DeltaTemporality
@@ -1255,6 +1266,7 @@ func TestDeltaTemporalitySyncGauge(t *testing.T) {
 func TestSyncDeltaTemporalityCounter(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithDefaultAggregationTemporalitySelector(
 			func(ik sdkinstrument.Kind) aggregation.Temporality {
 				return aggregation.DeltaTemporality // Always delta
@@ -1359,6 +1371,7 @@ func TestSyncDeltaTemporalityCounter(t *testing.T) {
 func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithDefaultAggregationTemporalitySelector(
 			func(ik sdkinstrument.Kind) aggregation.Temporality {
 				return aggregation.DeltaTemporality // Always delta
@@ -1407,12 +1420,12 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 	)
 
 	require.Equal(t, 0, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
-
 }
 
 func TestRegexpMatch(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentNameRegexp(regexp.MustCompile(".*_rate")),
 			view.WithAggregation(aggregation.DropKind),
@@ -1436,6 +1449,7 @@ func TestRegexpMatch(t *testing.T) {
 func TestSingleInstrumentWarning(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentNameRegexp(regexp.MustCompile(".*_rate")),
 			view.WithName("fixed"),
@@ -1450,6 +1464,7 @@ func TestSingleInstrumentWarning(t *testing.T) {
 func TestDeltaTemporalityMinMaxSumCount(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentKind(sdkinstrument.SyncHistogram),
 			view.WithAggregation(aggregation.MinMaxSumCountKind),
@@ -1505,7 +1520,7 @@ func TestDeltaTemporalityMinMaxSumCount(t *testing.T) {
 }
 
 func TestViewHints(t *testing.T) {
-	views := view.New("test")
+	views := view.New("test", safePerf)
 	vc := New(testLib, views)
 	otelErrs := test.OTelErrors()
 
@@ -1589,7 +1604,7 @@ func TestViewHints(t *testing.T) {
 }
 
 func TestViewHintErrors(t *testing.T) {
-	views := view.New("test")
+	views := view.New("test", safePerf)
 	vc := New(testLib, views)
 	otelErrs := test.OTelErrors()
 
@@ -1649,7 +1664,7 @@ func TestViewHintErrors(t *testing.T) {
 }
 
 func TestViewHintNoOverrideEmpty(t *testing.T) {
-	views := view.New("test",
+	views := view.New("test", safePerf,
 		view.WithDefaultAggregationConfigSelector(
 			func(_ sdkinstrument.Kind) (int64Config, float64Config aggregator.Config) {
 				cfg := aggregator.Config{
@@ -1703,7 +1718,7 @@ func TestViewHintNoOverrideEmpty(t *testing.T) {
 
 // TestEmptyKeyFilter ensures no empty keys are used (w/o view config).
 func TestEmptyKeyFilter(t *testing.T) {
-	views := view.New("test")
+	views := view.New("test", safePerf)
 
 	vc := New(testLib, views)
 
@@ -1743,7 +1758,7 @@ func TestEmptyKeyFilter(t *testing.T) {
 
 // TestEmptyKeyFilterAndView ensures no empty keys are used (with a view config).
 func TestEmptyKeyFilterAndView(t *testing.T) {
-	views := view.New("test",
+	views := view.New("test", safePerf,
 		view.WithClause(
 			view.WithKeys([]attribute.Key{"a"}),
 		),

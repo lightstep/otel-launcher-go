@@ -33,10 +33,6 @@ var (
 	ErrInfInput      = fmt.Errorf("±Inf value is an invalid input")
 )
 
-const (
-	DefaultCardinalityLimit = 2000
-)
-
 // RangeTest is a common routine for testing for valid input values.
 // This rejects NaN and Inf values.  This rejects negative values when the
 // aggregation does not support negative values, including
@@ -113,7 +109,7 @@ func (c Config) Validate() (Config, error) {
 	c.Histogram, err = c.Histogram.Validate()
 
 	if c.CardinalityLimit == 0 {
-		c.CardinalityLimit = DefaultCardinalityLimit
+		c.CardinalityLimit = sdkinstrument.DefaultAggregatorCardinalityLimit
 	}
 
 	return c, err

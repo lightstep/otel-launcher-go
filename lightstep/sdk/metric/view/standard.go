@@ -54,7 +54,16 @@ func DeltaPreferredTemporality(ik sdkinstrument.Kind) aggregation.Temporality {
 	}
 }
 
-// StandardConfig returns a function that configures two default aggregator.Configs.
-func StandardConfig(ik sdkinstrument.Kind) (ints, floats aggregator.Config) {
-	return aggregator.Config{}, aggregator.Config{}
+// StandardConfigForPerformance returns a function that configures two
+// default aggregator.Configs using the specified performance
+// defaults.
+func StandardConfigForPerformance(perf sdkinstrument.Performance) func(ik sdkinstrument.Kind) (ints, floats aggregator.Config) {
+	perf = perf.Validate()
+	return func(ik sdkinstrument.Kind) (ints, floats aggregator.Config) {
+		return aggregator.Config{
+				CardinalityLimit: perf.AggregatorCardinalityLimit,
+			}, aggregator.Config{
+				CardinalityLimit: perf.AggregatorCardinalityLimit,
+			}
+	}
 }

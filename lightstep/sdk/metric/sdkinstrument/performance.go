@@ -18,6 +18,15 @@ package sdkinstrument
 // delay before removing records from memory.
 const DefaultInactiveCollectionPeriods = 10
 
+// DefaultAggregatorCardinalityLimit is a hard limit on the number of
+// aggregators that can be emitted in a single period.
+const DefaultAggregatorCardinalityLimit = 2000
+
+// DefaultAggregatorCardinalityLimit is a hard limit on the number of
+// aggregators that can be accumulated in intermediate state belonging
+// to the instrument.
+const DefaultInstrumentCardinalityLimit = 3000
+
 // Performace configures features that allow the user to control
 // performance.
 type Performance struct {
@@ -50,5 +59,12 @@ func (p Performance) Validate() Performance {
 	if p.InactiveCollectionPeriods == 0 {
 		p.InactiveCollectionPeriods = DefaultInactiveCollectionPeriods
 	}
+	if p.InstrumentCardinalityLimit == 0 {
+		p.InstrumentCardinalityLimit = DefaultInstrumentCardinalityLimit
+	}
+	if p.AggregatorCardinalityLimit == 0 {
+		p.AggregatorCardinalityLimit = DefaultAggregatorCardinalityLimit
+	}
+
 	return p
 }

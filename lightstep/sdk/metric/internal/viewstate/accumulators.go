@@ -34,6 +34,7 @@ func (c *compiledSyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set
 	c.initStorage(&sc.snapshot)
 
 	sc.holder = c.findStorage(kvs)
+
 	return sc
 }
 
@@ -48,7 +49,7 @@ func (c *compiledSyncBase[N, Storage, Methods]) findStorage(
 	defer c.instLock.Unlock()
 
 	entry := c.getOrCreateEntry(kvs)
-	entry.auxiliary = 1
+	entry.auxiliary += 1
 	return entry
 }
 
