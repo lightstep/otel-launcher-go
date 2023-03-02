@@ -476,7 +476,7 @@ func acquireReadLocked(inst *Observer, fp uint64, attrs []attribute.KeyValue, ov
 	// attribute set.  Note this means we are performing
 	// two map lookups for overflowing attributes and only
 	// one lookup if the attribute set was preexisting.
-	if !*overflow && uint32(len(inst.current)) >= inst.performance.InstrumentCardinalityOverflow {
+	if !*overflow && uint32(len(inst.current)) >= inst.performance.InstrumentCardinalityLimit {
 		// Use the overflow attributes, repeat.
 		attrs = pipeline.OverflowAttributes
 		fp = overflowAttributesFingerprint

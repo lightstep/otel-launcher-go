@@ -33,6 +33,10 @@ var (
 	ErrInfInput      = fmt.Errorf("±Inf value is an invalid input")
 )
 
+const (
+	DefaultCardinalityLimit = 2000
+)
+
 // RangeTest is a common routine for testing for valid input values.
 // This rejects NaN and Inf values.  This rejects negative values when the
 // aggregation does not support negative values, including
@@ -75,7 +79,8 @@ type JSONHistogramConfig struct {
 
 // JSONConfig supports the configuration for all aggregators in a single struct.
 type JSONConfig struct {
-	Histogram JSONHistogramConfig `json:"histogram"`
+	Histogram        JSONHistogramConfig `json:"histogram"`
+	CardinalityLimit uint32              `json:"cardinality_limit"`
 }
 
 // ToConfig returns a Config from the fixed-JSON represented.
@@ -87,7 +92,12 @@ func (jc JSONConfig) ToConfig() Config {
 
 // Config supports the configuration for all aggregators in a single struct.
 type Config struct {
+	// Histogram configuration, specifically.
 	Histogram histostruct.Config
+
+	// CardinalityLimit limits the number of instances of this
+	// aggregator in a given view.
+	CardinalityLimit uint32
 }
 
 // Valid returns true for valid configurations.
@@ -101,6 +111,11 @@ func (c Config) Valid() bool {
 func (c Config) Validate() (Config, error) {
 	var err error
 	c.Histogram, err = c.Histogram.Validate()
+
+	if c.CardinalityLimit == 0 {
+		c.CardinalityLimit = DefaultCardinalityLimit
+	}
+
 	return c, err
 }
 

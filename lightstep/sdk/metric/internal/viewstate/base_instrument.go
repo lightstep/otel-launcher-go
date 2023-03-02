@@ -23,11 +23,16 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/doevery"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 )
+
+var overflowAttributeSet = attribute.NewSet(pipeline.OverflowAttributes...)
+
+var errInternalOverflowError = fmt.Errorf("internal overflow error condition")
 
 // storageHolder is a generic struct for holding one storage and one
 // auxiliary field.  Storage will be one of the aggregators.  The
@@ -138,6 +143,39 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) getOrCreateEntry(k
 	entry, has := metric.data[kvs]
 	if has {
 		return entry
+	}
+	// Special case at one less than the limit -- is there already
+	// an overflow attribute set?
+	sz := len(metric.data)
+	lim := int(metric.acfg.CardinalityLimit)
+
+	if sz == lim {
+		// Second lookup is required and it *must* succeed or
+		// there is an internal error condition.
+		if entry, has = metric.data[overflowAttributeSet]; has {
+			return entry
+		}
+		// The boundary condtions in the branch below ensures
+		// this won't happen, but fall through to create an
+		// overflow entry above the limit to avoid panic.
+		otel.Handle(errInternalOverflowError)
+	} else if sz == lim-1 {
+		// If this is not the overflow set, check whether the
+		// overflow aggregator already exists.  If it already
+		// exists, allow this attribute set to be created,
+		// otherwise force creation of the overflow attribute
+		// set.
+		if kvs != overflowAttributeSet {
+			if _, overflowed := metric.data[overflowAttributeSet]; !overflowed {
+				// First overflow event.
+				kvs = overflowAttributeSet
+			} else {
+				// The overflow aggregator already
+				// exists, means we're creating the
+				// last aggregator until existing
+				// attribute sets fall out of use.
+			}
+		}
 	}
 
 	var methods Methods

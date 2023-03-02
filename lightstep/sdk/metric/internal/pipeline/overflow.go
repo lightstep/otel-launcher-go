@@ -16,6 +16,8 @@ package pipeline // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/
 
 import "go.opentelemetry.io/otel/attribute"
 
+// OverflowAttributes is the specified list of attributes to use when
+// configured mechanisms overflow a cardinality limit.
 var OverflowAttributes = []attribute.KeyValue{
 	attribute.Bool("otel.metric.overflow", true),
 }

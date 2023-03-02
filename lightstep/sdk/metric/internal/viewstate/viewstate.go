@@ -42,20 +42,20 @@ import (
 // Information flows through the Compiler as follows:
 //
 // When new instruments are created:
-// - The Compiler.Compile() method returns an Instrument value and possible
-//   duplicate or semantic conflict error.
+//   - The Compiler.Compile() method returns an Instrument value and possible
+//     duplicate or semantic conflict error.
 //
 // When instruments are used:
 // - The Instrument.NewAccumulator() method returns an Accumulator value for each attribute.Set used
 // - The Accumulator.Update() aggregates one value for each measurement.
 //
 // During collection:
-// - The Accumulator.SnapshotAndProcess() method captures the current value
-//   and conveys it to the output storage
-// - The Compiler.Collectors() interface returns one Collector per output
-//   Metric in the Meter (duplicate definitions included).
-// - The Collector.Collect() method outputs one Point for each attribute.Set
-//   in the result.
+//   - The Accumulator.SnapshotAndProcess() method captures the current value
+//     and conveys it to the output storage
+//   - The Compiler.Collectors() interface returns one Collector per output
+//     Metric in the Meter (duplicate definitions included).
+//   - The Collector.Collect() method outputs one Point for each attribute.Set
+//     in the result.
 type Compiler struct {
 	// views is the configuration of this compiler.
 	views *view.Views
@@ -406,11 +406,11 @@ func newSyncView[
 	// is being copied before the new object is returned to the
 	// user, and the extra allocation cost here would be
 	// noticeable.
-	metric := instrumentBase[N, Storage, int64, Methods]{
+	metric := instrumentBase[N, Storage, uint32, Methods]{
 		fromName:   behavior.fromName,
 		desc:       behavior.desc,
 		acfg:       behavior.acfg,
-		data:       map[attribute.Set]*storageHolder[Storage, int64]{},
+		data:       map[attribute.Set]*storageHolder[Storage, uint32]{},
 		keysSet:    behavior.keysSet,
 		keysFilter: behavior.keysFilter,
 	}
