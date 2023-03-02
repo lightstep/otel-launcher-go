@@ -959,20 +959,20 @@ func TestDeltaTemporalityAsyncCounter(t *testing.T) {
 	observe(10)
 	expectValues(10, seq)
 	tick()
-	require.Equal(t, 1, instF.(data.Collector).Size())
+	require.Equal(t, 1, instF.(data.Collector).InMemorySize())
 
 	expectNone(seq)
 	tick()
-	require.Equal(t, 0, instF.(data.Collector).Size())
+	require.Equal(t, 0, instF.(data.Collector).InMemorySize())
 
 	expectNone(seq)
 	tick()
-	require.Equal(t, 0, instF.(data.Collector).Size())
+	require.Equal(t, 0, instF.(data.Collector).InMemorySize())
 
 	observe(11)
 	expectValues(11, seq)
 	tick()
-	require.Equal(t, 1, instF.(data.Collector).Size())
+	require.Equal(t, 1, instF.(data.Collector).InMemorySize())
 
 	// No change here:
 	observe(11)
@@ -984,7 +984,7 @@ func TestDeltaTemporalityAsyncCounter(t *testing.T) {
 	tick()
 	// There is still a point mapped, even though it didn't output
 	// a value.
-	require.Equal(t, 1, instF.(data.Collector).Size())
+	require.Equal(t, 1, instF.(data.Collector).InMemorySize())
 
 	expectNone(seq)
 	tick()
@@ -994,13 +994,13 @@ func TestDeltaTemporalityAsyncCounter(t *testing.T) {
 	// keep track of the last value, otherwise it will reappear as
 	// new (and impact any rate calculations on the data).  Same
 	// for the two cases above.
-	require.Equal(t, 0, instF.(data.Collector).Size())
+	require.Equal(t, 0, instF.(data.Collector).InMemorySize())
 
 	observe(11)
 	expectValues(11, seq)
 	tick()
 
-	require.Equal(t, 1, instF.(data.Collector).Size())
+	require.Equal(t, 1, instF.(data.Collector).InMemorySize())
 }
 
 // TestDeltaTemporalityAsyncGauge ensures that the asynchronous gauge
@@ -1178,7 +1178,7 @@ func TestDeltaTemporalitySyncGauge(t *testing.T) {
 	instSize := func(inst Instrument) int {
 		// This only works for single-view configurations.  A
 		// multiInstrument will not satisfy this type assertion.
-		return inst.(data.Collector).Size()
+		return inst.(data.Collector).InMemorySize()
 	}
 
 	// start with one observation, collect

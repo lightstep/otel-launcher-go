@@ -118,6 +118,7 @@ func (mr *metricRegistration) Unregister() error {
 // package for the generalization used here to work.
 type instrumentConstructor[T any] func(
 	instrument sdkinstrument.Descriptor,
+	performance sdkinstrument.Performance,
 	opaque interface{},
 	compiled pipeline.Register[viewstate.Instrument],
 ) *T
@@ -164,7 +165,7 @@ func configureInstrument[T any](
 	}
 
 	// Build the new instrument, cache it, append to the list.
-	inst := ctor(desc, m, compiled)
+	inst := ctor(desc, m.provider.cfg.performance, m, compiled)
 	err := conflicts.AsError()
 
 	if inst != nil {
