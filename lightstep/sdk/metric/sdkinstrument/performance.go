@@ -32,8 +32,13 @@ type Performance struct {
 	InactiveCollectionPeriods uint32
 
 	// InstrumentCardinalityOverflow is the point at which the
-	// SDK's emergency overflow breaker begins dropping attributes.
+	// SDK's emergency overflow breaker begins dropping attributes
+	// to avoid memory buildup at intermediate pipeline stages.
 	InstrumentCardinalityOverflow uint32
+
+	// AggregatorCardinalityLimit is a hard limit on output
+	// cardinality for all aggregators in the SDK.
+	AggregatorCardinalityLimit uint32
 }
 
 // Validate returns a Performance object with 0 values replaced by
