@@ -406,11 +406,11 @@ func newSyncView[
 	// is being copied before the new object is returned to the
 	// user, and the extra allocation cost here would be
 	// noticeable.
-	metric := instrumentBase[N, Storage, uint32, Methods]{
+	metric := instrumentBase[N, Storage, int32, Methods]{
 		fromName:   behavior.fromName,
 		desc:       behavior.desc,
 		acfg:       behavior.acfg,
-		data:       map[attribute.Set]*storageHolder[Storage, uint32]{},
+		data:       map[attribute.Set]*storageHolder[Storage, int32]{},
 		keysSet:    behavior.keysSet,
 		keysFilter: behavior.keysFilter,
 	}

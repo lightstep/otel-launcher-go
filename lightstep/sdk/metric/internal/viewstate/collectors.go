@@ -15,6 +15,8 @@
 package viewstate // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 
 import (
+	"sync/atomic"
+
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
@@ -58,7 +60,7 @@ func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 		// below.  we're holding the lock that prevents new refs, so
 		// the value before Move() indicates when it's safe to remove
 		// this entry from the map.
-		numRefs := entry.auxiliary
+		numRefs := atomic.LoadInt32(&entry.auxiliary)
 
 		p.appendPoint(ioutput, set, &entry.storage, aggregation.DeltaTemporality, seq.Last, seq.Now, true)
 
