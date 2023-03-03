@@ -1916,7 +1916,7 @@ func TestOverflowSyncCumulative(t *testing.T) {
 // behavior. This is a weak test because the asyncstate package
 // uses map iteration, making the results unpredictable.
 //
-// TODO: Fix the asyncstate behavior in a separate package, then
+// TODO: Fix the asyncstate behavior in a separate change, then
 // strengthen this test.
 func TestOverflowAsyncCumulative(t *testing.T) {
 	const limitA = 10
@@ -1984,4 +1984,72 @@ func TestOverflowAsyncCumulative(t *testing.T) {
 		}
 		require.Equal(t, 1, oflow)
 	}
+}
+
+// TestOneViewOverflowsOneDoesNot tests that views can independently
+// repair an overflow problem.
+func TestOneViewOverflowsOneDoesNot(t *testing.T) {
+	const limit = 10
+	const count = 20
+	views := view.New(
+		"test",
+		sdkinstrument.Performance{
+			AggregatorCardinalityLimit: limit,
+		},
+		view.WithClause(
+			view.WithName("filtered"),
+			view.MatchInstrumentName("input"),
+			view.WithKeys([]attribute.Key{"stable"}),
+		),
+		view.WithClause(
+			view.WithName("unfiltered"),
+			view.MatchInstrumentName("input"),
+		),
+	)
+	views, err := view.Validate(views)
+	require.NoError(t, err)
+
+	vc := New(testLib, views)
+
+	inst, err := testCompile(vc, "input", sdkinstrument.SyncCounter, number.Float64Kind)
+	require.NoError(t, err)
+
+	sattr := attribute.String("stable", "constant")
+	var expNF []data.Point
+
+	for i := 0; i < count; i++ {
+		vattr := attribute.Int("varies", i)
+		acc := inst.NewAccumulator(attribute.NewSet(
+			sattr,
+			vattr,
+		))
+		acc.(Updater[float64]).Update(1)
+		acc.SnapshotAndProcess(true)
+
+		if i < limit-1 {
+			expNF = append(expNF,
+				test.Point(
+					startTime, endTime, sum.NewMonotonicFloat64(1), cumulative, sattr, vattr,
+				))
+		}
+	}
+	expNF = append(expNF,
+		test.Point(
+			startTime, endTime, sum.NewMonotonicFloat64(count-limit+1), cumulative, attribute.Bool("otel.metric.overflow", true),
+		))
+
+	test.RequireEqualMetrics(
+		t,
+		testCollect(t, vc),
+		test.Instrument(
+			test.Descriptor("filtered", sdkinstrument.SyncCounter, number.Float64Kind),
+			test.Point(
+				startTime, endTime, sum.NewMonotonicFloat64(count), cumulative, sattr,
+			),
+		),
+		test.Instrument(
+			test.Descriptor("unfiltered", sdkinstrument.SyncCounter, number.Float64Kind),
+			expNF...,
+		),
+	)
 }
