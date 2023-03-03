@@ -8,7 +8,12 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
-## [1.13.4](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.3) - 2023-03-01)
+- Support cardinality limits.  Synchronous instruments support an
+  instrument-level cardinality limit; Synchronous and Asynchronous
+  aggregators support per-view cardinality limits.  Performance settings
+  control the view-controlled default limits. [#385](https://github.com/lightstep/otel-launcher-go/pull/385)
+
+## [1.13.4](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.3) - 2023-03-02)
 
 - Minor performance improvement, one less allocation under the lock
   when fingerprint collisions are being checked. [#407](https://github.com/lightstep/otel-launcher-go/pull/407)
