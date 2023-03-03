@@ -79,13 +79,6 @@ type JSONConfig struct {
 	CardinalityLimit uint32              `json:"cardinality_limit"`
 }
 
-// ToConfig returns a Config from the fixed-JSON represented.
-func (jc JSONConfig) ToConfig() Config {
-	return Config{
-		Histogram: histostruct.NewConfig(histostruct.WithMaxSize(jc.Histogram.MaxSize)),
-	}
-}
-
 // Config supports the configuration for all aggregators in a single struct.
 type Config struct {
 	// Histogram configuration, specifically.

@@ -31,6 +31,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/minmaxsumcount"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/test"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
@@ -1660,7 +1661,7 @@ func TestViewHintErrors(t *testing.T) {
 	require.Contains(t, (*otelErrs)[0].Error(), "invalid character")
 	require.Contains(t, (*otelErrs)[1].Error(), "looking for beginning")
 	require.Contains(t, (*otelErrs)[2].Error(), "invalid aggregation")
-	require.Contains(t, (*otelErrs)[3].Error(), "invalid aggregator config")
+	require.Contains(t, (*otelErrs)[3].Error(), "invalid histogram size: -3")
 }
 
 func TestViewHintNoOverrideEmpty(t *testing.T) {
@@ -1787,4 +1788,200 @@ func TestEmptyKeyFilterAndView(t *testing.T) {
 			),
 		),
 	)
+}
+
+// TestOverflowSyncCumulative tests that all synchronous cumulative
+// respect thier configured cardinality limit and that the limit can
+// be set three ways.
+func TestOverflowSyncCumulative(t *testing.T) {
+	const limitA = 10
+	const limitB = 20
+	const limitC = 30
+	views := view.New(
+		"test",
+		sdkinstrument.Performance{
+			AggregatorCardinalityLimit: limitC,
+		},
+		view.WithClause(
+			view.MatchInstrumentName("B"),
+			view.WithAggregatorConfig(aggregator.Config{
+				CardinalityLimit: limitB,
+			}),
+		),
+	)
+	views, err := view.Validate(views)
+	require.NoError(t, err)
+
+	vc := New(testLib, views)
+
+	descA := fmt.Sprintf(`{
+  "config": {
+    "cardinality_limit": %d
+  }
+}`, limitA)
+
+	instA, err := testCompileDescUnit(vc, "A", sdkinstrument.SyncCounter, number.Float64Kind, descA, "")
+	require.NoError(t, err)
+
+	instB, err := testCompile(vc, "B", sdkinstrument.SyncUpDownCounter, number.Float64Kind)
+	require.NoError(t, err)
+
+	instC, err := testCompile(vc, "C", sdkinstrument.SyncHistogram, number.Float64Kind)
+	require.NoError(t, err)
+
+	var expA []data.Point
+	var expB []data.Point
+	var expC []data.Point
+	var oflowA, oflowB, oflowC float64
+
+	for i := 0; i < 1000; i++ {
+		acc1 := instA.NewAccumulator(attribute.NewSet(attribute.Int("a", i)))
+		acc1.(Updater[float64]).Update(1)
+		acc1.SnapshotAndProcess(true)
+
+		if i < limitA-1 {
+			expA = append(expA,
+				test.Point(
+					startTime, endTime, sum.NewMonotonicFloat64(1), cumulative, attribute.Int("a", i),
+				))
+		} else {
+			oflowA++
+		}
+
+		acc2 := instB.NewAccumulator(attribute.NewSet(attribute.Int("b", i)))
+		acc2.(Updater[float64]).Update(1)
+		acc2.SnapshotAndProcess(true)
+
+		if i < limitB-1 {
+			expB = append(expB,
+				test.Point(
+					startTime, endTime, sum.NewNonMonotonicFloat64(1), cumulative, attribute.Int("b", i),
+				))
+		} else {
+			oflowB++
+		}
+
+		acc3 := instC.NewAccumulator(attribute.NewSet(attribute.Int("c", i)))
+		acc3.(Updater[float64]).Update(1)
+		acc3.SnapshotAndProcess(true)
+
+		if i < limitC-1 {
+			expC = append(expC,
+				test.Point(
+					startTime, endTime, histogram.NewFloat64(histogram.Config{}, 1), cumulative, attribute.Int("c", i),
+				))
+		} else {
+			oflowC++
+		}
+	}
+
+	expA = append(expA,
+		test.Point(
+			startTime, endTime, sum.NewMonotonicFloat64(oflowA), cumulative, attribute.Bool("otel.metric.overflow", true),
+		))
+	expB = append(expB,
+		test.Point(
+			startTime, endTime, sum.NewNonMonotonicFloat64(oflowB), cumulative, attribute.Bool("otel.metric.overflow", true),
+		))
+
+	var many []float64
+	for i := 0.0; i < oflowC; i++ {
+		many = append(many, 1.0)
+	}
+
+	expC = append(expC,
+		test.Point(
+			startTime, endTime, histogram.NewFloat64(histogram.Config{}, many...), cumulative, attribute.Bool("otel.metric.overflow", true),
+		))
+
+	test.RequireEqualMetrics(
+		t,
+		testCollect(t, vc),
+		test.Instrument(
+			test.Descriptor("A", sdkinstrument.SyncCounter, number.Float64Kind),
+			expA...,
+		),
+		test.Instrument(
+			test.Descriptor("B", sdkinstrument.SyncUpDownCounter, number.Float64Kind),
+			expB...,
+		),
+		test.Instrument(
+			test.Descriptor("C", sdkinstrument.SyncHistogram, number.Float64Kind),
+			expC...,
+		),
+	)
+}
+
+// TestOverflowAsync is a cursory test of the cumulative async
+// behavior. This is a weak test because the asyncstate package
+// uses map iteration, making the results unpredictable.
+//
+// TODO: Fix the asyncstate behavior in a separate package, then
+// strengthen this test.
+func TestOverflowAsyncCumulative(t *testing.T) {
+	const limitA = 10
+	const limitB = 20
+	const limitC = 30
+	views := view.New(
+		"test",
+		sdkinstrument.Performance{
+			AggregatorCardinalityLimit: limitC,
+		},
+		view.WithClause(
+			view.MatchInstrumentName("B"),
+			view.WithAggregatorConfig(aggregator.Config{
+				CardinalityLimit: limitB,
+			}),
+		),
+	)
+	views, err := view.Validate(views)
+	require.NoError(t, err)
+
+	vc := New(testLib, views)
+
+	descA := fmt.Sprintf(`{
+  "config": {
+    "cardinality_limit": %d
+  }
+}`, limitA)
+
+	instA, err := testCompileDescUnit(vc, "A", sdkinstrument.AsyncCounter, number.Int64Kind, descA, "")
+	require.NoError(t, err)
+
+	instB, err := testCompile(vc, "B", sdkinstrument.AsyncUpDownCounter, number.Int64Kind)
+	require.NoError(t, err)
+
+	instC, err := testCompile(vc, "C", sdkinstrument.AsyncGauge, number.Int64Kind)
+	require.NoError(t, err)
+
+	for i := 0; i < 1000; i++ {
+		acc1 := instA.NewAccumulator(attribute.NewSet(attribute.Int("a", i)))
+		acc1.(Updater[int64]).Update(1)
+		acc1.SnapshotAndProcess(true)
+
+		acc2 := instB.NewAccumulator(attribute.NewSet(attribute.Int("b", i)))
+		acc2.(Updater[int64]).Update(1)
+		acc2.SnapshotAndProcess(true)
+
+		acc3 := instC.NewAccumulator(attribute.NewSet(attribute.Int("c", i)))
+		acc3.(Updater[int64]).Update(1)
+		acc3.SnapshotAndProcess(true)
+	}
+
+	collected := testCollect(t, vc)
+
+	require.Equal(t, limitA, len(collected[0].Points))
+	require.Equal(t, limitB, len(collected[1].Points))
+	require.Equal(t, limitC, len(collected[2].Points))
+
+	// Each point list has one overflow.
+	for _, data := range collected {
+		oflow := 0
+		for _, pt := range data.Points {
+			if pt.Attributes == pipeline.OverflowAttributeSet {
+				oflow++
+			}
+		}
+		require.Equal(t, 1, oflow)
+	}
 }

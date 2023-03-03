@@ -25,7 +25,7 @@ import (
 
 // compiledSyncBase is any synchronous instrument view.
 type compiledSyncBase[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
-	instrumentBase[N, Storage, int32, Methods]
+	instrumentBase[N, Storage, int64, Methods]
 }
 
 // NewAccumulator returns a Accumulator for a synchronous instrument view.
@@ -35,7 +35,6 @@ func (c *compiledSyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set
 	c.initStorage(&sc.snapshot)
 
 	sc.holder = c.findStorage(kvs)
-
 	return sc
 }
 
@@ -43,14 +42,14 @@ func (c *compiledSyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set
 // reference count for synchronous instruments.
 func (c *compiledSyncBase[N, Storage, Methods]) findStorage(
 	kvs attribute.Set,
-) *storageHolder[Storage, int32] {
+) *storageHolder[Storage, int64] {
 	kvs = c.applyKeysFilter(kvs)
 
 	c.instLock.Lock()
 	defer c.instLock.Unlock()
 
 	entry := c.getOrCreateEntry(kvs)
-	atomic.AddInt32(&entry.auxiliary, 1)
+	atomic.AddInt64(&entry.auxiliary, 1)
 	return entry
 }
 
@@ -101,7 +100,7 @@ type syncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, St
 	syncLock sync.Mutex
 	current  Storage
 	snapshot Storage
-	holder   *storageHolder[Storage, int32]
+	holder   *storageHolder[Storage, int64]
 }
 
 func (a *syncAccumulator[N, Storage, Methods]) Update(number N) {
@@ -117,7 +116,7 @@ func (a *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess(release bool) 
 	methods.Merge(&a.snapshot, &a.holder.storage)
 	if release {
 		// On the final snapshot-and-process, decrement the auxiliary reference count.
-		atomic.AddInt32(&a.holder.auxiliary, -1)
+		atomic.AddInt64(&a.holder.auxiliary, -1)
 	}
 }
 
