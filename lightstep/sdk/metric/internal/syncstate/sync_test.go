@@ -1127,3 +1127,244 @@ func TestRecordInactivity(t *testing.T) {
 		})
 	}
 }
+
+func TestCardinalityOverflowCumulative(t *testing.T) {
+	const total = 300
+	const limit = 133
+
+	ctx := context.Background()
+	lib := instrumentation.Library{
+		Name: "testlib",
+	}
+	perf := sdkinstrument.Performance{
+		InstrumentCardinalityLimit: limit,
+	}
+	vcs := make([]*viewstate.Compiler, 1)
+	vcs[0] = viewstate.New(lib, view.New("test", perf))
+
+	desc := test.Descriptor("c", sdkinstrument.SyncCounter, number.Float64Kind)
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 1)
+	pipes[0], _ = vcs[0].Compile(desc)
+
+	inst := New(desc, perf, nil, pipes)
+	require.NotNil(t, inst)
+
+	var expectPoints []data.Point
+	var oflow int
+
+	for i := 0; i < total; i++ {
+		inst.ObserveFloat64(ctx, 1, attribute.Int("i", i))
+
+		if i < int(perf.InstrumentCardinalityLimit)-1 {
+			expectPoints = append(expectPoints, test.Point(
+				startTime, endTime,
+				sum.NewMonotonicFloat64(1),
+				aggregation.CumulativeTemporality,
+				attribute.Int("i", i),
+			))
+		} else {
+			oflow++
+		}
+	}
+	require.Equal(t, total-limit+1, oflow)
+	expectPoints = append(expectPoints, test.Point(
+		startTime, endTime,
+		sum.NewMonotonicFloat64(float64(oflow)),
+		aggregation.CumulativeTemporality,
+		attribute.Bool("otel.metric.overflow", true),
+	))
+
+	inst.SnapshotAndProcess()
+
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			expectPoints...,
+		),
+	)
+
+	// Repeat with all new attributes; since this is cumulative,
+	// the original set is retained an this goes entirely to overflow.
+	for i := 0; i < total; i++ {
+		inst.ObserveFloat64(ctx, 1, attribute.Int("i", total+i))
+		oflow++
+	}
+	// Replace the overflow value
+	expectPoints = expectPoints[:len(expectPoints)-1]
+	expectPoints = append(expectPoints, test.Point(
+		startTime, endTime,
+		sum.NewMonotonicFloat64(float64(oflow)),
+		aggregation.CumulativeTemporality,
+		attribute.Bool("otel.metric.overflow", true),
+	))
+
+	inst.SnapshotAndProcess()
+
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			expectPoints...,
+		),
+	)
+}
+
+func TestCardinalityOverflowAvoidedDelta(t *testing.T) {
+	const limit = 100 // has to be even
+
+	ctx := context.Background()
+	lib := instrumentation.Library{
+		Name: "testlib",
+	}
+	perf := sdkinstrument.Performance{
+		InstrumentCardinalityLimit: limit,
+		InactiveCollectionPeriods:  1,
+	}
+	vcs := make([]*viewstate.Compiler, 1)
+	vcs[0] = viewstate.New(lib, view.New("test", perf, deltaSelector))
+
+	desc := test.Descriptor("c", sdkinstrument.SyncUpDownCounter, number.Int64Kind)
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 1)
+	pipes[0], _ = vcs[0].Compile(desc)
+
+	inst := New(desc, perf, nil, pipes)
+	require.NotNil(t, inst)
+
+	uniq := 0
+	for reps := 0; reps < 4; reps++ {
+
+		var expectPoints []data.Point
+
+		// we expect to create half the limit less on every
+		// iteration and never overflow.
+		for i := 0; i < limit/2-1; i++ {
+			// attr is unique on every iteration
+			attr := attribute.String("s", fmt.Sprint(uniq))
+			uniq++
+			inst.ObserveInt64(ctx, 1, attr)
+
+			expectPoints = append(expectPoints, test.Point(
+				middleTime, endTime,
+				sum.NewNonMonotonicInt64(1),
+				aggregation.DeltaTemporality,
+				attr,
+			))
+		}
+
+		inst.SnapshotAndProcess()
+
+		test.RequireEqualMetrics(
+			t,
+			test.CollectScope(
+				t,
+				vcs[0].Collectors(),
+				testSequence,
+			),
+			test.Instrument(
+				desc,
+				expectPoints...,
+			),
+		)
+	}
+}
+
+func TestCardinalityOverflowOscillationDelta(t *testing.T) {
+	// Note this tests a fairly bad behavior; it can be improved
+	// upon, but at least this validates the current mechanism.
+	// If more than half of the available aggregators are not
+	// re-used an oscillation develops.
+	//
+	// TODO improve this logic and replace this test.
+	const total = 8
+	const limit = 4
+
+	ctx := context.Background()
+	lib := instrumentation.Library{
+		Name: "testlib",
+	}
+	perf := sdkinstrument.Performance{
+		InstrumentCardinalityLimit: limit,
+		InactiveCollectionPeriods:  1,
+	}
+	vcs := make([]*viewstate.Compiler, 1)
+	vcs[0] = viewstate.New(lib, view.New("test", perf, deltaSelector))
+
+	desc := test.Descriptor("c", sdkinstrument.SyncCounter, number.Float64Kind)
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 1)
+	pipes[0], _ = vcs[0].Compile(desc)
+
+	inst := New(desc, perf, nil, pipes)
+	require.NotNil(t, inst)
+
+	uniq := 0
+
+	for reps := 0; reps < 10; reps++ {
+		var expectPoints []data.Point
+		var oflow int
+
+		for i := 0; i < total; i++ {
+			inst.ObserveFloat64(ctx, 1, attribute.Int("uniq", uniq))
+
+			// Note: on even intervals, the overflow will
+			// be as we expect, and in odd intervals, the
+			// entire batch will overflow.
+			if reps%2 == 0 {
+				normal := int(perf.InstrumentCardinalityLimit) - 1
+				if reps > 0 {
+					// Except the first round there's one
+					// overflow element already used so one
+					// less normal "new" attribute set.
+					normal--
+				}
+				if i < normal {
+					expectPoints = append(expectPoints, test.Point(
+						middleTime, endTime,
+						sum.NewMonotonicFloat64(1),
+						aggregation.DeltaTemporality,
+						attribute.Int("uniq", uniq),
+					))
+				} else {
+					oflow++
+				}
+			} else {
+				oflow++
+			}
+			uniq++
+		}
+		expectPoints = append(expectPoints, test.Point(
+			middleTime, endTime,
+			sum.NewMonotonicFloat64(float64(oflow)),
+			aggregation.DeltaTemporality,
+			attribute.Bool("otel.metric.overflow", true),
+		))
+
+		inst.SnapshotAndProcess()
+
+		test.RequireEqualMetrics(
+			t,
+			test.CollectScope(
+				t,
+				vcs[0].Collectors(),
+				testSequence,
+			),
+			test.Instrument(
+				desc,
+				expectPoints...,
+			),
+		)
+	}
+}
