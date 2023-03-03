@@ -1922,6 +1922,7 @@ func TestOverflowAsyncCumulative(t *testing.T) {
 	const limitA = 10
 	const limitB = 20
 	const limitC = 30
+	const count = 1000
 	views := view.New(
 		"test",
 		sdkinstrument.Performance{
@@ -1954,35 +1955,48 @@ func TestOverflowAsyncCumulative(t *testing.T) {
 	instC, err := testCompile(vc, "C", sdkinstrument.AsyncGauge, number.Int64Kind)
 	require.NoError(t, err)
 
-	for i := 0; i < 1000; i++ {
-		acc1 := instA.NewAccumulator(attribute.NewSet(attribute.Int("a", i)))
-		acc1.(Updater[int64]).Update(1)
-		acc1.SnapshotAndProcess(true)
+	for reps := 0; reps < 10; reps++ {
+		for i := 0; i < count; i++ {
+			acc1 := instA.NewAccumulator(attribute.NewSet(attribute.Int("a", i)))
+			acc1.(Updater[int64]).Update(1)
+			acc1.SnapshotAndProcess(true)
 
-		acc2 := instB.NewAccumulator(attribute.NewSet(attribute.Int("b", i)))
-		acc2.(Updater[int64]).Update(1)
-		acc2.SnapshotAndProcess(true)
+			acc2 := instB.NewAccumulator(attribute.NewSet(attribute.Int("b", i)))
+			acc2.(Updater[int64]).Update(1)
+			acc2.SnapshotAndProcess(true)
 
-		acc3 := instC.NewAccumulator(attribute.NewSet(attribute.Int("c", i)))
-		acc3.(Updater[int64]).Update(1)
-		acc3.SnapshotAndProcess(true)
-	}
+			acc3 := instC.NewAccumulator(attribute.NewSet(attribute.Int("c", i)))
+			acc3.(Updater[int64]).Update(1)
+			acc3.SnapshotAndProcess(true)
+		}
 
-	collected := testCollect(t, vc)
+		collected := testCollect(t, vc)
 
-	require.Equal(t, limitA, len(collected[0].Points))
-	require.Equal(t, limitB, len(collected[1].Points))
-	require.Equal(t, limitC, len(collected[2].Points))
+		require.Equal(t, limitA, len(collected[0].Points))
+		require.Equal(t, limitB, len(collected[1].Points))
+		require.Equal(t, limitC, len(collected[2].Points))
 
-	// Each point list has one overflow.
-	for _, data := range collected {
-		oflow := 0
-		for _, pt := range data.Points {
-			if pt.Attributes == pipeline.OverflowAttributeSet {
-				oflow++
+		// Each point list has one overflow.
+		for idx, data := range collected {
+			oflow := 0
+			sum := int64(0)
+			for _, pt := range data.Points {
+				if pt.Attributes == pipeline.OverflowAttributeSet {
+					oflow++
+				}
+				if idx < 2 {
+					sum += number.ToInt64(pt.Aggregation.(aggregation.Sum).Sum())
+				} else {
+					sum += number.ToInt64(pt.Aggregation.(aggregation.Gauge).Gauge())
+				}
+			}
+			require.Equal(t, 1, oflow)
+			if idx < 2 {
+				require.Equal(t, int64(count), sum)
+			} else {
+				require.Equal(t, int64(limitC), sum)
 			}
 		}
-		require.Equal(t, 1, oflow)
 	}
 }
 
@@ -2052,4 +2066,92 @@ func TestOneViewOverflowsOneDoesNot(t *testing.T) {
 			expNF...,
 		),
 	)
+}
+
+// TestInstrumentOverflowCombined tests that the aggregator limit is a
+// hard limit even when the instrument-level limit was reached early.
+func TestInstrumentOverflowCombined(t *testing.T) {
+	const aggLimit = 10
+	const instLimit = 2 * aggLimit
+	const count = 5 * instLimit
+	views := view.New(
+		"test",
+		sdkinstrument.Performance{
+			InactiveCollectionPeriods:  1,
+			AggregatorCardinalityLimit: aggLimit,
+			InstrumentCardinalityLimit: instLimit,
+		},
+		view.WithDefaultAggregationTemporalitySelector(view.DeltaPreferredTemporality),
+	)
+	views, err := view.Validate(views)
+	require.NoError(t, err)
+
+	vc := New(testLib, views)
+
+	instS, err := testCompile(vc, "S", sdkinstrument.SyncCounter, number.Float64Kind)
+	require.NoError(t, err)
+
+	instA, err := testCompile(vc, "A", sdkinstrument.AsyncCounter, number.Int64Kind)
+	require.NoError(t, err)
+
+	totalS := float64(0)
+	totalA := int64(0)
+
+	for reps := 0; reps < 10; reps++ {
+		for i := 0; i < count; i++ {
+			attr := attribute.Int("RCi", reps*count+i)
+			aset := attribute.NewSet(attr)
+
+			accS := instS.NewAccumulator(aset)
+			accS.(Updater[float64]).Update(1)
+			accS.SnapshotAndProcess(true)
+
+			accA := instA.NewAccumulator(aset)
+			accA.(Updater[int64]).Update(1)
+			accA.SnapshotAndProcess(true)
+		}
+
+		// Both experience overflow; neither exceeds its limit
+		data := testCollect(t, vc)
+		require.Equal(t, test.Descriptor("S", sdkinstrument.SyncCounter, number.Float64Kind), data[0].Descriptor)
+		require.Equal(t, test.Descriptor("A", sdkinstrument.AsyncCounter, number.Int64Kind), data[1].Descriptor)
+
+		// As tested in syncstate, there is an oscillation that
+		// develops when a delta temporality experiences major
+		// overflow.  We're not testing the form of the overflow here,
+		// just that the sum is correct.
+		oflowSCnt := 0
+		sumS := 0.0
+		for _, pt := range data[0].Points {
+			if pt.Attributes == pipeline.OverflowAttributeSet {
+				oflowSCnt++
+			}
+			sumS += number.ToFloat64(pt.Aggregation.(aggregation.Sum).Sum())
+		}
+		if reps == 0 {
+			require.Equal(t, 1, oflowSCnt)
+			require.Equal(t, float64(count), sumS)
+		}
+		totalS += sumS
+		require.Equal(t, float64((reps+1)*count), totalS, "rep %d", reps)
+
+		// Note that because the attribute set is new every
+		// time, we expect a new sum in every round equal to count.
+		// See the special case treatment of overflow in the async
+		// delta-temporality aggregator.
+		oflowACnt := 0
+		sumA := int64(0)
+		for _, pt := range data[1].Points {
+			if pt.Attributes == pipeline.OverflowAttributeSet {
+				oflowACnt++
+			}
+			sumA += number.ToInt64(pt.Aggregation.(aggregation.Sum).Sum())
+		}
+		if reps == 0 {
+			require.Equal(t, 1, oflowACnt)
+			require.Equal(t, int64(count), sumA)
+		}
+		totalA += sumA
+		require.Equal(t, int64((reps+1)*count), totalA, "rep %d", reps)
+	}
 }
