@@ -54,7 +54,7 @@ var (
 		Now:   endTime,
 	}
 
-	safePerf = sdkinstrument.Performance{
+	ignorePerf = sdkinstrument.Performance{
 		IgnoreCollisions: false,
 	}
 )
@@ -79,8 +79,8 @@ func (tsdk *testSDK) compile(desc sdkinstrument.Descriptor) pipeline.Register[vi
 func testAsync(name string, opts ...view.Option) *testSDK {
 	return &testSDK{
 		compilers: []*viewstate.Compiler{
-			viewstate.New(testLibrary, view.New(name, safePerf, opts...)),
-			viewstate.New(testLibrary, view.New(name, safePerf, opts...)),
+			viewstate.New(testLibrary, view.New(name, opts...)),
+			viewstate.New(testLibrary, view.New(name, opts...)),
 		},
 	}
 }
@@ -88,8 +88,8 @@ func testAsync(name string, opts ...view.Option) *testSDK {
 func testAsync2(name string, opts1, opts2 []view.Option) *testSDK {
 	return &testSDK{
 		compilers: []*viewstate.Compiler{
-			viewstate.New(testLibrary, view.New(name, safePerf, opts1...)),
-			viewstate.New(testLibrary, view.New(name, safePerf, opts2...)),
+			viewstate.New(testLibrary, view.New(name, opts1...)),
+			viewstate.New(testLibrary, view.New(name, opts2...)),
 		},
 	}
 }
@@ -110,12 +110,12 @@ type floatObserver struct {
 
 func testIntObserver(tsdk *testSDK, name string, ik sdkinstrument.Kind) intObserver {
 	desc := test.Descriptor(name, ik, number.Int64Kind)
-	return intObserver{Observer: New(desc, safePerf, tsdk, tsdk.compile(desc))}
+	return intObserver{Observer: New(desc, ignorePerf, tsdk, tsdk.compile(desc))}
 }
 
 func testFloatObserver(tsdk *testSDK, name string, ik sdkinstrument.Kind) floatObserver {
 	desc := test.Descriptor(name, ik, number.Float64Kind)
-	return floatObserver{Observer: New(desc, safePerf, tsdk, tsdk.compile(desc))}
+	return floatObserver{Observer: New(desc, ignorePerf, tsdk, tsdk.compile(desc))}
 }
 
 func nopCB(context.Context, metric.Observer) error {
