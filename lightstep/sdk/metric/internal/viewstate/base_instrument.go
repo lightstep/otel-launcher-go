@@ -30,7 +30,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-var overflowAttributeSet = attribute.NewSet(pipeline.OverflowAttributes...)
+var overflowAttributeSet = pipeline.OverflowAttributeSet
 
 var errInternalOverflowError = fmt.Errorf("internal overflow error condition")
 

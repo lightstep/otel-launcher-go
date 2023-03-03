@@ -21,3 +21,6 @@ import "go.opentelemetry.io/otel/attribute"
 var OverflowAttributes = []attribute.KeyValue{
 	attribute.Bool("otel.metric.overflow", true),
 }
+
+// OverflowAttributeSet is the set corresponding with OverflowAttributes.
+var OverflowAttributeSet = attribute.NewSet(OverflowAttributes...)
