@@ -22,7 +22,7 @@ const DefaultInactiveCollectionPeriods = 10
 // aggregators that can be emitted in a single period.
 const DefaultAggregatorCardinalityLimit = 2000
 
-// DefaultAggregatorCardinalityLimit is a hard limit on the number of
+// DefaultInstrumentCardinalityLimit is a hard limit on the number of
 // aggregators that can be accumulated in intermediate state belonging
 // to the instrument.
 const DefaultInstrumentCardinalityLimit = 3000
