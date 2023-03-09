@@ -59,6 +59,7 @@ func NewMeterProvider(options ...Option) *MeterProvider {
 	for _, option := range options {
 		cfg = option.apply(cfg)
 	}
+	cfg.performance = cfg.performance.Validate()
 	p := &MeterProvider{
 		cfg:       cfg,
 		startTime: time.Now(),

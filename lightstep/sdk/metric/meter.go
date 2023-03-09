@@ -15,7 +15,7 @@
 package metric // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 
 import (
-	"context"
+	"fmt"
 	"sync"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/asyncstate"
@@ -27,63 +27,88 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/instrument/asyncfloat64"
-	"go.opentelemetry.io/otel/metric/instrument/asyncint64"
-	"go.opentelemetry.io/otel/metric/instrument/syncfloat64"
-	"go.opentelemetry.io/otel/metric/instrument/syncint64"
+	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
-// meter handles the creation and coordination of all metric instruments. A
-// meter represents a single instrumentation scope; all metric telemetry
-// produced by an instrumentation scope will use metric instruments from a
-// single meter.
-type meter struct {
-	library   instrumentation.Library
-	provider  *MeterProvider
-	compilers pipeline.Register[*viewstate.Compiler]
+type (
+	// meter handles the creation and coordination of all metric instruments. A
+	// meter represents a single instrumentation scope; all metric telemetry
+	// produced by an instrumentation scope will use metric instruments from a
+	// single meter.
+	meter struct {
+		library   instrumentation.Library
+		provider  *MeterProvider
+		compilers pipeline.Register[*viewstate.Compiler]
 
-	lock       sync.Mutex
-	byDesc     map[sdkinstrument.Descriptor]interface{}
-	syncInsts  []*syncstate.Instrument
-	asyncInsts []*asyncstate.Instrument
-	callbacks  []*asyncstate.Callback
-}
+		lock       sync.Mutex
+		byDesc     map[sdkinstrument.Descriptor]interface{}
+		syncInsts  []*syncstate.Observer
+		asyncInsts []*asyncstate.Observer
+		callbacks  []*asyncstate.Callback
+	}
+
+	// metricRegistration implements metric.Registration
+	metricRegistration struct {
+		lock     sync.Mutex
+		meter    *meter
+		callback *asyncstate.Callback
+	}
+
+	// instConfig generalizes the float/int-specific
+	// instrument.Config interfaces.
+	instConfig interface {
+		Description() string
+		Unit() unit.Unit
+	}
+)
 
 // Compile-time check meter implements metric.Meter.
 var _ metric.Meter = (*meter)(nil)
 
-// AsyncInt64 returns the asynchronous integer instrument provider.
-func (m *meter) AsyncInt64() asyncint64.InstrumentProvider {
-	return asyncint64Instruments{m}
-}
-
-// AsyncFloat64 returns the asynchronous floating-point instrument provider.
-func (m *meter) AsyncFloat64() asyncfloat64.InstrumentProvider {
-	return asyncfloat64Instruments{m}
-}
+var ErrAlreadyUnregistered = fmt.Errorf("callback was already unregistered")
 
 // RegisterCallback registers the function f to be called when any of the
 // insts Collect method is called.
-func (m *meter) RegisterCallback(insts []instrument.Asynchronous, f func(context.Context)) error {
-	cb, err := asyncstate.NewCallback(insts, m, f)
+func (m *meter) RegisterCallback(function metric.Callback, instruments ...instrument.Asynchronous) (metric.Registration, error) {
+	cb, err := asyncstate.NewCallback(instruments, m, function)
 
+	var reg metric.Registration
 	if err == nil {
 		m.lock.Lock()
 		defer m.lock.Unlock()
 		m.callbacks = append(m.callbacks, cb)
+		reg = &metricRegistration{
+			meter:    m,
+			callback: cb,
+		}
 	}
-	return err
+	return reg, err
 }
 
-// SyncInt64 returns the synchronous integer instrument provider.
-func (m *meter) SyncInt64() syncint64.InstrumentProvider {
-	return syncint64Instruments{m}
-}
+// Unregister prevents the callback from being invoked in the future.
+func (mr *metricRegistration) Unregister() error {
+	mr.lock.Lock()
+	defer mr.lock.Unlock()
 
-// SyncFloat64 returns the synchronous floating-point instrument provider.
-func (m *meter) SyncFloat64() syncfloat64.InstrumentProvider {
-	return syncfloat64Instruments{m}
+	if mr.callback == nil {
+		return ErrAlreadyUnregistered
+	}
+
+	mycb := mr.callback
+	cbs := mr.meter.callbacks
+
+	for i := 0; i < len(cbs); i++ {
+		if mycb == cbs[i] {
+			cbs[i] = cbs[len(cbs)-1]
+			mr.meter.callbacks = cbs[:len(cbs)-1]
+			break
+		}
+	}
+
+	mr.callback = nil
+
+	return nil
 }
 
 // instrumentConstructor refers to either the syncstate or asyncstate
@@ -93,6 +118,7 @@ func (m *meter) SyncFloat64() syncfloat64.InstrumentProvider {
 // package for the generalization used here to work.
 type instrumentConstructor[T any] func(
 	instrument sdkinstrument.Descriptor,
+	performance sdkinstrument.Performance,
 	opaque interface{},
 	compiled pipeline.Register[viewstate.Instrument],
 ) *T
@@ -103,14 +129,13 @@ type instrumentConstructor[T any] func(
 func configureInstrument[T any](
 	m *meter,
 	name string,
-	opts []instrument.Option,
+	cfg instConfig,
 	nk number.Kind,
 	ik sdkinstrument.Kind,
 	listPtr *[]*T,
 	ctor instrumentConstructor[T],
 ) (*T, error) {
 	// Compute the instrument descriptor
-	cfg := instrument.NewConfig(opts...)
 	desc := sdkinstrument.NewDescriptor(name, ik, nk, cfg.Description(), cfg.Unit())
 
 	m.lock.Lock()
@@ -140,7 +165,7 @@ func configureInstrument[T any](
 	}
 
 	// Build the new instrument, cache it, append to the list.
-	inst := ctor(desc, m, compiled)
+	inst := ctor(desc, m.provider.cfg.performance, m, compiled)
 	err := conflicts.AsError()
 
 	if inst != nil {
@@ -156,11 +181,11 @@ func configureInstrument[T any](
 }
 
 // synchronousInstrument configures a synchronous instrument.
-func (m *meter) synchronousInstrument(name string, opts []instrument.Option, nk number.Kind, ik sdkinstrument.Kind) (*syncstate.Instrument, error) {
-	return configureInstrument(m, name, opts, nk, ik, &m.syncInsts, syncstate.NewInstrument)
+func (m *meter) synchronousInstrument(name string, cfg instConfig, nk number.Kind, ik sdkinstrument.Kind) (*syncstate.Observer, error) {
+	return configureInstrument(m, name, cfg, nk, ik, &m.syncInsts, syncstate.New)
 }
 
 // synchronousInstrument configures an asynchronous instrument.
-func (m *meter) asynchronousInstrument(name string, opts []instrument.Option, nk number.Kind, ik sdkinstrument.Kind) (*asyncstate.Instrument, error) {
-	return configureInstrument(m, name, opts, nk, ik, &m.asyncInsts, asyncstate.NewInstrument)
+func (m *meter) asynchronousInstrument(name string, cfg instConfig, nk number.Kind, ik sdkinstrument.Kind) (*asyncstate.Observer, error) {
+	return configureInstrument(m, name, cfg, nk, ik, &m.asyncInsts, asyncstate.New)
 }

@@ -75,7 +75,7 @@ func testInsecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 	assert.NoError(t, err)
 
 	meter := metricglobal.Meter("test-library")
-	counter, err := meter.SyncFloat64().Counter("test-counter")
+	counter, err := meter.Float64Counter("test-counter")
 	assert.NoError(t, err)
 	counter.Add(context.Background(), 1)
 
@@ -124,7 +124,7 @@ func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 	assert.NoError(t, err)
 
 	meter := metricglobal.Meter("test-library")
-	counter, err := meter.SyncFloat64().Counter("test-counter")
+	counter, err := meter.Float64Counter("test-counter")
 	assert.NoError(t, err)
 	counter.Add(context.Background(), 1)
 
@@ -218,9 +218,9 @@ func TestBuiltins(t *testing.T) {
 		Expect   string
 	}{
 		// invalid entry, valid entry still starts
-		{[]string{"invalid", "cputime"}, "process.runtime.go.gc.cpu.time"},
-		{[]string{"cputime", "invalid"}, "process.runtime.go.gc.cpu.time"},
-		{[]string{"cputime:stable"}, "process.runtime.go.gc.cpu.time"},
+		{[]string{"invalid", "cputime"}, "process.uptime"},
+		{[]string{"cputime", "invalid"}, "process.uptime"},
+		{[]string{"cputime:stable"}, "process.uptime"},
 
 		// invalid version: no library starts
 		{[]string{"cputime:v2"}, ""},

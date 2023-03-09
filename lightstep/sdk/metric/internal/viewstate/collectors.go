@@ -121,7 +121,7 @@ type statefulAsyncInstrument[N number.Any, Storage any, Methods aggregator.Metho
 
 // Size (special case) reports the size of the prior map, since
 // data is emptied on Collect().
-func (p *statefulAsyncInstrument[N, Storage, Methods]) Size() int {
+func (p *statefulAsyncInstrument[N, Storage, Methods]) InMemorySize() int {
 	p.instLock.Lock()
 	defer p.instLock.Unlock()
 	return len(p.prior)

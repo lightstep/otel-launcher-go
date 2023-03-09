@@ -8,10 +8,56 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.13.4](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.3) - 2023-03-01)
+
+- Minor performance improvement, one less allocation under the lock
+  when fingerprint collisions are being checked. [#407](https://github.com/lightstep/otel-launcher-go/pull/407)
+
+## [1.13.3](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.3) - 2023-03-01)
+
+- Fixes performance regressions introduced in version 1.13.1 and 1.12.1.
+  [#404](https://github.com/lightstep/otel-launcher-go/pull/404)
+
+## [1.13.2](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.2) - 2023-02-28)
+
+- Adds performance setting `InactiveCollectionPeriods` allowing
+  control over how fast records are removed from memory. [#396](https://github.com/lightstep/otel-launcher-go/pull/396)
+
+## [1.13.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.1) - 2023-02-15)
+
+- Adds performance improvements for concurrent use of synchronous
+  instruments. [#384](https://github.com/lightstep/otel-launcher-go/pull/384)
+- Adds `WithPerformance()` and `IgnoreCollisions` setting which offers
+  around 10% faster operations in exchange for safety and correctness.  This
+  setting is off by default. [#384](https://github.com/lightstep/otel-launcher-go/pull/384)
+
+## [1.13.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.13.0) - 2023-02-15)
+
+- Updates OTel-Go version dependencies to `trace@v1.12.0`, `metrics@v0.35.0`, 
+  `contrib-trace@v1.13.0`, `contrib-metrics@v0.38.0`:
+  - Note the corresponding metrics API changes are 🛑 [BREAKING]
+    between releases `v0.35.0` and `v0.36.0`.  Because this release
+    depends on metrics API `v0.35.0` it continues to support the
+    deprecated APIs.  The next minor version of this repository will
+	update the dependency to `v0.36.0` or later.  [#381](https://github.com/lightstep/otel-launcher-go/pull/381)
+
+## [1.12.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.12.1) - 2023-02-13)
+
+- Replace a RWMutex with Mutex. [#378](https://github.com/lightstep/otel-launcher-go/pull/378)
+- Eliminate redundant GC cpu-time metric from lightstep/instrumentation/cputime as
+  it is now included in lightstep/instrumentation/runtime from the builtin 
+  runtime/metrics package.  [#355](https://github.com/lightstep/otel-launcher-go/pull/355)
+
+## [1.12.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.12.0) - 2022-12-21)
+
+### Changed
+
 - Update to OTel-Go 1.11.x and OTel-Go metrics 0.34.
   [#333](https://github.com/lightstep/otel-launcher-go/pull/333)
 - Remove Lightstep-specific partial-success error handling, now using upstream.
   [#250](https://github.com/lightstep/otel-launcher-go/pull/250)
+- Improved runtime/metrics instrumentation package w/ support for Go-1.20
+  [#301](https://github.com/lightstep/otel-launcher-go/pull/301)
 
 ## [1.11.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.11.0) - 2022-10-05
 

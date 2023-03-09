@@ -27,13 +27,8 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric/instrument"
 )
-
-var sortableAttributesPool = sync.Pool{
-	New: func() any {
-		return new(attribute.Sortable)
-	},
-}
 
 // Instrument maintains a mapping from attribute.Set to an internal
 // record type for a single API-level instrument.  This type is
@@ -42,10 +37,15 @@ var sortableAttributesPool = sync.Pool{
 // Entries in the map have their accumulator's SnapshotAndProcess()
 // method called whenever they are removed from the map, which can
 // happen when any reader collects the instrument.
-type Instrument struct {
+type Observer struct {
+	instrument.Synchronous
+
 	// descriptor is the API-provided descriptor for the
 	// instrument, unmodified by views.
 	descriptor sdkinstrument.Descriptor
+
+	// performance settings for the instrument.
+	performance sdkinstrument.Performance
 
 	// compiled will be a single compiled instrument or a
 	// multi-instrument in case of multiple view behaviors
@@ -60,11 +60,11 @@ type Instrument struct {
 	current map[uint64]*record
 }
 
-// NewInstruments builds a new synchronous instrument given the
+// New builds a new synchronous instrument *Observer given the
 // per-pipeline instrument-views compiled.  Note that the unused
-// second parameter is an opaque value used in the asyncstate package,
+// third parameter is an opaque value used in the asyncstate package,
 // passed here to make these two packages generalize.
-func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeline.Register[viewstate.Instrument]) *Instrument {
+func New(desc sdkinstrument.Descriptor, performance sdkinstrument.Performance, _ interface{}, compiled pipeline.Register[viewstate.Instrument]) *Observer {
 	var nonnil []viewstate.Instrument
 	for _, comp := range compiled {
 		if comp != nil {
@@ -75,9 +75,12 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 		// When no readers enable the instrument, no need for an instrument.
 		return nil
 	}
-	return &Instrument{
-		descriptor: desc,
-		current:    map[uint64]*record{},
+	// validate so that 0 is replaced w/ a better default.
+	performance = performance.Validate()
+	return &Observer{
+		descriptor:  desc,
+		current:     map[uint64]*record{},
+		performance: performance,
 
 		// Note that viewstate.Combine is used to eliminate
 		// the per-pipeline distinction that is useful in the
@@ -94,7 +97,7 @@ func NewInstrument(desc sdkinstrument.Descriptor, _ interface{}, compiled pipeli
 // SnapshotAndProcess calls SnapshotAndProcess() for all live
 // accumulators of this instrument.  Inactive accumulators will be
 // subsequently removed from the map.
-func (inst *Instrument) SnapshotAndProcess() {
+func (inst *Observer) SnapshotAndProcess() {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
@@ -109,7 +112,7 @@ func (inst *Instrument) SnapshotAndProcess() {
 		// linked list after filtering records that are no longer
 		// in use.
 		for rec := reclist; rec != nil; rec = rec.next {
-			if inst.singleSnapshotAndProcess(key, rec) {
+			if inst.collect(key, rec) {
 				if head == nil {
 					// The first time a record will be kept,
 					// it becomes the head and tail.
@@ -142,22 +145,32 @@ func (inst *Instrument) SnapshotAndProcess() {
 	}
 }
 
-// singleSnapshotAndProcess
-func (inst *Instrument) singleSnapshotAndProcess(fp uint64, rec *record) bool {
-	if rec.conditionalSnapshotAndProcess(false) {
+// collect collects the record.  When the record has been inactive for
+// the configured number of periods, it is removed from memory.
+func (inst *Observer) collect(fp uint64, rec *record) bool {
+	if rec.normalCollect() {
+		rec.inactiveCount = 0
+		return true
+	}
+
+	// Allow the record to remain in an inactive state for a number
+	// of collections.
+	rec.inactiveCount++
+
+	if rec.inactiveCount < inst.performance.InactiveCollectionPeriods {
 		return true
 	}
 
 	// Having no updates since last collection, try to unmap:
 	unmapped := rec.refMapped.tryUnmap()
 
-	// The first rec.conditionalSnapshotAndProcess
-	// returned false indicating no change, except:
-	// (a) it's now possible there was a race, the collector needs to
-	// see it.
-	// (b) if this is indeed the last reference, the collector needs the
-	// release signal.
-	_ = rec.conditionalSnapshotAndProcess(unmapped)
+	// normalCollect returned false indicating no change, except:
+	// (a) it's now possible there was a race, the collector needs to see it.
+	// (b) if this is indeed the last reference, the collector needs the release signal.
+	_ = rec.scavengeCollect(unmapped)
+
+	// reset inactivity in case of !unmapped.
+	rec.inactiveCount = 0
 
 	// When `unmapped` is true, any other goroutines are now
 	// trying to re-insert this entry in the map, they are busy
@@ -173,53 +186,135 @@ type record struct {
 	// uncollected.
 	refMapped refcountMapped
 
-	// updateCount is incremented on every Update.
-	updateCount int64
+	// updateCount is incremented on every Update.  This field
+	// uses atomic load/store operations.
+	updateCount uint32
 
 	// collectedCount is set to updateCount on collection,
-	// supports checking for no updates during a round.
-	collectedCount int64
+	// supports checking for no updates during a round.  This
+	// field is read/written under the Observer lock.
+	collectedCount uint32
 
-	// accumulator can be a multi-accumulator if there
+	// inactiveCount is incremented when the record is collected
+	// but has not been updated.  This is used to compare against
+	// the Performance InactiveCollectionPeriods setting.  This
+	// field is read/written under the Observer lock.
+	inactiveCount uint32
+
+	// inst allows referring to performance settings.
+	inst *Observer
+
+	// next is protected by the instrument's RWLock.
+	//
+	// this field is unused when Performance.IgnoreCollisions is true.
+	next *record
+
+	// once governs access to `accumulatorsUnsafe`.  The caller
+	// that created the `record` must call once.Do(initialize) on
+	// its own code path, although another goroutine might
+	// actually perform the initialization.  This is arranged with
+	// the use of readAccumulator().
+	once sync.Once
+
+	// accumulatorUnsafe can be a multi-accumulator if there
 	// are multiple behaviors or multiple readers, but
 	// these distinctions are not relevant for synchronous
 	// instruments.
-	accumulator viewstate.Accumulator
+	//
+	// Note: use record.readAccumulator() to access this value,
+	// to ensure that once.Do(initialize) is called.
+	accumulatorUnsafe viewstate.Accumulator
 
-	// attributeSet is ordered and deduplicated
-	attributeSet attribute.Set
+	// attrsListInputUnsafe is a temporary copy of the caller's
+	// attribute list in its original order, possibly having duplicates.
+	// this is passed to attribute.NewSetWithSortable, which performs a
+	// stable-sort of the slice and resets the pointer to nil inside
+	// once.Do(initialize).  This field is used consistently regardless
+	// of IgnoreCollisions.
+	attrsListInputUnsafe attribute.Sortable
 
-	// attributeList is in user-specified order, may contain duplicates.
-	attributeList []attribute.KeyValue
-
-	// next is protected by the instrument's RWLock.
-	next *record
+	// attrsListCopy is a copy of the original attribute list, only
+	// used when checking collisions (i.e., IgnoreCollisions is false).
+	// set in computeAttrsUnderLock.
+	attrsListCopy []attribute.KeyValue
 }
 
-// conditionalSnapshotAndProcess checks whether the accumulator has been
-// modified since the last collection (by any reader), returns a
-// boolean indicating whether the record is active.  If active, calls
+// normalCollect equals conditionalCollect(false), is named
+// differently from scavengeCollect for profiling.
+func (rec *record) normalCollect() bool {
+	return rec.conditionalCollect(false)
+}
+
+// scavengeCollect equals conditionalCollect(false), is named
+// differently from normalCollect for profiling.
+func (rec *record) scavengeCollect(release bool) bool {
+	return rec.conditionalCollect(release)
+}
+
+// conditionalCollect checks whether the accumulator has been modified
+// since the last collection (by any reader), returns a boolean
+// indicating whether the record is active.  If modified, calls
 // SnapshotAndProcess on the associated accumulator and returns true.
 // If updates happened since the last collection (by any reader),
 // returns false.
-func (rec *record) conditionalSnapshotAndProcess(release bool) bool {
-	mods := atomic.LoadInt64(&rec.updateCount)
+func (rec *record) conditionalCollect(release bool) bool {
+	mods := atomic.LoadUint32(&rec.updateCount)
 
 	if !release {
-		if mods == atomic.LoadInt64(&rec.collectedCount) {
+		if mods == rec.collectedCount {
 			return false
 		}
 	}
 
-	rec.accumulator.SnapshotAndProcess(release)
+	rec.readAccumulator().SnapshotAndProcess(release)
 
 	// Updates happened in this interval, collect and continue.
-	atomic.StoreInt64(&rec.collectedCount, mods)
+	rec.collectedCount = mods
 	return true
 }
 
-// capture performs a single update for any synchronous instrument.
-func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Instrument, num N, attrs []attribute.KeyValue) {
+// readAccumulator gets the accumulator for this record after once.Do(initialize).
+func (rec *record) readAccumulator() viewstate.Accumulator {
+	rec.once.Do(rec.initialize)
+	return rec.accumulatorUnsafe
+}
+
+// initialize ensures that accumulatorUnsafe and attrsUnsafe are correctly initialized.
+//
+// readAccumulator() calls this inside a sync.Once.Do().
+func (rec *record) initialize() {
+	// Note that rec.attrsListInputUnsafe is set to nil in NewSetWithSortable().
+	aset := attribute.NewSetWithSortable(rec.attrsListInputUnsafe, &rec.attrsListInputUnsafe)
+
+	rec.accumulatorUnsafe = rec.inst.compiled.NewAccumulator(aset)
+}
+
+// computeAttrsUnderLock sets the attribute.Set that will be used to
+// construct the accumulator.
+func (rec *record) computeAttrsUnderLock(attrs []attribute.KeyValue) {
+	// The work of NewSetWithSortable and NewAccumulator is
+	// deferred until once.Do(initialize) outside of the lock.
+	rec.attrsListInputUnsafe = attrs
+
+	if rec.inst.performance.IgnoreCollisions {
+		return
+	}
+
+	acpy := make([]attribute.KeyValue, len(attrs))
+	copy(acpy, attrs)
+	rec.attrsListCopy = acpy
+}
+
+func (inst *Observer) ObserveInt64(ctx context.Context, num int64, attrs ...attribute.KeyValue) {
+	Observe[int64, number.Int64Traits](ctx, inst, num, attrs...)
+}
+
+func (inst *Observer) ObserveFloat64(ctx context.Context, num float64, attrs ...attribute.KeyValue) {
+	Observe[float64, number.Float64Traits](ctx, inst, num, attrs...)
+}
+
+// Observe performs a generic update for any synchronous instrument.
+func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Observer, num N, attrs ...attribute.KeyValue) {
 	if inst == nil {
 		// Instrument was completely disabled by the view.
 		return
@@ -231,13 +326,13 @@ func capture[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Ins
 		return
 	}
 
-	rec := acquireRecord[N](inst, attrs)
+	rec := acquireUninitialized[N](inst, attrs)
 	defer rec.refMapped.unref()
 
-	rec.accumulator.(viewstate.Updater[N]).Update(num)
+	rec.readAccumulator().(viewstate.Updater[N]).Update(num)
 
 	// Record was modified.
-	atomic.AddInt64(&rec.updateCount, 1)
+	atomic.AddUint32(&rec.updateCount, 1)
 }
 
 func fingerprintAttributes(attrs []attribute.KeyValue) uint64 {
@@ -335,16 +430,17 @@ func attributesEqual(a, b []attribute.KeyValue) bool {
 }
 
 // acquireRead acquires the read lock and searches for a `*record`.
-func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *record {
+func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) *record {
 	inst.lock.RLock()
 	defer inst.lock.RUnlock()
 
 	rec := inst.current[fp]
 
-	// Note: we could (optionally) allow collisions and not scan this list.
-	// The copied `attributeList` can be avoided in this case, as well.
-	for rec != nil && !attributesEqual(attrs, rec.attributeList) {
-		rec = rec.next
+	// Potentially test for hash collisions.
+	if !inst.performance.IgnoreCollisions {
+		for rec != nil && !attributesEqual(attrs, rec.attrsListCopy) {
+			rec = rec.next
+		}
 	}
 
 	// Existing record case.
@@ -357,32 +453,27 @@ func acquireRead(inst *Instrument, fp uint64, attrs []attribute.KeyValue) *recor
 	return nil
 }
 
-// acquireRecord gets or creates a `*record` corresponding to `attrs`,
-// the input attributes.
-func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *record {
+// acquireUninitialized gets or creates a `*record` corresponding to
+// `attrs`, the input attributes.  The returned record is mapped but
+// possibly not initialized.
+func acquireUninitialized[N number.Any](inst *Observer, attrs []attribute.KeyValue) *record {
 	fp := fingerprintAttributes(attrs)
 
-	rec := acquireRead(inst, fp, attrs)
-	if rec != nil {
+	if rec := acquireRead(inst, fp, attrs); rec != nil {
 		return rec
 	}
 
-	// Build the attribute set.  Make a copy of the attribute list
-	// because we are keeping a copy in the record.
-	acpy := make([]attribute.KeyValue, len(attrs))
-	copy(acpy, attrs)
-	tmp := sortableAttributesPool.Get().(*attribute.Sortable)
-	defer sortableAttributesPool.Put(tmp)
-	aset := attribute.NewSetWithSortable(acpy, tmp)
+	return acquireNotfound[N](inst, fp, attrs)
+}
 
-	// Note: the accumulator set below is created speculatively;
-	// it will be released if it is never returned.
+// acquireNotfound is the code path taken when acquireRead does not
+// locate a record.
+func acquireNotfound[N number.Any](inst *Observer, fp uint64, attrs []attribute.KeyValue) *record {
 	newRec := &record{
-		refMapped:     newRefcountMapped(),
-		accumulator:   inst.compiled.NewAccumulator(aset),
-		attributeList: acpy,
-		attributeSet:  aset,
+		inst:      inst,
+		refMapped: newRefcountMapped(),
 	}
+	newRec.computeAttrsUnderLock(attrs)
 
 	for {
 		acquired, loaded := acquireWrite(inst, fp, newRec)
@@ -395,22 +486,18 @@ func acquireRecord[N number.Any](inst *Instrument, attrs []attribute.KeyValue) *
 			continue
 		}
 
-		if acquired != newRec {
-			// Release the speculative accumulator, since it was not used.
-			newRec.accumulator.SnapshotAndProcess(true)
-		}
 		return acquired
 	}
 }
 
 // acquireWrite acquires the write lock and gets or sets a `*record`.
-func acquireWrite(inst *Instrument, fp uint64, newRec *record) (*record, bool) {
+func acquireWrite(inst *Observer, fp uint64, newRec *record) (*record, bool) {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
 	for oldRec := inst.current[fp]; oldRec != nil; oldRec = oldRec.next {
 
-		if attributesEqual(oldRec.attributeList, newRec.attributeList) {
+		if inst.performance.IgnoreCollisions || attributesEqual(oldRec.attrsListCopy, newRec.attrsListCopy) {
 			if oldRec.refMapped.ref() {
 				return oldRec, true
 			}

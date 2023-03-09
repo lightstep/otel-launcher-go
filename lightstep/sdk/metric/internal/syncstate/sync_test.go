@@ -17,6 +17,7 @@ package syncstate
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
 	"sync"
@@ -37,7 +38,6 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
@@ -50,6 +50,16 @@ var (
 		Start: startTime,
 		Last:  middleTime,
 		Now:   endTime,
+	}
+
+	safePerf = sdkinstrument.Performance{
+		IgnoreCollisions:          false,
+		InactiveCollectionPeriods: 1,
+	}
+
+	unsafePerf = sdkinstrument.Performance{
+		IgnoreCollisions:          true,
+		InactiveCollectionPeriods: 1,
 	}
 )
 
@@ -102,13 +112,19 @@ func TestSyncStateCumulativeConcurrencyFloatFiltered(t *testing.T) {
 }
 
 func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.T, update func(old, new N) N, vopts ...view.Option) {
+	t.Run("unsafe_collisions", func(t *testing.T) { testSyncStateConcurrencyWithPerf[N, Traits](t, unsafePerf, update, vopts...) })
+	t.Run("safe_collisions", func(t *testing.T) { testSyncStateConcurrencyWithPerf[N, Traits](t, safePerf, update, vopts...) })
+}
+
+func testSyncStateConcurrencyWithPerf[N number.Any, Traits number.Traits[N]](t *testing.T, perf sdkinstrument.Performance, update func(old, new N) N, vopts ...view.Option) {
 	// Note: prior to
 	// https://github.com/lightstep/otel-launcher-go/pull/206 this
 	// code was able to reproduce the race condition handled in
 	// this code.  The race condition still exists, but the test
 	// no longer covers the call to Gosched() in acquireRecord()
 	// or the return-nil branch in acquireWrite().  This is
-	// because with the RWMutex, the race is much less racey.
+	// because the current code is much less racey or better
+	// tests are needed.
 	const (
 		numReaders  = 2
 		numRoutines = 10
@@ -142,11 +158,8 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 		pipes[vci], _ = vcs[vci].Compile(desc)
 	}
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := New(desc, perf, nil, pipes)
 	require.NotNil(t, inst)
-
-	cntr := NewCounter[N, Traits](inst)
-	require.NotNil(t, cntr)
 
 	ctx, cancel := context.WithCancel(context.Background())
 
@@ -202,7 +215,7 @@ func testSyncStateConcurrency[N number.Any, Traits number.Traits[N]](t *testing.
 			rnd := rand.New(rand.NewSource(rand.Int63()))
 
 			for j := 0; j < numUpdates/numRoutines; j++ {
-				cntr.Add(ctx, 1, attrs[rnd.Intn(len(attrs))])
+				Observe[N, Traits](ctx, inst, 1, attrs[rnd.Intn(len(attrs))])
 			}
 		}()
 	}
@@ -244,15 +257,12 @@ func TestSyncStatePartialNoopInstrument(t *testing.T) {
 	require.Nil(t, pipes[0])
 	require.NotNil(t, pipes[1])
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := New(desc, safePerf, nil, pipes)
 	require.NotNil(t, inst)
 
-	hist := NewHistogram[float64, number.Float64Traits](inst)
-	require.NotNil(t, hist)
-
-	hist.Record(ctx, 1)
-	hist.Record(ctx, 2)
-	hist.Record(ctx, 3)
+	inst.ObserveFloat64(ctx, 1)
+	inst.ObserveFloat64(ctx, 2)
+	inst.ObserveFloat64(ctx, 3)
 
 	inst.SnapshotAndProcess()
 
@@ -315,15 +325,12 @@ func TestSyncStateFullNoopInstrument(t *testing.T) {
 	require.Nil(t, pipes[0])
 	require.Nil(t, pipes[1])
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := New(desc, safePerf, nil, pipes)
 	require.Nil(t, inst)
 
-	hist := NewHistogram[float64, number.Float64Traits](inst)
-	require.NotNil(t, hist)
-
-	hist.Record(ctx, 1)
-	hist.Record(ctx, 2)
-	hist.Record(ctx, 3)
+	inst.ObserveFloat64(ctx, 1)
+	inst.ObserveFloat64(ctx, 2)
+	inst.ObserveFloat64(ctx, 3)
 
 	// There's no instrument, nothing to Snapshot
 	require.Equal(t, 0, len(vcs[0].Collectors()))
@@ -351,23 +358,19 @@ func TestOutOfRangeValues(t *testing.T) {
 		pipes := make(pipeline.Register[viewstate.Instrument], 1)
 		pipes[0], _ = vcs[0].Compile(desc)
 
-		inst := NewInstrument(desc, nil, pipes)
+		inst := New(desc, safePerf, nil, pipes)
 		require.NotNil(t, inst)
 
 		var negOne aggregation.Aggregation
 
 		if desc.NumberKind == number.Float64Kind {
-			cntr := NewCounter[float64, number.Float64Traits](inst)
-
-			cntr.Add(ctx, -1)
-			cntr.Add(ctx, math.NaN())
-			cntr.Add(ctx, math.Inf(+1))
-			cntr.Add(ctx, math.Inf(-1))
+			inst.ObserveFloat64(ctx, -1)
+			inst.ObserveFloat64(ctx, math.NaN())
+			inst.ObserveFloat64(ctx, math.Inf(+1))
+			inst.ObserveFloat64(ctx, math.Inf(-1))
 			negOne = sum.NewNonMonotonicFloat64(-1)
 		} else {
-			cntr := NewCounter[int64, number.Int64Traits](inst)
-
-			cntr.Add(ctx, -1)
+			inst.ObserveInt64(ctx, -1)
 			negOne = sum.NewNonMonotonicInt64(-1)
 		}
 
@@ -438,33 +441,29 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	indesc := test.Descriptor(
 		"syncgauge",
 		sdkinstrument.SyncUpDownCounter,
-		number.Float64Kind,
-		instrument.WithDescription(`{
+		number.Float64Kind)
+	indesc.Description = `{
   "aggregation": "gauge",
   "description": "incredible"
-}`))
+}`
 
 	outdesc := test.Descriptor(
 		"syncgauge",
 		sdkinstrument.SyncUpDownCounter,
-		number.Float64Kind,
-		instrument.WithDescription("incredible"),
-	)
+		number.Float64Kind)
+	outdesc.Description = "incredible"
 
 	pipes := make(pipeline.Register[viewstate.Instrument], 1)
 	pipes[0], _ = vcs[0].Compile(indesc)
 
 	require.NotNil(t, pipes[0])
 
-	inst := NewInstrument(indesc, nil, pipes)
+	inst := New(indesc, safePerf, nil, pipes)
 	require.NotNil(t, inst)
 
-	sg := NewCounter[float64, number.Float64Traits](inst)
-	require.NotNil(t, sg)
-
-	sg.Add(ctx, 1)
-	sg.Add(ctx, 2)
-	sg.Add(ctx, 3)
+	inst.ObserveFloat64(ctx, 1)
+	inst.ObserveFloat64(ctx, 2)
+	inst.ObserveFloat64(ctx, 3)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -498,8 +497,8 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	)
 
 	// Set again
-	sg.Add(ctx, 172)
-	sg.Add(ctx, 175)
+	inst.ObserveFloat64(ctx, 172)
+	inst.ObserveFloat64(ctx, 175)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -519,8 +518,8 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	)
 
 	// Set different attribute sets, leave the first (empty set) unused.
-	sg.Add(ctx, 1333, attribute.String("A", "B"))
-	sg.Add(ctx, 1337, attribute.String("C", "D"))
+	inst.ObserveFloat64(ctx, 1333, attribute.String("A", "B"))
+	inst.ObserveFloat64(ctx, 1337, attribute.String("C", "D"))
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -549,10 +548,10 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	// sequence number (as opposed to random choice, which would
 	// happen naturally b/c of map iteration).
 	for i := 0; i < 1000; i++ {
-		sg.Add(ctx, float64(i), attribute.Int("ignored", i), attribute.String("A", "B"))
+		inst.ObserveFloat64(ctx, float64(i), attribute.Int("ignored", i), attribute.String("A", "B"))
 	}
 	for i := 1000; i > 0; i-- {
-		sg.Add(ctx, float64(i), attribute.Int("ignored", i), attribute.String("C", "D"))
+		inst.ObserveFloat64(ctx, float64(i), attribute.Int("ignored", i), attribute.String("C", "D"))
 	}
 
 	inst.SnapshotAndProcess()
@@ -724,7 +723,7 @@ func TestFingerprintCollision(t *testing.T) {
 	)
 }
 
-func TestDuplicateFingerprint(t *testing.T) {
+func TestDuplicateFingerprintSafety(t *testing.T) {
 	ctx := context.Background()
 	lib := instrumentation.Library{
 		Name: "testlib",
@@ -754,17 +753,14 @@ func TestDuplicateFingerprint(t *testing.T) {
 	require.NotNil(t, pipes[0])
 	require.NotNil(t, pipes[1])
 
-	inst := NewInstrument(desc, nil, pipes)
+	inst := New(desc, safePerf, nil, pipes)
 	require.NotNil(t, inst)
-
-	sg := NewCounter[float64, number.Float64Traits](inst)
-	require.NotNil(t, sg)
 
 	attr1 := attribute.Int64(fpKey, fpInt1)
 	attr2 := attribute.Int64(fpKey, fpInt2)
 
-	sg.Add(ctx, 1, attr1)
-	sg.Add(ctx, 2, attr2)
+	inst.ObserveFloat64(ctx, 1, attr1)
+	inst.ObserveFloat64(ctx, 2, attr2)
 
 	// collect reader 0
 	inst.SnapshotAndProcess()
@@ -791,7 +787,7 @@ func TestDuplicateFingerprint(t *testing.T) {
 	)
 
 	// There are 2 entries in memory
-	require.Equal(t, 2, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 2, vcs[0].Collectors()[0].InMemorySize())
 
 	// collect reader 0 again
 	inst.SnapshotAndProcess()
@@ -808,11 +804,11 @@ func TestDuplicateFingerprint(t *testing.T) {
 	)
 
 	// There are 0 entries in memory
-	require.Equal(t, 0, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 0, vcs[0].Collectors()[0].InMemorySize())
 
 	// Use both again, collect reader 0 again
-	sg.Add(ctx, 5, attr1)
-	sg.Add(ctx, 6, attr2)
+	inst.ObserveFloat64(ctx, 5, attr1)
+	inst.ObserveFloat64(ctx, 6, attr2)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -838,10 +834,10 @@ func TestDuplicateFingerprint(t *testing.T) {
 	)
 
 	// There are 2 entries in memory again
-	require.Equal(t, 2, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 2, vcs[0].Collectors()[0].InMemorySize())
 
 	// Update attr1, collect reader 0
-	sg.Add(ctx, 25, attr1)
+	inst.ObserveFloat64(ctx, 25, attr1)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -862,10 +858,10 @@ func TestDuplicateFingerprint(t *testing.T) {
 	)
 
 	// Only 1 entry in memory
-	require.Equal(t, 1, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
 
 	// Update attr2, collect reader 0
-	sg.Add(ctx, 32, attr2)
+	inst.ObserveFloat64(ctx, 32, attr2)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -886,7 +882,7 @@ func TestDuplicateFingerprint(t *testing.T) {
 	)
 
 	// Only 1 entry in memory
-	require.Equal(t, 1, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
 
 	// No updates, clear memory
 	inst.SnapshotAndProcess()
@@ -902,7 +898,7 @@ func TestDuplicateFingerprint(t *testing.T) {
 		),
 	)
 
-	require.Equal(t, 0, vcs[0].Collectors()[0].Size())
+	require.Equal(t, 0, vcs[0].Collectors()[0].InMemorySize())
 
 	// collect reader 1
 	test.RequireEqualMetrics(
@@ -922,4 +918,207 @@ func TestDuplicateFingerprint(t *testing.T) {
 		),
 	)
 
+}
+
+func TestDuplicateFingerprintCollisionIgnored(t *testing.T) {
+	ctx := context.Background()
+	lib := instrumentation.Library{
+		Name: "testlib",
+	}
+	vcs := make([]*viewstate.Compiler, 1)
+	vcs[0] = viewstate.New(lib, view.New(
+		"test",
+		deltaSelector,
+	))
+
+	desc := test.Descriptor("c", sdkinstrument.SyncCounter, number.Float64Kind)
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 1)
+	pipes[0], _ = vcs[0].Compile(desc)
+
+	require.NotNil(t, pipes[0])
+
+	inst := New(desc, sdkinstrument.Performance{
+		// Do not check the collision.
+		IgnoreCollisions:          true,
+		InactiveCollectionPeriods: 1,
+	}, nil, pipes)
+	require.NotNil(t, inst)
+
+	attr1 := attribute.Int64(fpKey, fpInt1)
+	attr2 := attribute.Int64(fpKey, fpInt2)
+
+	// Because of the duplicate, the first attribute set wins.
+	inst.ObserveFloat64(ctx, 1, attr1)
+	inst.ObserveFloat64(ctx, 2, attr2)
+
+	// collect reader
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			test.Point(middleTime, endTime,
+				sum.NewMonotonicFloat64(3), // combined values
+				aggregation.DeltaTemporality,
+				attr1, // first attribute set observed
+			),
+		),
+	)
+
+	// There is 1 entry in memory
+	require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
+
+	// collect reader again
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+		),
+	)
+
+	// There are 0 entries in memory
+	require.Equal(t, 0, vcs[0].Collectors()[0].InMemorySize())
+
+	// Use both attribute sets in the opposite order, collect
+	// reader again.
+	inst.ObserveFloat64(ctx, 6, attr2)
+	inst.ObserveFloat64(ctx, 5, attr1)
+
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			test.Point(middleTime, endTime,
+				sum.NewMonotonicFloat64(11), // combined values
+				aggregation.DeltaTemporality,
+				attr2, // first attribute set observed
+			),
+		),
+	)
+}
+
+func TestRecordInactivity(t *testing.T) {
+	for inactive := uint32(1); inactive < 10; inactive++ {
+		t.Run(fmt.Sprint(inactive), func(t *testing.T) {
+			ctx := context.Background()
+			lib := instrumentation.Library{
+				Name: "testlib",
+			}
+			vcs := make([]*viewstate.Compiler, 1)
+			vcs[0] = viewstate.New(lib, view.New(
+				"test",
+				deltaSelector,
+			))
+
+			desc := test.Descriptor("c", sdkinstrument.SyncCounter, number.Float64Kind)
+
+			pipes := make(pipeline.Register[viewstate.Instrument], 1)
+			pipes[0], _ = vcs[0].Compile(desc)
+
+			require.NotNil(t, pipes[0])
+
+			inst := New(desc, sdkinstrument.Performance{
+				InactiveCollectionPeriods: inactive,
+			}, nil, pipes)
+			require.NotNil(t, inst)
+
+			attr := attribute.Int64(fpKey, fpInt1)
+
+			expectNothing := func() {
+				test.RequireEqualMetrics(
+					t,
+					test.CollectScope(
+						t,
+						vcs[0].Collectors(),
+						testSequence,
+					),
+					test.Instrument(
+						desc,
+					),
+				)
+			}
+			expectSomething := func(value float64) {
+				test.RequireEqualMetrics(
+					t,
+					test.CollectScope(
+						t,
+						vcs[0].Collectors(),
+						testSequence,
+					),
+					test.Instrument(
+						desc,
+						test.Point(middleTime, endTime,
+							sum.NewMonotonicFloat64(value),
+							aggregation.DeltaTemporality,
+							attr,
+						),
+					),
+				)
+			}
+
+			inst.ObserveFloat64(ctx, 17, attr)
+
+			// collect reader
+			inst.SnapshotAndProcess()
+			expectSomething(17)
+
+			// There is 1 entry in memory
+			require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
+
+			repeatedlyNothing := func() {
+				// For 1 less than the inactive allowance,
+				// expect nothing collected and one record
+				// remaining in memory.
+				for i := uint32(1); i < inactive; i++ {
+					// collect reader again.
+					inst.SnapshotAndProcess()
+					expectNothing()
+
+					// There is still 1 entry in memory.
+					require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
+				}
+			}
+
+			// Inactive for the up to the allowed inactivity.
+			repeatedlyNothing()
+
+			inst.ObserveFloat64(ctx, 23, attr)
+
+			// collect reader again, but an update came in.
+			inst.SnapshotAndProcess()
+			expectSomething(23)
+
+			// There is still 1 entry in memory, the count has reset.
+			require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
+
+			// Inactive for the up to the allowed inactivity.
+			repeatedlyNothing()
+
+			// collect reader again
+			inst.SnapshotAndProcess()
+			expectNothing()
+
+			// There are now 0 entries in memory.
+			require.Equal(t, 0, vcs[0].Collectors()[0].InMemorySize())
+
+		})
+	}
 }
