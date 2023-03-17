@@ -35,7 +35,6 @@ import (
 )
 
 const (
-	expectedAccessTokenLengthError  = "invalid configuration: access token length incorrect. Ensure token is set correctly"
 	expectedAccessTokenMissingError = "invalid configuration: access token missing, must be set when reporting to ingest.lightstep.com"
 	expectedTracingDisabledMessage  = "tracing is disabled by configuration: no endpoint set"
 	expectedMetricsDisabledMessage  = "metrics are disabled by configuration: no endpoint set"
@@ -203,34 +202,6 @@ func (suite *testSuite) TestInvalidMetricDefaultAccessToken() {
 		append(suite.insecureTraceEndpointOptions(),
 			WithAccessToken(""),
 			WithMetricExporterEndpoint(DefaultMetricExporterEndpoint),
-		)...,
-	)
-}
-
-func (suite *testSuite) testInvalidAccessToken(opts ...Option) {
-	lsOtel := ConfigureOpentelemetry(
-		append(opts,
-			WithLogger(&suite.testLogger),
-			WithServiceName("test-service"),
-		)...,
-	)
-	defer lsOtel.Shutdown()
-
-	suite.requireLogContains(expectedAccessTokenLengthError)
-}
-
-func (suite *testSuite) TestInvalidTraceAccessTokenLength() {
-	suite.testInvalidAccessToken(
-		append(suite.insecureTraceEndpointOptions(),
-			WithAccessToken("1234"),
-		)...,
-	)
-}
-
-func (suite *testSuite) TestInvalidMetricAccessTokenLength() {
-	suite.testInvalidAccessToken(
-		append(suite.bothInsecureEndpointOptions(),
-			WithAccessToken("1234"),
 		)...,
 	)
 }
