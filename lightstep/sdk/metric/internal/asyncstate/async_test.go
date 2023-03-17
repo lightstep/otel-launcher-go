@@ -79,8 +79,8 @@ func (tsdk *testSDK) compile(desc sdkinstrument.Descriptor) pipeline.Register[vi
 func testAsync(name string, opts ...view.Option) *testSDK {
 	return &testSDK{
 		compilers: []*viewstate.Compiler{
-			viewstate.New(testLibrary, view.New(name, opts...)),
-			viewstate.New(testLibrary, view.New(name, opts...)),
+			viewstate.New(testLibrary, view.New(name, ignorePerf, opts...)),
+			viewstate.New(testLibrary, view.New(name, ignorePerf, opts...)),
 		},
 	}
 }
@@ -88,8 +88,8 @@ func testAsync(name string, opts ...view.Option) *testSDK {
 func testAsync2(name string, opts1, opts2 []view.Option) *testSDK {
 	return &testSDK{
 		compilers: []*viewstate.Compiler{
-			viewstate.New(testLibrary, view.New(name, opts1...)),
-			viewstate.New(testLibrary, view.New(name, opts2...)),
+			viewstate.New(testLibrary, view.New(name, ignorePerf, opts1...)),
+			viewstate.New(testLibrary, view.New(name, ignorePerf, opts2...)),
 		},
 	}
 }

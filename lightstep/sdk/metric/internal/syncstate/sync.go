@@ -30,6 +30,8 @@ import (
 	"go.opentelemetry.io/otel/metric/instrument"
 )
 
+var overflowAttributesFingerprint = fingerprintAttributes(pipeline.OverflowAttributes)
+
 // Instrument maintains a mapping from attribute.Set to an internal
 // record type for a single API-level instrument.  This type is
 // organized so that a single attribute.Set lookup is performed
@@ -129,7 +131,7 @@ func (inst *Observer) SnapshotAndProcess() {
 			}
 		}
 
-		// When records are kept, delete the map entry.
+		// When no records are kept, delete the map entry.
 		if head == nil {
 			delete(inst.current, key)
 			continue
@@ -429,11 +431,31 @@ func attributesEqual(a, b []attribute.KeyValue) bool {
 	return true
 }
 
-// acquireRead acquires the read lock and searches for a `*record`.
-func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) *record {
+// acquireRead acquires the lock and searches for a `*record`.
+// This returns the overflow attributes and fingerprint in case the
+// the cardinality limit is reached.  The caller should exchange their
+// fp and attrs for the ones returned by this call.
+func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) (uint64, []attribute.KeyValue, *record) {
 	inst.lock.RLock()
 	defer inst.lock.RUnlock()
 
+	overflow := false
+	fp, attrs, rec := acquireReadLocked(inst, fp, attrs, &overflow)
+
+	if rec != nil {
+		return fp, attrs, rec
+	}
+	// The overflow signal indicates another call is needed w/ the
+	// same logic but updated fp and attrs.
+	if !overflow {
+		// Otherwise, this is the first appearance of an overflow.
+		return fp, attrs, nil
+	}
+	// In which case fp and attrs are now the overflow attributes.
+	return acquireReadLocked(inst, fp, attrs, &overflow)
+}
+
+func acquireReadLocked(inst *Observer, fp uint64, attrs []attribute.KeyValue, overflow *bool) (uint64, []attribute.KeyValue, *record) {
 	rec := inst.current[fp]
 
 	// Potentially test for hash collisions.
@@ -447,10 +469,21 @@ func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) *record 
 	if rec != nil && rec.refMapped.ref() {
 		// At this moment it is guaranteed that the
 		// record is in the map and will not be removed.
-		return rec
+		return fp, attrs, rec
 	}
 
-	return nil
+	// Check for overflow after checking for the original
+	// attribute set.  Note this means we are performing
+	// two map lookups for overflowing attributes and only
+	// one lookup if the attribute set was preexisting.
+	if !*overflow && uint32(len(inst.current)) >= inst.performance.InstrumentCardinalityLimit-1 {
+		// Use the overflow attributes, repeat.
+		attrs = pipeline.OverflowAttributes
+		fp = overflowAttributesFingerprint
+		*overflow = true
+	}
+
+	return fp, attrs, nil
 }
 
 // acquireUninitialized gets or creates a `*record` corresponding to
@@ -459,7 +492,10 @@ func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) *record 
 func acquireUninitialized[N number.Any](inst *Observer, attrs []attribute.KeyValue) *record {
 	fp := fingerprintAttributes(attrs)
 
-	if rec := acquireRead(inst, fp, attrs); rec != nil {
+	// acquireRead may replace fp and attrs when there is overflow.
+	var rec *record
+	fp, attrs, rec = acquireRead(inst, fp, attrs)
+	if rec != nil {
 		return rec
 	}
 

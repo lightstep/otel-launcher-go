@@ -86,9 +86,10 @@ func New(desc sdkinstrument.Descriptor, _ sdkinstrument.Performance, opaque inte
 	// disabled the instrument. This ensures that certain error
 	// checks still work (wrong meter, wrong callback, etc).
 	//
-	// Note: performance settings are not used because async
-	// instruments do not use fingerprinting so IgnoreCollisions is
-	// meaningless.
+	// Note: performance settings are not used.
+	// 1. There is no fingerprinting, so IgnoreCollisions is meaningless.
+	// 2. InstrumentCardinalityLimit is not enforceable, because of duplicate
+	//    suppression -- better left to the aggregator.
 	return &Observer{
 		opaque:     opaque,
 		descriptor: desc,

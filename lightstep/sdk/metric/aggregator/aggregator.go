@@ -75,19 +75,18 @@ type JSONHistogramConfig struct {
 
 // JSONConfig supports the configuration for all aggregators in a single struct.
 type JSONConfig struct {
-	Histogram JSONHistogramConfig `json:"histogram"`
-}
-
-// ToConfig returns a Config from the fixed-JSON represented.
-func (jc JSONConfig) ToConfig() Config {
-	return Config{
-		Histogram: histostruct.NewConfig(histostruct.WithMaxSize(jc.Histogram.MaxSize)),
-	}
+	Histogram        JSONHistogramConfig `json:"histogram"`
+	CardinalityLimit uint32              `json:"cardinality_limit"`
 }
 
 // Config supports the configuration for all aggregators in a single struct.
 type Config struct {
+	// Histogram configuration, specifically.
 	Histogram histostruct.Config
+
+	// CardinalityLimit limits the number of instances of this
+	// aggregator in a given view.
+	CardinalityLimit uint32
 }
 
 // Valid returns true for valid configurations.
@@ -101,6 +100,11 @@ func (c Config) Valid() bool {
 func (c Config) Validate() (Config, error) {
 	var err error
 	c.Histogram, err = c.Histogram.Validate()
+
+	if c.CardinalityLimit == 0 {
+		c.CardinalityLimit = sdkinstrument.DefaultAggregatorCardinalityLimit
+	}
+
 	return c, err
 }
 

@@ -28,6 +28,8 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 )
 
+var safePerf sdkinstrument.Performance
+
 var oneConflict = Conflict{
 	Semantic: SemanticError{
 		Instrument:  sdkinstrument.SyncCounter,
@@ -113,6 +115,7 @@ func TestConflictCombine(t *testing.T) {
 func TestConflictError(t *testing.T) {
 	views := view.New(
 		"problem",
+		safePerf,
 		view.WithDefaultAggregationKindSelector(func(k sdkinstrument.Kind) aggregation.Kind {
 			return aggregation.GaugeKind
 		}),

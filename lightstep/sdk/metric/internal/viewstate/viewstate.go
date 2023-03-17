@@ -20,6 +20,7 @@ import (
 	"strings"
 	"sync"
 
+	histostruct "github.com/lightstep/go-expohisto/structure"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
@@ -42,20 +43,20 @@ import (
 // Information flows through the Compiler as follows:
 //
 // When new instruments are created:
-// - The Compiler.Compile() method returns an Instrument value and possible
-//   duplicate or semantic conflict error.
+//   - The Compiler.Compile() method returns an Instrument value and possible
+//     duplicate or semantic conflict error.
 //
 // When instruments are used:
 // - The Instrument.NewAccumulator() method returns an Accumulator value for each attribute.Set used
 // - The Accumulator.Update() aggregates one value for each measurement.
 //
 // During collection:
-// - The Accumulator.SnapshotAndProcess() method captures the current value
-//   and conveys it to the output storage
-// - The Compiler.Collectors() interface returns one Collector per output
-//   Metric in the Meter (duplicate definitions included).
-// - The Collector.Collect() method outputs one Point for each attribute.Set
-//   in the result.
+//   - The Accumulator.SnapshotAndProcess() method captures the current value
+//     and conveys it to the output storage
+//   - The Compiler.Collectors() interface returns one Collector per output
+//     Metric in the Meter (duplicate definitions included).
+//   - The Collector.Collect() method outputs one Point for each attribute.Set
+//     in the result.
 type Compiler struct {
 	// views is the configuration of this compiler.
 	views *view.Views
@@ -177,6 +178,7 @@ type singleBehavior struct {
 
 // New returns a compiler for library given configured views.
 func New(library instrumentation.Library, views *view.Views) *Compiler {
+	views, _ = view.Validate(views)
 	return &Compiler{
 		library: library,
 		views:   views,
@@ -193,24 +195,25 @@ func (v *Compiler) Collectors() []data.Collector {
 // tryToApplyHint looks for a Lightstep-specified hint structure
 // encoded as JSON in the description.  If valid, returns the modified
 // configuration, otherwise returns the default for the instrument.
-func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkinstrument.Descriptor, akind aggregation.Kind, acfg aggregator.Config, hinted bool) {
+func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkinstrument.Descriptor, akind aggregation.Kind, acfg, defCfg aggregator.Config, hinted bool) {
 	// These are the default behaviors, we'll use them unless there's a valid hint.
 	akind = v.views.Defaults.Aggregation(instrument.Kind)
-	acfg = v.views.Defaults.AggregationConfig(
+	defCfg = v.views.Defaults.AggregationConfig(
 		instrument.Kind,
 		instrument.NumberKind,
 	)
+	acfg = defCfg
 
 	// Check for required JSON symbols, empty strings, ...
 	if !strings.Contains(instrument.Description, "{") {
-		return instrument, akind, acfg, hinted
+		return instrument, akind, acfg, defCfg, hinted
 	}
 
 	var hint view.Hint
 	if err := json.Unmarshal([]byte(instrument.Description), &hint); err != nil {
 		// This could be noisy if valid descriptions contain spurious '{' chars.
 		otel.Handle(fmt.Errorf("hint parse error: %w", err))
-		return instrument, akind, acfg, hinted
+		return instrument, akind, acfg, defCfg, hinted
 	}
 
 	// Replace the hint input with its embedded description.
@@ -229,16 +232,19 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 		}
 	}
 
-	if hint.Config != (aggregator.JSONConfig{}) {
-		cfg := hint.Config.ToConfig()
+	if hint.Config.Histogram.MaxSize != 0 {
+		cfg := histostruct.NewConfig(histostruct.WithMaxSize(hint.Config.Histogram.MaxSize))
 		cfg, err := cfg.Validate()
 		if err != nil {
-			otel.Handle(fmt.Errorf("hint invalid aggregator config: %w", err))
+			otel.Handle(err)
 		}
-		acfg = cfg
+		acfg.Histogram = cfg
+	}
+	if hint.Config.CardinalityLimit != 0 {
+		acfg.CardinalityLimit = hint.Config.CardinalityLimit
 	}
 
-	return instrument, akind, acfg, hinted
+	return instrument, akind, acfg, defCfg, hinted
 }
 
 // Compile is called during NewInstrument by the Meter
@@ -261,7 +267,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 			continue
 		}
 
-		modified, hintAkind, hintAcfg, hinted := v.tryToApplyHint(instrument)
+		modified, hintAkind, hintAcfg, defCfg, hinted := v.tryToApplyHint(instrument)
 		instrument = modified // the hint erases itself from the description
 
 		if akind == aggregation.UndefinedKind {
@@ -272,7 +278,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 			fromName: instrument.Name,
 			desc:     viewDescriptor(instrument, view),
 			kind:     akind,
-			acfg:     pickAggConfig(hintAcfg, view.AggregatorConfig()),
+			acfg:     pickAggConfig(hintAcfg, defCfg, view.AggregatorConfig()),
 			tempo:    v.views.Defaults.Temporality(instrument.Kind),
 			hinted:   hinted,
 		}
@@ -287,7 +293,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 
 	// If there were no matching views, set the default aggregation.
 	if len(matches) == 0 {
-		modified, akind, acfg, hinted := v.tryToApplyHint(instrument)
+		modified, akind, acfg, _, hinted := v.tryToApplyHint(instrument)
 		instrument = modified // the hint erases itself from the description
 
 		if akind != aggregation.DropKind {
@@ -406,6 +412,7 @@ func newSyncView[
 	// is being copied before the new object is returned to the
 	// user, and the extra allocation cost here would be
 	// noticeable.
+
 	metric := instrumentBase[N, Storage, int64, Methods]{
 		fromName:   behavior.fromName,
 		desc:       behavior.desc,
@@ -603,13 +610,13 @@ func equalConfigs(a, b aggregator.Config) bool {
 	return a == b
 }
 
-// pickAggConfig returns the aggregator configuration prescribed by a view clause
-// if it is not empty, otherwise the default value.
-func pickAggConfig(def, vcfg aggregator.Config) aggregator.Config {
-	if vcfg != (aggregator.Config{}) {
-		return vcfg
+// pickAggConfig returns the aggregator configuration prescribed by a
+// view clause when it not the default value, otherwise the hinted config.
+func pickAggConfig(hintCfg, defCfg, viewCfg aggregator.Config) aggregator.Config {
+	if viewCfg != defCfg {
+		return viewCfg
 	}
-	return def
+	return hintCfg
 }
 
 // checkSemanticCompatibility checks whether an instrument /

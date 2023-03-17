@@ -108,7 +108,9 @@ func WithDefaultAggregationTemporalitySelector(d aggregation.TemporalitySelector
 func WithDefaultAggregationConfigSelector(d aggregator.ConfigSelector) Option {
 	return optionFunction(func(cfg Config) Config {
 		for k := sdkinstrument.Kind(0); k < sdkinstrument.NumKinds; k++ {
-			cfg.Defaults.ByInstrumentKind[k].Int64, cfg.Defaults.ByInstrumentKind[k].Float64 = d(k)
+			ic, fc := d(k)
+			cfg.Defaults.ByInstrumentKind[k].Int64 = ic
+			cfg.Defaults.ByInstrumentKind[k].Float64 = fc
 		}
 		return cfg
 	})
@@ -128,11 +130,11 @@ func (of optionFunction) apply(in Config) Config {
 }
 
 // NewConfig returns a new and configured view Config.
-func NewConfig(options ...Option) Config {
+func NewConfig(perf sdkinstrument.Performance, options ...Option) Config {
 	standard := []Option{
 		WithDefaultAggregationKindSelector(StandardAggregationKind),
 		WithDefaultAggregationTemporalitySelector(StandardTemporality),
-		WithDefaultAggregationConfigSelector(StandardConfig),
+		WithDefaultAggregationConfigSelector(StandardConfigForPerformance(perf)),
 	}
 	var cfg Config
 	for _, option := range append(standard, options...) {

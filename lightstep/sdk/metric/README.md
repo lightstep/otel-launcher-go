@@ -147,3 +147,27 @@ Setting this field to 1 means records will be removed from memory
 after one inactive collection cycle.
 
 Setting this field to 0 causes the default value 10 to be used.
+
+#### InstrumentCardinalityLimit
+
+Synchronous instruments are implemented using a map of intermediate
+state.  When this map grows to `InstrumentCardinalityLimit`, new
+attribute sets will be replaced by the overflow attribute set, which
+is `{ otel.metric.overflow=true }`.  This limit is applied to all
+instruments regardless of view configuration before attribute filters
+are applied.
+
+For instruments configured with Delta temporality, where it is
+possible for the map to shrink, note that the size of this map
+includes records maintained due to `InactiveCollectionPeriods`.  The
+inactivity period should be taken into account when setting
+`InstrumentCardinalityLimit` to avoid overflow.
+
+#### AggregatorCardinalityLimit
+
+All views maintain a configurable cardinality limit, calculated after
+attribute filters are applied.
+
+When the aggregator's output grows to `AggregatorCardinalityLimit`,
+new attribute sets will be replaced by the overflow attribute set,
+which is `{ otel.metric.overflow=true }`.

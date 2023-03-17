@@ -18,6 +18,15 @@ package sdkinstrument
 // delay before removing records from memory.
 const DefaultInactiveCollectionPeriods = 10
 
+// DefaultAggregatorCardinalityLimit is a hard limit on the number of
+// aggregators that can be emitted in a single period.
+const DefaultAggregatorCardinalityLimit = 2000
+
+// DefaultInstrumentCardinalityLimit is a hard limit on the number of
+// aggregators that can be accumulated in intermediate state belonging
+// to the instrument.
+const DefaultInstrumentCardinalityLimit = 3000
+
 // Performace configures features that allow the user to control
 // performance.
 type Performance struct {
@@ -30,6 +39,15 @@ type Performance struct {
 	// collection periods having no updates before the record is
 	// removed from memory.
 	InactiveCollectionPeriods uint32
+
+	// InstrumentCardinalityLimit is the point at which the
+	// SDK's emergency overflow breaker begins dropping attributes
+	// to avoid memory buildup at intermediate pipeline stages.
+	InstrumentCardinalityLimit uint32
+
+	// AggregatorCardinalityLimit is a hard limit on output
+	// cardinality for all aggregators in the SDK.
+	AggregatorCardinalityLimit uint32
 }
 
 // Validate returns a Performance object with 0 values replaced by
@@ -41,5 +59,12 @@ func (p Performance) Validate() Performance {
 	if p.InactiveCollectionPeriods == 0 {
 		p.InactiveCollectionPeriods = DefaultInactiveCollectionPeriods
 	}
+	if p.InstrumentCardinalityLimit == 0 {
+		p.InstrumentCardinalityLimit = DefaultInstrumentCardinalityLimit
+	}
+	if p.AggregatorCardinalityLimit == 0 {
+		p.AggregatorCardinalityLimit = DefaultAggregatorCardinalityLimit
+	}
+
 	return p
 }

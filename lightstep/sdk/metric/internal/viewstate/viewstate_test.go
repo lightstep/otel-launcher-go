@@ -31,6 +31,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/minmaxsumcount"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/test"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
@@ -144,7 +145,7 @@ func testCollectSequenceReuse(t *testing.T, vc *Compiler, seq data.Sequence, out
 // TestDeduplicateNoConflict verifies that two identical instruments
 // have the same collector.
 func TestDeduplicateNoConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -160,7 +161,7 @@ func TestDeduplicateNoConflict(t *testing.T) {
 // TestDeduplicateRenameNoConflict verifies that one instrument can be renamed
 // such that it becomes identical to another, so no conflict.
 func TestDeduplicateRenameNoConflict(t *testing.T) {
-	vc := New(testLib, view.New("test", fooToBarView))
+	vc := New(testLib, view.New("test", safePerf, fooToBarView))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -176,7 +177,7 @@ func TestDeduplicateRenameNoConflict(t *testing.T) {
 // TestNoRenameNoConflict verifies that one instrument does not
 // conflict with another differently-named instrument.
 func TestNoRenameNoConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -192,7 +193,7 @@ func TestNoRenameNoConflict(t *testing.T) {
 // TestDuplicateNumberConflict verifies that two same instruments
 // except different number kind conflict.
 func TestDuplicateNumberConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -212,7 +213,7 @@ func TestDuplicateNumberConflict(t *testing.T) {
 // TestDuplicateSyncAsyncConflict verifies that two same instruments
 // except one synchonous, one asynchronous conflict.
 func TestDuplicateSyncAsyncConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err1)
@@ -229,7 +230,7 @@ func TestDuplicateSyncAsyncConflict(t *testing.T) {
 // TestDuplicateUnitConflict verifies that two same instruments
 // except different units conflict.
 func TestDuplicateUnitConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompileDescUnit(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind, "", "gal_us")
 	require.NoError(t, err1)
@@ -247,7 +248,7 @@ func TestDuplicateUnitConflict(t *testing.T) {
 // TestDuplicateMonotonicConflict verifies that two same instruments
 // except different monotonic values.
 func TestDuplicateMonotonicConflict(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
 	require.NoError(t, err1)
@@ -265,7 +266,7 @@ func TestDuplicateMonotonicConflict(t *testing.T) {
 // TestDuplicateAggregatorConfigConflict verifies that two same instruments
 // except different aggregator.Config values.
 func TestDuplicateAggregatorConfigConflict(t *testing.T) {
-	vc := New(testLib, view.New("test", fooToBarAltHistView))
+	vc := New(testLib, view.New("test", safePerf, fooToBarAltHistView))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncHistogram, number.Float64Kind)
 	require.NoError(t, err1)
@@ -287,6 +288,7 @@ func TestDuplicateAggregatorConfigNoConflict(t *testing.T) {
 		t.Run(nk.String(), func(t *testing.T) {
 			views := view.New(
 				"test",
+				safePerf,
 				view.WithDefaultAggregationConfigSelector(
 					func(_ sdkinstrument.Kind) (int64Config, float64Config aggregator.Config) {
 						if nk == number.Int64Kind {
@@ -316,7 +318,7 @@ func TestDuplicateAggregatorConfigNoConflict(t *testing.T) {
 // TestDuplicateAggregationKindConflict verifies that two instruments
 // with different aggregation kinds conflict.
 func TestDuplicateAggregationKindConflict(t *testing.T) {
-	vc := New(testLib, view.New("test", fooToBarView))
+	vc := New(testLib, view.New("test", safePerf, fooToBarView))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncHistogram, number.Int64Kind)
 	require.NoError(t, err1)
@@ -335,7 +337,7 @@ func TestDuplicateAggregationKindConflict(t *testing.T) {
 // instruments with different aggregation kinds do not conflict when
 // the view drops one of the instruments.
 func TestDuplicateAggregationKindNoConflict(t *testing.T) {
-	vc := New(testLib, view.New("test", dropHistInstView))
+	vc := New(testLib, view.New("test", safePerf, dropHistInstView))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncHistogram, number.Int64Kind)
 	require.NoError(t, err1)
@@ -349,7 +351,7 @@ func TestDuplicateAggregationKindNoConflict(t *testing.T) {
 // TestDuplicateMultipleConflicts verifies that multiple duplicate
 // instrument conflicts include sufficient explanatory information.
 func TestDuplicateMultipleConflicts(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err1 := testCompile(vc, "foo", instrumentKinds[0], number.Float64Kind)
 	require.NoError(t, err1)
@@ -380,7 +382,7 @@ func TestDuplicateFilterConflicts(t *testing.T) {
 		fooToBarDifferentFiltersViews,
 	} {
 		t.Run(fmt.Sprint(idx), func(t *testing.T) {
-			vc := New(testLib, view.New("test", vws...))
+			vc := New(testLib, view.New("test", safePerf, vws...))
 
 			inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 			require.NoError(t, err1)
@@ -400,7 +402,7 @@ func TestDuplicateFilterConflicts(t *testing.T) {
 // renamed to match another exactly, including filters, they are not
 // in conflict.
 func TestDeduplicateSameFilters(t *testing.T) {
-	vc := New(testLib, view.New("test", fooToBarSameFiltersViews...))
+	vc := New(testLib, view.New("test", safePerf, fooToBarSameFiltersViews...))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -415,7 +417,7 @@ func TestDeduplicateSameFilters(t *testing.T) {
 
 // TestDuplicatesMergeDescriptor ensures that the longest description string is used.
 func TestDuplicatesMergeDescriptor(t *testing.T) {
-	vc := New(testLib, view.New("test", fooToBarSameFiltersViews...))
+	vc := New(testLib, view.New("test", safePerf, fooToBarSameFiltersViews...))
 
 	inst1, err1 := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Int64Kind)
 	require.NoError(t, err1)
@@ -451,6 +453,7 @@ func TestDuplicatesMergeDescriptor(t *testing.T) {
 func TestViewDescription(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentName("foo"),
 			view.WithDescription("something helpful"),
@@ -492,7 +495,7 @@ func TestViewDescription(t *testing.T) {
 // TestKeyFilters verifies that keys are filtred and metrics are
 // correctly aggregated.
 func TestKeyFilters(t *testing.T) {
-	views := view.New("test",
+	views := view.New("test", safePerf,
 		view.WithClause(view.WithKeys([]attribute.Key{"a", "b"})),
 	)
 
@@ -532,6 +535,7 @@ func TestKeyFilters(t *testing.T) {
 func TestTwoViewsOneInt64Instrument(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentName("foo"),
 			view.WithName("foo_a"),
@@ -600,6 +604,7 @@ func TestTwoViewsOneInt64Instrument(t *testing.T) {
 func TestHistogramTwoAggregations(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentName("foo"),
 			view.WithName("foo_sum"),
@@ -648,6 +653,7 @@ func TestHistogramTwoAggregations(t *testing.T) {
 func TestAllKeysFilter(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(view.WithKeys([]attribute.Key{})),
 	)
 
@@ -682,6 +688,7 @@ func TestAllKeysFilter(t *testing.T) {
 func TestAnySumAggregation(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(view.WithAggregation(aggregation.AnySumKind)),
 	)
 
@@ -746,7 +753,7 @@ func TestAnySumAggregation(t *testing.T) {
 // instrument accumulators keep only the last observed value, while
 // synchronous instruments correctly snapshotAndProcess them all.
 func TestDuplicateAsyncMeasurementsIngored(t *testing.T) {
-	vc := New(testLib, view.New("test"))
+	vc := New(testLib, view.New("test", safePerf))
 
 	inst1, err := testCompile(vc, "async", sdkinstrument.AsyncCounter, number.Float64Kind)
 	require.NoError(t, err)
@@ -788,6 +795,7 @@ func TestDuplicateAsyncMeasurementsIngored(t *testing.T) {
 func TestCumulativeTemporality(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			// Dropping all keys
 			view.WithKeys([]attribute.Key{}),
@@ -841,6 +849,7 @@ func TestCumulativeTemporality(t *testing.T) {
 func TestDeltaTemporalityCounter(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			// Dropping all keys
 			view.WithKeys([]attribute.Key{}),
@@ -902,6 +911,7 @@ func TestDeltaTemporalityCounter(t *testing.T) {
 func TestDeltaTemporalityAsyncCounter(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithDefaultAggregationTemporalitySelector(view.DeltaPreferredTemporality),
 	)
 
@@ -1008,6 +1018,7 @@ func TestDeltaTemporalityAsyncCounter(t *testing.T) {
 func TestDeltaTemporalityAsyncGauge(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithDefaultAggregationTemporalitySelector(view.DeltaPreferredTemporality),
 	)
 
@@ -1095,6 +1106,7 @@ func TestDeltaTemporalityAsyncGauge(t *testing.T) {
 func TestDeltaTemporalitySyncGauge(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithDefaultAggregationTemporalitySelector(
 			func(ik sdkinstrument.Kind) aggregation.Temporality {
 				return aggregation.DeltaTemporality
@@ -1255,6 +1267,7 @@ func TestDeltaTemporalitySyncGauge(t *testing.T) {
 func TestSyncDeltaTemporalityCounter(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithDefaultAggregationTemporalitySelector(
 			func(ik sdkinstrument.Kind) aggregation.Temporality {
 				return aggregation.DeltaTemporality // Always delta
@@ -1359,6 +1372,7 @@ func TestSyncDeltaTemporalityCounter(t *testing.T) {
 func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithDefaultAggregationTemporalitySelector(
 			func(ik sdkinstrument.Kind) aggregation.Temporality {
 				return aggregation.DeltaTemporality // Always delta
@@ -1407,12 +1421,12 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 	)
 
 	require.Equal(t, 0, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
-
 }
 
 func TestRegexpMatch(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentNameRegexp(regexp.MustCompile(".*_rate")),
 			view.WithAggregation(aggregation.DropKind),
@@ -1436,6 +1450,7 @@ func TestRegexpMatch(t *testing.T) {
 func TestSingleInstrumentWarning(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentNameRegexp(regexp.MustCompile(".*_rate")),
 			view.WithName("fixed"),
@@ -1450,6 +1465,7 @@ func TestSingleInstrumentWarning(t *testing.T) {
 func TestDeltaTemporalityMinMaxSumCount(t *testing.T) {
 	views := view.New(
 		"test",
+		safePerf,
 		view.WithClause(
 			view.MatchInstrumentKind(sdkinstrument.SyncHistogram),
 			view.WithAggregation(aggregation.MinMaxSumCountKind),
@@ -1505,7 +1521,7 @@ func TestDeltaTemporalityMinMaxSumCount(t *testing.T) {
 }
 
 func TestViewHints(t *testing.T) {
-	views := view.New("test")
+	views := view.New("test", safePerf)
 	vc := New(testLib, views)
 	otelErrs := test.OTelErrors()
 
@@ -1589,7 +1605,7 @@ func TestViewHints(t *testing.T) {
 }
 
 func TestViewHintErrors(t *testing.T) {
-	views := view.New("test")
+	views := view.New("test", safePerf)
 	vc := New(testLib, views)
 	otelErrs := test.OTelErrors()
 
@@ -1645,11 +1661,11 @@ func TestViewHintErrors(t *testing.T) {
 	require.Contains(t, (*otelErrs)[0].Error(), "invalid character")
 	require.Contains(t, (*otelErrs)[1].Error(), "looking for beginning")
 	require.Contains(t, (*otelErrs)[2].Error(), "invalid aggregation")
-	require.Contains(t, (*otelErrs)[3].Error(), "invalid aggregator config")
+	require.Contains(t, (*otelErrs)[3].Error(), "invalid histogram size: -3")
 }
 
 func TestViewHintNoOverrideEmpty(t *testing.T) {
-	views := view.New("test",
+	views := view.New("test", safePerf,
 		view.WithDefaultAggregationConfigSelector(
 			func(_ sdkinstrument.Kind) (int64Config, float64Config aggregator.Config) {
 				cfg := aggregator.Config{
@@ -1703,7 +1719,7 @@ func TestViewHintNoOverrideEmpty(t *testing.T) {
 
 // TestEmptyKeyFilter ensures no empty keys are used (w/o view config).
 func TestEmptyKeyFilter(t *testing.T) {
-	views := view.New("test")
+	views := view.New("test", safePerf)
 
 	vc := New(testLib, views)
 
@@ -1743,7 +1759,7 @@ func TestEmptyKeyFilter(t *testing.T) {
 
 // TestEmptyKeyFilterAndView ensures no empty keys are used (with a view config).
 func TestEmptyKeyFilterAndView(t *testing.T) {
-	views := view.New("test",
+	views := view.New("test", safePerf,
 		view.WithClause(
 			view.WithKeys([]attribute.Key{"a"}),
 		),
@@ -1772,4 +1788,370 @@ func TestEmptyKeyFilterAndView(t *testing.T) {
 			),
 		),
 	)
+}
+
+// TestOverflowSyncCumulative tests that all synchronous cumulative
+// respect thier configured cardinality limit and that the limit can
+// be set three ways.
+func TestOverflowSyncCumulative(t *testing.T) {
+	const limitA = 10
+	const limitB = 20
+	const limitC = 30
+	views := view.New(
+		"test",
+		sdkinstrument.Performance{
+			AggregatorCardinalityLimit: limitC,
+		},
+		view.WithClause(
+			view.MatchInstrumentName("B"),
+			view.WithAggregatorConfig(aggregator.Config{
+				CardinalityLimit: limitB,
+			}),
+		),
+	)
+	views, err := view.Validate(views)
+	require.NoError(t, err)
+
+	vc := New(testLib, views)
+
+	descA := fmt.Sprintf(`{
+  "config": {
+    "cardinality_limit": %d
+  }
+}`, limitA)
+
+	instA, err := testCompileDescUnit(vc, "A", sdkinstrument.SyncCounter, number.Float64Kind, descA, "")
+	require.NoError(t, err)
+
+	instB, err := testCompile(vc, "B", sdkinstrument.SyncUpDownCounter, number.Float64Kind)
+	require.NoError(t, err)
+
+	instC, err := testCompile(vc, "C", sdkinstrument.SyncHistogram, number.Float64Kind)
+	require.NoError(t, err)
+
+	var expA []data.Point
+	var expB []data.Point
+	var expC []data.Point
+	var oflowA, oflowB, oflowC float64
+
+	for i := 0; i < 1000; i++ {
+		acc1 := instA.NewAccumulator(attribute.NewSet(attribute.Int("a", i)))
+		acc1.(Updater[float64]).Update(1)
+		acc1.SnapshotAndProcess(true)
+
+		if i < limitA-1 {
+			expA = append(expA,
+				test.Point(
+					startTime, endTime, sum.NewMonotonicFloat64(1), cumulative, attribute.Int("a", i),
+				))
+		} else {
+			oflowA++
+		}
+
+		acc2 := instB.NewAccumulator(attribute.NewSet(attribute.Int("b", i)))
+		acc2.(Updater[float64]).Update(1)
+		acc2.SnapshotAndProcess(true)
+
+		if i < limitB-1 {
+			expB = append(expB,
+				test.Point(
+					startTime, endTime, sum.NewNonMonotonicFloat64(1), cumulative, attribute.Int("b", i),
+				))
+		} else {
+			oflowB++
+		}
+
+		acc3 := instC.NewAccumulator(attribute.NewSet(attribute.Int("c", i)))
+		acc3.(Updater[float64]).Update(1)
+		acc3.SnapshotAndProcess(true)
+
+		if i < limitC-1 {
+			expC = append(expC,
+				test.Point(
+					startTime, endTime, histogram.NewFloat64(histogram.Config{}, 1), cumulative, attribute.Int("c", i),
+				))
+		} else {
+			oflowC++
+		}
+	}
+
+	expA = append(expA,
+		test.Point(
+			startTime, endTime, sum.NewMonotonicFloat64(oflowA), cumulative, attribute.Bool("otel.metric.overflow", true),
+		))
+	expB = append(expB,
+		test.Point(
+			startTime, endTime, sum.NewNonMonotonicFloat64(oflowB), cumulative, attribute.Bool("otel.metric.overflow", true),
+		))
+
+	var many []float64
+	for i := 0.0; i < oflowC; i++ {
+		many = append(many, 1.0)
+	}
+
+	expC = append(expC,
+		test.Point(
+			startTime, endTime, histogram.NewFloat64(histogram.Config{}, many...), cumulative, attribute.Bool("otel.metric.overflow", true),
+		))
+
+	test.RequireEqualMetrics(
+		t,
+		testCollect(t, vc),
+		test.Instrument(
+			test.Descriptor("A", sdkinstrument.SyncCounter, number.Float64Kind),
+			expA...,
+		),
+		test.Instrument(
+			test.Descriptor("B", sdkinstrument.SyncUpDownCounter, number.Float64Kind),
+			expB...,
+		),
+		test.Instrument(
+			test.Descriptor("C", sdkinstrument.SyncHistogram, number.Float64Kind),
+			expC...,
+		),
+	)
+}
+
+// TestOverflowAsync is a cursory test of the cumulative async
+// behavior. This is a weak test because the asyncstate package
+// uses map iteration, making the results unpredictable.
+//
+// TODO: Fix the asyncstate behavior in a separate change, then
+// strengthen this test.
+func TestOverflowAsyncCumulative(t *testing.T) {
+	const limitA = 10
+	const limitB = 20
+	const limitC = 30
+	const count = 1000
+	views := view.New(
+		"test",
+		sdkinstrument.Performance{
+			AggregatorCardinalityLimit: limitC,
+		},
+		view.WithClause(
+			view.MatchInstrumentName("B"),
+			view.WithAggregatorConfig(aggregator.Config{
+				CardinalityLimit: limitB,
+			}),
+		),
+	)
+	views, err := view.Validate(views)
+	require.NoError(t, err)
+
+	vc := New(testLib, views)
+
+	descA := fmt.Sprintf(`{
+  "config": {
+    "cardinality_limit": %d
+  }
+}`, limitA)
+
+	instA, err := testCompileDescUnit(vc, "A", sdkinstrument.AsyncCounter, number.Int64Kind, descA, "")
+	require.NoError(t, err)
+
+	instB, err := testCompile(vc, "B", sdkinstrument.AsyncUpDownCounter, number.Int64Kind)
+	require.NoError(t, err)
+
+	instC, err := testCompile(vc, "C", sdkinstrument.AsyncGauge, number.Int64Kind)
+	require.NoError(t, err)
+
+	for reps := 0; reps < 10; reps++ {
+		for i := 0; i < count; i++ {
+			acc1 := instA.NewAccumulator(attribute.NewSet(attribute.Int("a", i)))
+			acc1.(Updater[int64]).Update(1)
+			acc1.SnapshotAndProcess(true)
+
+			acc2 := instB.NewAccumulator(attribute.NewSet(attribute.Int("b", i)))
+			acc2.(Updater[int64]).Update(1)
+			acc2.SnapshotAndProcess(true)
+
+			acc3 := instC.NewAccumulator(attribute.NewSet(attribute.Int("c", i)))
+			acc3.(Updater[int64]).Update(1)
+			acc3.SnapshotAndProcess(true)
+		}
+
+		collected := testCollect(t, vc)
+
+		require.Equal(t, limitA, len(collected[0].Points))
+		require.Equal(t, limitB, len(collected[1].Points))
+		require.Equal(t, limitC, len(collected[2].Points))
+
+		// Each point list has one overflow.
+		for idx, data := range collected {
+			oflow := 0
+			sum := int64(0)
+			for _, pt := range data.Points {
+				if pt.Attributes == pipeline.OverflowAttributeSet {
+					oflow++
+				}
+				if idx < 2 {
+					sum += number.ToInt64(pt.Aggregation.(aggregation.Sum).Sum())
+				} else {
+					sum += number.ToInt64(pt.Aggregation.(aggregation.Gauge).Gauge())
+				}
+			}
+			require.Equal(t, 1, oflow)
+			if idx < 2 {
+				require.Equal(t, int64(count), sum)
+			} else {
+				require.Equal(t, int64(limitC), sum)
+			}
+		}
+	}
+}
+
+// TestOneViewOverflowsOneDoesNot tests that views can independently
+// repair an overflow problem.
+func TestOneViewOverflowsOneDoesNot(t *testing.T) {
+	const limit = 10
+	const count = 20
+	views := view.New(
+		"test",
+		sdkinstrument.Performance{
+			AggregatorCardinalityLimit: limit,
+		},
+		view.WithClause(
+			view.WithName("filtered"),
+			view.MatchInstrumentName("input"),
+			view.WithKeys([]attribute.Key{"stable"}),
+		),
+		view.WithClause(
+			view.WithName("unfiltered"),
+			view.MatchInstrumentName("input"),
+		),
+	)
+	views, err := view.Validate(views)
+	require.NoError(t, err)
+
+	vc := New(testLib, views)
+
+	inst, err := testCompile(vc, "input", sdkinstrument.SyncCounter, number.Float64Kind)
+	require.NoError(t, err)
+
+	sattr := attribute.String("stable", "constant")
+	var expNF []data.Point
+
+	for i := 0; i < count; i++ {
+		vattr := attribute.Int("varies", i)
+		acc := inst.NewAccumulator(attribute.NewSet(
+			sattr,
+			vattr,
+		))
+		acc.(Updater[float64]).Update(1)
+		acc.SnapshotAndProcess(true)
+
+		if i < limit-1 {
+			expNF = append(expNF,
+				test.Point(
+					startTime, endTime, sum.NewMonotonicFloat64(1), cumulative, sattr, vattr,
+				))
+		}
+	}
+	expNF = append(expNF,
+		test.Point(
+			startTime, endTime, sum.NewMonotonicFloat64(count-limit+1), cumulative, attribute.Bool("otel.metric.overflow", true),
+		))
+
+	test.RequireEqualMetrics(
+		t,
+		testCollect(t, vc),
+		test.Instrument(
+			test.Descriptor("filtered", sdkinstrument.SyncCounter, number.Float64Kind),
+			test.Point(
+				startTime, endTime, sum.NewMonotonicFloat64(count), cumulative, sattr,
+			),
+		),
+		test.Instrument(
+			test.Descriptor("unfiltered", sdkinstrument.SyncCounter, number.Float64Kind),
+			expNF...,
+		),
+	)
+}
+
+// TestInstrumentOverflowCombined tests that the aggregator limit is a
+// hard limit even when the instrument-level limit was reached early.
+func TestInstrumentOverflowCombined(t *testing.T) {
+	const aggLimit = 10
+	const instLimit = 2 * aggLimit
+	const count = 5 * instLimit
+	views := view.New(
+		"test",
+		sdkinstrument.Performance{
+			InactiveCollectionPeriods:  1,
+			AggregatorCardinalityLimit: aggLimit,
+			InstrumentCardinalityLimit: instLimit,
+		},
+		view.WithDefaultAggregationTemporalitySelector(view.DeltaPreferredTemporality),
+	)
+	views, err := view.Validate(views)
+	require.NoError(t, err)
+
+	vc := New(testLib, views)
+
+	instS, err := testCompile(vc, "S", sdkinstrument.SyncCounter, number.Float64Kind)
+	require.NoError(t, err)
+
+	instA, err := testCompile(vc, "A", sdkinstrument.AsyncCounter, number.Int64Kind)
+	require.NoError(t, err)
+
+	totalS := float64(0)
+	totalA := int64(0)
+
+	for reps := 0; reps < 10; reps++ {
+		for i := 0; i < count; i++ {
+			attr := attribute.Int("RCi", reps*count+i)
+			aset := attribute.NewSet(attr)
+
+			accS := instS.NewAccumulator(aset)
+			accS.(Updater[float64]).Update(1)
+			accS.SnapshotAndProcess(true)
+
+			accA := instA.NewAccumulator(aset)
+			accA.(Updater[int64]).Update(1)
+			accA.SnapshotAndProcess(true)
+		}
+
+		// Both experience overflow; neither exceeds its limit
+		data := testCollect(t, vc)
+		require.Equal(t, test.Descriptor("S", sdkinstrument.SyncCounter, number.Float64Kind), data[0].Descriptor)
+		require.Equal(t, test.Descriptor("A", sdkinstrument.AsyncCounter, number.Int64Kind), data[1].Descriptor)
+
+		// As tested in syncstate, there is an oscillation that
+		// develops when a delta temporality experiences major
+		// overflow.  We're not testing the form of the overflow here,
+		// just that the sum is correct.
+		oflowSCnt := 0
+		sumS := 0.0
+		for _, pt := range data[0].Points {
+			if pt.Attributes == pipeline.OverflowAttributeSet {
+				oflowSCnt++
+			}
+			sumS += number.ToFloat64(pt.Aggregation.(aggregation.Sum).Sum())
+		}
+		if reps == 0 {
+			require.Equal(t, 1, oflowSCnt)
+			require.Equal(t, float64(count), sumS)
+		}
+		totalS += sumS
+		require.Equal(t, float64((reps+1)*count), totalS, "rep %d", reps)
+
+		// Note that because the attribute set is new every
+		// time, we expect a new sum in every round equal to count.
+		// See the special case treatment of overflow in the async
+		// delta-temporality aggregator.
+		oflowACnt := 0
+		sumA := int64(0)
+		for _, pt := range data[1].Points {
+			if pt.Attributes == pipeline.OverflowAttributeSet {
+				oflowACnt++
+			}
+			sumA += number.ToInt64(pt.Aggregation.(aggregation.Sum).Sum())
+		}
+		if reps == 0 {
+			require.Equal(t, 1, oflowACnt)
+			require.Equal(t, int64(count), sumA)
+		}
+		totalA += sumA
+		require.Equal(t, int64((reps+1)*count), totalA, "rep %d", reps)
+	}
 }

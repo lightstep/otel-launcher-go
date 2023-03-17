@@ -17,7 +17,6 @@ package metric // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/me
 import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -30,9 +29,9 @@ type config struct {
 	// the i'th reader uses the i'th entry in views.
 	readers []Reader
 
-	// views is a slice of *Views instances corresponding with readers.
-	// the i'th views applies to the i'th reader.
-	views []*view.Views
+	// vopts is a slice of []view.Option corresponding with readers.
+	// the i'th view option list applies to the i'th reader.
+	vopts [][]view.Option
 
 	// performance settings
 	performance sdkinstrument.Performance
@@ -63,12 +62,8 @@ func WithResource(res *resource.Resource) Option {
 // a new MeterProvider
 func WithReader(r Reader, opts ...view.Option) Option {
 	return optionFunction(func(cfg config) config {
-		v, err := view.Validate(view.New(r.String(), opts...))
-		if err != nil {
-			otel.Handle(err)
-		}
 		cfg.readers = append(cfg.readers, r)
-		cfg.views = append(cfg.views, v)
+		cfg.vopts = append(cfg.vopts, opts)
 		return cfg
 	})
 }

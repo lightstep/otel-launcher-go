@@ -20,6 +20,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"go.opentelemetry.io/otel/attribute"
 )
@@ -87,7 +88,6 @@ func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 		if numRefs == 0 {
 			delete(p.data, set)
 		}
-
 	}
 }
 
@@ -137,9 +137,14 @@ func (p *statefulAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 
 	ioutput := p.appendInstrument(output)
 
+	var ofe *storageHolder[Storage, notUsed]
 	for set, entry := range p.data {
 		// Compute the difference.
 		pval, has := p.prior[set]
+
+		if set == pipeline.OverflowAttributeSet {
+			ofe = entry
+		}
 		if has {
 			// This does `*pval := *storage - *pval`
 			methods.SubtractSwap(&pval.storage, &entry.storage)
@@ -161,4 +166,14 @@ func (p *statefulAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 	// Copy the current to the prior and reset.
 	p.prior = p.data
 	p.data = map[attribute.Set]*storageHolder[Storage, notUsed]{}
+
+	// Note: the overflow attribute set is synthesized from a
+	// number of inputs which are presumed cumulative.  To maintain this
+	// illusion, copy its current cumulative value into the next data set.
+	if ofe != nil {
+		cpy := &storageHolder[Storage, notUsed]{}
+		methods.Copy(&ofe.storage, &cpy.storage)
+
+		p.data[pipeline.OverflowAttributeSet] = cpy
+	}
 }
