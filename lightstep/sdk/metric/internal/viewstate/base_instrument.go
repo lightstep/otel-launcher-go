@@ -171,12 +171,11 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) getOrCreateEntry(k
 			if _, overflowed := metric.data[overflowAttributeSet]; !overflowed {
 				// First overflow event.
 				kvs = overflowAttributeSet
-			} else {
-				// The overflow aggregator already
-				// exists, means we're creating the
-				// last aggregator until existing
-				// attribute sets fall out of use.
 			}
+			// If not overflowed, the overflow aggregator
+			// already exists, means we're creating the
+			// last aggregator until existing attribute
+			// sets fall out of use.
 		}
 	}
 
