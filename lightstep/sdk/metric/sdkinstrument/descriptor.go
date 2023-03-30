@@ -16,7 +16,6 @@ package sdkinstrument
 
 import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
-	"go.opentelemetry.io/otel/metric/unit"
 )
 
 // Descriptor contains all the settings that describe an instrument,
@@ -38,11 +37,11 @@ type Descriptor struct {
 
 	// Unit describes the units of the metric instrument.  Unitless
 	// metrics return the empty string.
-	Unit unit.Unit
+	Unit string
 }
 
 // NewDescriptor returns a Descriptor with the given contents.
-func NewDescriptor(name string, ikind Kind, nkind number.Kind, description string, unit unit.Unit) Descriptor {
+func NewDescriptor(name string, ikind Kind, nkind number.Kind, description string, unit string) Descriptor {
 	return Descriptor{
 		Name:        name,
 		Kind:        ikind,
