@@ -40,8 +40,8 @@ type client struct {
 	settings exporter.CreateSettings
 }
 
-func NewConfig(opts ...Option) Config {
-	cfg := Config{
+func NewDefaultConfig() Config {
+	return Config{
 		Exporter: otlpexporter.Config{
 			TimeoutSettings: exporterhelper.NewDefaultTimeoutSettings(),
 			RetrySettings:   exporterhelper.NewDefaultRetrySettings(),
@@ -57,6 +57,10 @@ func NewConfig(opts ...Option) Config {
 			},
 		},
 	}
+}
+
+func NewConfig(opts ...Option) Config {
+	cfg := NewDefaultConfig()
 	for _, option := range opts {
 		option(&cfg)
 	}
