@@ -21,11 +21,9 @@ import (
 
 	// Note the SDK, exporter, and test appratus are from this repository
 	lightstep "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
-	exporter "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric"
-	otlpmetricgrpc "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otelcol"
 	otlptest "github.com/lightstep/otel-launcher-go/pipelines/test"
 
-	// Note the gRPC/OTLP exporter and protocol are from the community SDK.
 	otlpproto "go.opentelemetry.io/proto/otlp/metrics/v1"
 )
 
@@ -35,17 +33,17 @@ func ExampleMinimumConfig() {
 	server := otlptest.NewServer()
 
 	// Configure an exporter.
-	client, _ := otlpmetricgrpc.NewClient(
+	exp, _ := otelcol.NewExporter(
 		ctx,
-
-		// In a real scenario, replace the following three lines with, for example:
-		//    WithEndpoint("ingest.lightstep.com:443").
-		//    WithHeaders(map[string]string{"lightstep-access-token": "${YOUR_ACCESS_TOKEN}"}),
-		otlpmetricgrpc.WithInsecure(),
-		otlpmetricgrpc.WithEndpoint(fmt.Sprint(otlptest.ServerName, ":", server.InsecureMetricsPort)),
-		otlpmetricgrpc.WithHeaders(map[string]string{"lightstep-access-token": "${TOKEN}"}),
+		otelcol.NewConfig(
+			// In a real scenario, replace the following three lines with, for example:
+			//    WithEndpoint("ingest.lightstep.com:443").
+			//    WithHeaders(map[string]string{"lightstep-access-token": "${YOUR_ACCESS_TOKEN}"}),
+			otelcol.WithInsecure(),
+			otelcol.WithEndpoint(fmt.Sprint(otlptest.ServerName, ":", server.InsecureMetricsPort)),
+			otelcol.WithHeaders(map[string]string{"lightstep-access-token": "${TOKEN}"}),
+		),
 	)
-	exp := exporter.New(client)
 
 	// Configure the SDK.
 	sdk := lightstep.NewMeterProvider(

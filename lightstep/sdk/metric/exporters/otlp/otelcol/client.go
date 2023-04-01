@@ -1,7 +1,22 @@
-package otlpmetricgrpc
+// Copyright The OpenTelemetry Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package otelcol
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/f5/otel-arrow-adapter/collector/gen/exporter/otlpexporter"
@@ -99,7 +114,7 @@ func WithTLSSetting(tlss configtls.TLSClientSetting) Option {
 	}
 }
 
-func NewClient(ctx context.Context, cfg *Config) (metric.PushExporter, error) {
+func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	c := &client{}
 
 	if cfg.Exporter.Arrow.Enabled {
@@ -107,8 +122,9 @@ func NewClient(ctx context.Context, cfg *Config) (metric.PushExporter, error) {
 	} else {
 		c.settings.ID = component.NewID("otlp/proto")
 	}
-
-	logger, err := zap.NewProduction()
+	// @@@
+	// logger, err := zap.NewProduction()
+	logger, err := zap.NewDevelopment()
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +134,7 @@ func NewClient(ctx context.Context, cfg *Config) (metric.PushExporter, error) {
 	c.settings.TelemetrySettings.MeterProvider = globalmetric.MeterProvider() // Note: becomes otel.GetMeterProvider()
 	c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
 
-	exp, err := otlpexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, cfg.Exporter)
+	exp, err := otlpexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
 	if err != nil {
 		return nil, err
 	}
@@ -129,13 +145,15 @@ func NewClient(ctx context.Context, cfg *Config) (metric.PushExporter, error) {
 		BuildInfo:         c.settings.BuildInfo,
 	}
 
-	bat, err := batchprocessor.NewFactory().CreateMetricsProcessor(ctx, bset, cfg.Batcher, exp)
+	bat, err := batchprocessor.NewFactory().CreateMetricsProcessor(ctx, bset, &cfg.Batcher, exp)
 	if err != nil {
 		return nil, err
 	}
 
 	c.exporter = exp
 	c.batcher = bat
+
+	fmt.Println("HEre, with config", cfg)
 
 	err = exp.Start(ctx, c)
 	if err != nil {
@@ -151,7 +169,7 @@ func NewClient(ctx context.Context, cfg *Config) (metric.PushExporter, error) {
 }
 
 func (c *client) String() string {
-	return "otel-arrow-adapter/otlpexporter"
+	return "otel-arrow-adapter/metricsexporter"
 }
 
 // ExportMetrics implements PushExporter.
