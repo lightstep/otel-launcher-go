@@ -1368,3 +1368,52 @@ func TestCardinalityOverflowOscillationDelta(t *testing.T) {
 		)
 	}
 }
+
+func TestInputAttributeSliceRaceCondition(t *testing.T) {
+	ctx := context.Background()
+	lib := instrumentation.Library{
+		Name: "testlib",
+	}
+	perf := sdkinstrument.Performance{}
+	vcs := make([]*viewstate.Compiler, 1)
+	vcs[0] = viewstate.New(lib, view.New("test", perf))
+
+	desc := test.Descriptor("c", sdkinstrument.SyncCounter, number.Float64Kind)
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 1)
+	pipes[0], _ = vcs[0].Compile(desc)
+
+	inst := New(desc, perf, nil, pipes)
+	require.NotNil(t, inst)
+
+	// This attribute slice is shared by multiple concurrent callers.
+	attrs := []attribute.KeyValue{
+		{
+			Key:   "key1",
+			Value: attribute.StringValue("val1"),
+		},
+		{
+			Key:   "key2",
+			Value: attribute.StringValue("val2"),
+		},
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 1000; i++ {
+			inst.ObserveFloat64(ctx, 1, attrs...)
+		}
+	}()
+
+	go func() {
+		defer wg.Done()
+		for i := 0; i < 1000; i++ {
+			inst.ObserveFloat64(ctx, 1, attrs...)
+		}
+	}()
+
+	wg.Wait()
+}

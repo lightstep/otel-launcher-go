@@ -36,7 +36,7 @@ func Descriptor(name string, ik sdkinstrument.Kind, nk number.Kind) sdkinstrumen
 	return sdkinstrument.NewDescriptor(name, ik, nk, "", "")
 }
 
-func DescriptorDescUnit(name string, ik sdkinstrument.Kind, nk number.Kind, desc string, unit string) sdkinstrument.Descriptor {
+func DescriptorDescUnit(name string, ik sdkinstrument.Kind, nk number.Kind, desc, unit string) sdkinstrument.Descriptor {
 	return sdkinstrument.NewDescriptor(name, ik, nk, desc, unit)
 }
 

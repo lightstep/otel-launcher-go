@@ -126,6 +126,13 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 			return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 		}
 
+		if c.TLSSetting != nil {
+			// Credentials is not used
+			c.Credentials = nil
+		} else if c.Credentials != nil {
+			return nil, fmt.Errorf("use TLSSettings with the Lightstep metrics SDK, not Credentials")
+		}
+
 		sdk := sdkmetric.NewMeterProvider(
 			sdkmetric.WithResource(c.Resource),
 			sdkmetric.WithReader(
@@ -140,6 +147,14 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 		}
 
 	} else {
+
+		if c.Credentials != nil {
+			// TLSSetting is not used
+			c.TLSSetting = nil
+		} else if c.TLSSetting != nil {
+			return nil, fmt.Errorf("use Credentials with the OTel-Go metrics SDK, not TLSSetting")
+		}
+
 		// Install the OTel-Go community metrics SDK.
 		metricExporter, err := c.newOtelMetricsExporter(otelPref, otelSecure)
 		if err != nil {
@@ -178,6 +193,7 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 				continue
 			}
 			for _, f := range fs {
+
 				if err := f(provider); err != nil {
 					otel.Handle(fmt.Errorf("failed to start %v instrumentation: %w", name, err))
 				}

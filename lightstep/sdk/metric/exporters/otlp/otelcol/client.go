@@ -77,7 +77,9 @@ func NewDefaultConfig() Config {
 func NewConfig(opts ...Option) Config {
 	cfg := NewDefaultConfig()
 	for _, option := range opts {
-		option(&cfg)
+		if option != nil {
+			option(&cfg)
+		}
 	}
 	return cfg
 }

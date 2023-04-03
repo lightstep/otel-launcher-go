@@ -133,7 +133,11 @@ func (obs *Observer) getOrCreate(cs *callbackState, attrs []attribute.KeyValue) 
 		cs.state.store[obs] = imap
 	}
 
-	aset := attribute.NewSet(attrs...)
+	// Copy the attribute list in case the caller has multiple
+	// concurrent callers.
+	acpy := make([]attribute.KeyValue, len(attrs))
+	copy(acpy, attrs)
+	aset := attribute.NewSet(acpy...)
 	se, has := imap[aset]
 	if !has {
 		se = comp.NewAccumulator(aset)

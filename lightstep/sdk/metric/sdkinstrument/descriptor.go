@@ -41,7 +41,7 @@ type Descriptor struct {
 }
 
 // NewDescriptor returns a Descriptor with the given contents.
-func NewDescriptor(name string, ikind Kind, nkind number.Kind, description string, unit string) Descriptor {
+func NewDescriptor(name string, ikind Kind, nkind number.Kind, description, unit string) Descriptor {
 	return Descriptor{
 		Name:        name,
 		Kind:        ikind,

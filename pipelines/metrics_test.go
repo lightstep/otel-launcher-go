@@ -27,6 +27,7 @@ import (
 	"google.golang.org/protobuf/encoding/prototext"
 
 	"github.com/lightstep/otel-launcher-go/pipelines/test"
+	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	metricglobal "go.opentelemetry.io/otel/metric/global"
@@ -44,6 +45,15 @@ func newTLSConfig() *tls.Config {
 	}
 	return &tls.Config{
 		RootCAs:    certPool,
+		ServerName: test.ServerName,
+	}
+}
+
+func newTLSClientSetting() *configtls.TLSClientSetting {
+	return &configtls.TLSClientSetting{
+		TLSSetting: configtls.TLSSetting{
+			CAFile: "testdata/caroot.crt",
+		},
 		ServerName: test.ServerName,
 	}
 }
@@ -117,6 +127,7 @@ func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 		),
 		ReportingPeriod:         "24h",
 		Credentials:             credentials.NewTLS(newTLSConfig()),
+		TLSSetting:              newTLSClientSetting(),
 		MetricsBuiltinsEnabled:  builtins,
 		MetricsBuiltinLibraries: []string{"cputime:stable"},
 		UseLightstepMetricsSDK:  lightstepSDK,
