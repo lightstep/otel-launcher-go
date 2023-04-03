@@ -19,7 +19,6 @@ import (
 	"strings"
 
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/unit"
 )
 
 type builtinKind int
@@ -169,7 +168,7 @@ func (bd *builtinDescriptor) findMatch(goname string) (mname, munit, descPattern
 	// Fix the units for UCUM.
 	switch munit {
 	case "bytes":
-		munit = string(unit.Bytes)
+		munit = "By"
 	case "seconds":
 		munit = "s"
 	case "":

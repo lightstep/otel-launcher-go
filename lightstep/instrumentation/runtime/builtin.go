@@ -24,7 +24,6 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
 )
 
 // namePrefix is prefixed onto OTel instrument names.
@@ -138,7 +137,7 @@ func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 
 		description := fmt.Sprintf("%s from runtime/metrics", pattern)
 
-		unitOpt := instrument.WithUnit(unit.Unit(munit))
+		unitOpt := instrument.WithUnit(munit)
 		descOpt := instrument.WithDescription(description)
 
 		var inst instrument.Asynchronous

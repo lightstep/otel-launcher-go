@@ -24,7 +24,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
@@ -128,7 +127,7 @@ type testExpectation map[string]*testExpectMetric
 // and known cardinal values.
 type testExpectMetric struct {
 	desc string
-	unit unit.Unit
+	unit string
 	kind builtinKind
 	vals map[attribute.Set]metrics.Value
 }
@@ -248,7 +247,7 @@ func makeTestCase1(t *testing.T) (allFunc, readFunc, *builtinDescriptor, testExp
 			},
 		},
 		"process.count": &testExpectMetric{
-			unit: unit.Bytes,
+			unit: "By",
 			kind: builtinCounter,
 			desc: "/process/count:bytes from runtime/metrics",
 			vals: map[attribute.Set]metrics.Value{
@@ -353,7 +352,7 @@ func makeTestCase2(t *testing.T) (allFunc, readFunc, *builtinDescriptor, testExp
 	bd.classesCounter("/socchip/classes/*:cpu-seconds")
 	return af, mapping.read, bd, testExpectation{
 		"objsize.usage": &testExpectMetric{
-			unit: unit.Bytes,
+			unit: "By",
 			desc: "/objsize/classes/*:bytes from runtime/metrics",
 			kind: builtinUpDownCounter,
 			vals: map[attribute.Set]metrics.Value{
@@ -396,7 +395,7 @@ func makeTestCaseBuiltin(t *testing.T) (allFunc, readFunc, *builtinDescriptor, t
 		if !ok {
 			te = &testExpectMetric{
 				desc: fmt.Sprint(descPat, " from runtime/metrics"),
-				unit: unit.Unit(munit),
+				unit: munit,
 				kind: kind,
 				vals: map[attribute.Set]metrics.Value{},
 			}
@@ -419,7 +418,8 @@ func testMetricTranslation(t *testing.T, makeTestCase func(t *testing.T) (allFun
 	err := br.register(desc)
 	require.NoError(t, err)
 
-	data, err := reader.Collect(context.Background())
+	var data metricdata.ResourceMetrics
+	err = reader.Collect(context.Background(), &data)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, len(data.ScopeMetrics))

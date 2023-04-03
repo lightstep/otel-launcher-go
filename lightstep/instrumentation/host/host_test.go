@@ -110,7 +110,8 @@ func TestHostCPU(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	data, err := reader.Collect(ctx)
+	var data metricdata.ResourceMetrics
+	err = reader.Collect(ctx, &data)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(data.ScopeMetrics))
 
@@ -151,7 +152,8 @@ func TestHostMemory(t *testing.T) {
 	vMem, err := mem.VirtualMemoryWithContext(ctx)
 	require.NoError(t, err)
 
-	data, err := reader.Collect(ctx)
+	var data metricdata.ResourceMetrics
+	err = reader.Collect(ctx, &data)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(data.ScopeMetrics))
 
@@ -238,7 +240,8 @@ func TestHostNetwork(t *testing.T) {
 			uint64(howMuch) <= hostAfter[0].BytesRecv-hostBefore[0].BytesRecv
 	}, 30*time.Second, time.Second/2)
 
-	data, err := reader.Collect(ctx)
+	var data metricdata.ResourceMetrics
+	err = reader.Collect(ctx, &data)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(data.ScopeMetrics))
 	hostTransmit := getMetric(data.ScopeMetrics[0].Metrics, "system.network.io", AttributeNetworkTransmit[0])

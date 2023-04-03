@@ -104,7 +104,8 @@ func TestProcessCPU(t *testing.T) {
 
 	beforeUser, beforeSystem, _ := c.getProcessTimes(ctx)
 
-	data, err := reader.Collect(ctx)
+	var data metricdata.ResourceMetrics
+	err = reader.Collect(ctx, &data)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(data.ScopeMetrics))
 
@@ -141,7 +142,8 @@ func TestProcessUptime(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, c.register())
 
-	data, err := reader.Collect(ctx)
+	var data metricdata.ResourceMetrics
+	err = reader.Collect(ctx, &data)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(data.ScopeMetrics))
 
