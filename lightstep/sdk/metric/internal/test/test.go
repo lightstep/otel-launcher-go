@@ -28,7 +28,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
@@ -37,7 +36,7 @@ func Descriptor(name string, ik sdkinstrument.Kind, nk number.Kind) sdkinstrumen
 	return sdkinstrument.NewDescriptor(name, ik, nk, "", "")
 }
 
-func DescriptorDescUnit(name string, ik sdkinstrument.Kind, nk number.Kind, desc string, unit unit.Unit) sdkinstrument.Descriptor {
+func DescriptorDescUnit(name string, ik sdkinstrument.Kind, nk number.Kind, desc, unit string) sdkinstrument.Descriptor {
 	return sdkinstrument.NewDescriptor(name, ik, nk, desc, unit)
 }
 

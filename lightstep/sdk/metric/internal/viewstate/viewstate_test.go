@@ -38,7 +38,6 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
@@ -125,7 +124,7 @@ func testCompile(vc *Compiler, name string, ik sdkinstrument.Kind, nk number.Kin
 	return testCompileDescUnit(vc, name, ik, nk, "", "")
 }
 
-func testCompileDescUnit(vc *Compiler, name string, ik sdkinstrument.Kind, nk number.Kind, desc string, unit unit.Unit) (Instrument, error) {
+func testCompileDescUnit(vc *Compiler, name string, ik sdkinstrument.Kind, nk number.Kind, desc, unit string) (Instrument, error) {
 	inst, conflicts := vc.Compile(sdkinstrument.NewDescriptor(name, ik, nk, desc, unit))
 	return inst, conflicts.AsError()
 }

@@ -27,7 +27,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/instrument"
-	"go.opentelemetry.io/otel/metric/unit"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
@@ -59,7 +58,7 @@ type (
 	// instrument.Config interfaces.
 	instConfig interface {
 		Description() string
-		Unit() unit.Unit
+		Unit() string
 	}
 )
 
