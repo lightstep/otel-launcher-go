@@ -285,6 +285,11 @@ func (rec *record) initialize() {
 	acpy := make([]attribute.KeyValue, len(rec.attrsList))
 	copy(acpy, rec.attrsList)
 
+	// When ignoring collisions, the list is no longer used.
+	if rec.inst.performance.IgnoreCollisions {
+		rec.attrsList = nil
+	}
+
 	aset := attribute.NewSet(acpy...)
 	rec.accumulatorUnsafe = rec.inst.compiled.NewAccumulator(aset)
 }
