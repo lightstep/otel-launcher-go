@@ -3,8 +3,8 @@ module github.com/lightstep/otel-launcher-go
 go 1.18
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.15.0
-	github.com/lightstep/otel-launcher-go/pipelines v1.15.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.15.1
+	github.com/lightstep/otel-launcher-go/pipelines v1.15.1
 	github.com/sethvargo/go-envconfig v0.8.3
 	github.com/stretchr/testify v1.8.2
 	go.opentelemetry.io/otel v1.14.0
@@ -23,7 +23,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.7.0 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.15.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.15.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
