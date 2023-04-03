@@ -82,7 +82,23 @@ func BenchmarkCounterAddOneAttrUnsafe(b *testing.B) {
 	}
 }
 
-func BenchmarkCounterAddOneAttrSliceReuse(b *testing.B) {
+func BenchmarkCounterAddOneAttrSliceReuseSafe(b *testing.B) {
+	ctx := context.Background()
+	rdr := NewManualReader("bench")
+	provider := NewMeterProvider(WithReader(rdr), unsafePerf)
+	b.ReportAllocs()
+
+	attrs := []attribute.KeyValue{
+		attribute.String("K", "V"),
+	}
+	cntr, _ := provider.Meter("test").Int64Counter("hello")
+
+	for i := 0; i < b.N; i++ {
+		cntr.Add(ctx, 1, attrs...)
+	}
+}
+
+func BenchmarkCounterAddOneAttrSliceReuseUnsafe(b *testing.B) {
 	ctx := context.Background()
 	rdr := NewManualReader("bench")
 	provider := NewMeterProvider(WithReader(rdr), unsafePerf)
