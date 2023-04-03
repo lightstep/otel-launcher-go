@@ -85,7 +85,7 @@ func BenchmarkCounterAddOneAttrUnsafe(b *testing.B) {
 func BenchmarkCounterAddOneAttrSliceReuseSafe(b *testing.B) {
 	ctx := context.Background()
 	rdr := NewManualReader("bench")
-	provider := NewMeterProvider(WithReader(rdr), unsafePerf)
+	provider := NewMeterProvider(WithReader(rdr))
 	b.ReportAllocs()
 
 	attrs := []attribute.KeyValue{
