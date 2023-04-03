@@ -11,7 +11,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 ## [1.15.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.15.0) - 2023-04-03)
 
 - Remove access token length check. [#412](https://github.com/lightstep/otel-launcher-go/pull/412)
-- Update all OTel dependencies (removal of upstream `metric/unit` package).
+- Update all OTel dependencies (removal of upstream `metric/unit` package). [#421](https://github.com/lightstep/otel-launcher-go/pull/421)
 
 ## [1.14.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.14.0) - 2023-03-17)
 
