@@ -1414,6 +1414,14 @@ func TestInputAttributeSliceRaceCondition(t *testing.T) {
 			inst.ObserveFloat64(ctx, 1, attrs...)
 		}
 	}()
+	
+	go func() {
+		defer wg.Done()
+		attrs[0] = attribute.KeyValue{
+			Key:   "key1-modified",
+			Value: attribute.StringValue("val1-modified"),
+		}
+	}()
 
 	wg.Wait()
 }
