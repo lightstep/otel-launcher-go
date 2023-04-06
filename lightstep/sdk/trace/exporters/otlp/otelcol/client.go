@@ -20,8 +20,6 @@ import (
 	"sync"
 
 	"github.com/f5/otel-arrow-adapter/collector/gen/exporter/otlpexporter"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -33,6 +31,7 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/otel"
 	globalmetric "go.opentelemetry.io/otel/metric/global"
+	"go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
@@ -48,8 +47,8 @@ type client struct {
 	once     sync.Once
 	resource pcommon.Resource
 
-	exporter exporter.Metrics
-	// batcher  processor.Metrics
+	exporter exporter.Traces
+	// batcher  processor.Traces
 	settings exporter.CreateSettings
 }
 
@@ -123,7 +122,7 @@ func WithTLSSetting(tlss configtls.TLSClientSetting) Option {
 	}
 }
 
-func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
+func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 	c := &client{}
 
 	if cfg.Exporter.Arrow.Enabled {
@@ -143,7 +142,7 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	c.settings.TelemetrySettings.MeterProvider = globalmetric.MeterProvider() // Note: becomes otel.GetMeterProvider()
 	c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
 
-	exp, err := otlpexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
+	exp, err := otlpexporter.NewFactory().CreateTracesExporter(ctx, c.settings, &cfg.Exporter)
 	if err != nil {
 		return nil, err
 	}
@@ -154,7 +153,7 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	// 	BuildInfo:         c.settings.BuildInfo,
 	// }
 
-	// bat, err := batchprocessor.NewFactory().CreateMetricsProcessor(ctx, bset, &cfg.Batcher, exp)
+	// bat, err := batchprocessor.NewFactory().CreateTracesProcessor(ctx, bset, &cfg.Batcher, exp)
 	// if err != nil {
 	// 	return nil, err
 	// }
@@ -178,23 +177,20 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 }
 
 func (c *client) String() string {
-	return "otel-arrow-adapter/metricsexporter"
+	return "otel-arrow-adapter/tracesexporter"
 }
 
-// ExportMetrics implements PushExporter.
-func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
-	fmt.Println("Export metrics start")
-	defer fmt.Println("Export metrics done")
-	// @@@ return c.batcher.ConsumeMetrics(ctx, c.d2pd(data))
-	return c.exporter.ConsumeMetrics(ctx, c.d2pd(data))
+// ExportSpans implements PushExporter.
+func (c *client) ExportSpans(ctx context.Context, data []trace.ReadOnlySpan) error {
+	fmt.Println("Export spans start")
+	defer fmt.Println("Export spans done")
+	// @@@ return c.batcher.ConsumeSpans(ctx, c.d2pd(data))
+	return c.exporter.ConsumeTraces(ctx, c.d2pd(data))
 }
 
-// ShutdownMetrics implements PushExporter.
-func (c *client) ShutdownMetrics(ctx context.Context, data data.Metrics) error {
+// ShutdownSpans implements PushExporter.
+func (c *client) Shutdown(ctx context.Context) error {
 	var err error
-	if err1 := c.ForceFlushMetrics(ctx, data); err1 != nil {
-		err = multierr.Append(err, err1)
-	}
 	// if err2 := c.batcher.Shutdown(ctx); err2 != nil {
 	// 	err = multierr.Append(err, err2)
 	// }
@@ -202,11 +198,6 @@ func (c *client) ShutdownMetrics(ctx context.Context, data data.Metrics) error {
 		err = multierr.Append(err, err3)
 	}
 	return err
-}
-
-// ForceFlushMetrics implements PushExporter.
-func (c *client) ForceFlushMetrics(ctx context.Context, data data.Metrics) error {
-	return c.ExportMetrics(ctx, data)
 }
 
 // ReportFatalError implements component.Host.
