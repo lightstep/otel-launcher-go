@@ -16,10 +16,11 @@ package otelcol
 
 import (
 	"context"
-	"fmt"
 	"sync"
+	"time"
 
 	"github.com/f5/otel-arrow-adapter/collector/gen/exporter/otlpexporter"
+	"github.com/go-logr/zapr"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"go.opentelemetry.io/collector/component"
@@ -31,6 +32,8 @@ import (
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/otel"
 	globalmetric "go.opentelemetry.io/otel/metric/global"
 	"go.uber.org/multierr"
@@ -40,7 +43,7 @@ import (
 type Option func(*Config)
 
 type Config struct {
-	// Batcher  batchprocessor.Config
+	Batcher  batchprocessor.Config
 	Exporter otlpexporter.Config
 }
 
@@ -49,19 +52,21 @@ type client struct {
 	resource pcommon.Resource
 
 	exporter exporter.Metrics
-	// batcher  processor.Metrics
+	batcher  processor.Metrics
 	settings exporter.CreateSettings
 }
 
 func NewDefaultConfig() Config {
 	return Config{
-		// Batcher: batchprocessor.Config{
-		// 	Timeout:          0,
-		// 	SendBatchSize:    0,
-		// 	SendBatchMaxSize: 10,
-		// },
+		Batcher: batchprocessor.Config{
+			Timeout:          0,
+			SendBatchSize:    0,
+			SendBatchMaxSize: 10000,
+		},
 		Exporter: otlpexporter.Config{
-			TimeoutSettings: exporterhelper.NewDefaultTimeoutSettings(),
+			TimeoutSettings: exporterhelper.TimeoutSettings{
+				Timeout: 10 * time.Second,
+			},
 			RetrySettings: exporterhelper.RetrySettings{
 				Enabled: false,
 			},
@@ -72,10 +77,13 @@ func NewDefaultConfig() Config {
 				Headers:         map[string]configopaque.String{},
 				Compression:     configcompression.Zstd,
 				WriteBufferSize: 512 * 1024,
+				WaitForReady:    true,
 			},
 			Arrow: otlpexporter.ArrowSettings{
-				NumStreams: 1,
-				Enabled:    true,
+				// @@@ Not working right now.
+				Enabled:          false,
+				NumStreams:       1,
+				DisableDowngrade: true,
 			},
 		},
 	}
@@ -131,16 +139,26 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	} else {
 		c.settings.ID = component.NewID("otlp/proto")
 	}
-	// @@@
+	// @@@ Someone else does this.
 	// logger, err := zap.NewProduction()
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		return nil, err
 	}
 
+	otel.SetLogger(zapr.NewLogger(logger))
+	// @@@ Do not do this for real, someone else should.
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		logger.Error("OTel SDK error", zap.Error(err))
+	}))
+
 	c.settings.TelemetrySettings.Logger = logger
+	// @@@ This is too much tracing, I think.
 	c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
-	c.settings.TelemetrySettings.MeterProvider = globalmetric.MeterProvider() // Note: becomes otel.GetMeterProvider()
+	// This is meta and we rely on global dependency injection,
+	// but we're hoping this works.
+	// Note: becomes otel.GetMeterProvider()
+	c.settings.TelemetrySettings.MeterProvider = globalmetric.MeterProvider()
 	c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
 
 	exp, err := otlpexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
@@ -148,31 +166,29 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 		return nil, err
 	}
 
-	// bset := processor.CreateSettings{
-	// 	ID:                component.NewID("otlp/batch"),
-	// 	TelemetrySettings: c.settings.TelemetrySettings,
-	// 	BuildInfo:         c.settings.BuildInfo,
-	// }
+	bset := processor.CreateSettings{
+		ID:                component.NewID("otlp/batch"),
+		TelemetrySettings: c.settings.TelemetrySettings,
+		BuildInfo:         c.settings.BuildInfo,
+	}
 
-	// bat, err := batchprocessor.NewFactory().CreateMetricsProcessor(ctx, bset, &cfg.Batcher, exp)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	bat, err := batchprocessor.NewFactory().CreateMetricsProcessor(ctx, bset, &cfg.Batcher, exp)
+	if err != nil {
+		return nil, err
+	}
 
 	c.exporter = exp
-	// c.batcher = bat
-
-	fmt.Println("START, with config", cfg)
+	c.batcher = bat
 
 	err = exp.Start(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 
-	// err = bat.Start(ctx, c)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err = bat.Start(ctx, c)
+	if err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }
@@ -183,10 +199,7 @@ func (c *client) String() string {
 
 // ExportMetrics implements PushExporter.
 func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
-	fmt.Println("Export metrics start")
-	defer fmt.Println("Export metrics done")
-	// @@@ return c.batcher.ConsumeMetrics(ctx, c.d2pd(data))
-	return c.exporter.ConsumeMetrics(ctx, c.d2pd(data))
+	return c.batcher.ConsumeMetrics(ctx, c.d2pd(data))
 }
 
 // ShutdownMetrics implements PushExporter.
@@ -195,9 +208,9 @@ func (c *client) ShutdownMetrics(ctx context.Context, data data.Metrics) error {
 	if err1 := c.ForceFlushMetrics(ctx, data); err1 != nil {
 		err = multierr.Append(err, err1)
 	}
-	// if err2 := c.batcher.Shutdown(ctx); err2 != nil {
-	// 	err = multierr.Append(err, err2)
-	// }
+	if err2 := c.batcher.Shutdown(ctx); err2 != nil {
+		err = multierr.Append(err, err2)
+	}
 	if err3 := c.exporter.Shutdown(ctx); err3 != nil {
 		err = multierr.Append(err, err3)
 	}
