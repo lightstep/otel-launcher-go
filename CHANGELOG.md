@@ -8,7 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
-- LS Metrics SDK supports an API hint for controlling Temporality on a per-instrument basis.
+- LS Metrics SDK supports an API hint for controlling Temporality on a per-instrument basis. [#426](https://github.com/lightstep/otel-launcher-go/pull/426)
 
 ## [1.15.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.15.1) - 2023-04-03)
 
