@@ -16,7 +16,11 @@
 
 package aggregation // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 
-import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+import (
+	"strings"
+
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+)
 
 type Temporality uint8
 
@@ -56,4 +60,14 @@ func (t Temporality) Valid() bool {
 		return true
 	}
 	return false
+}
+
+func ParseTemporality(str string) (Temporality, bool) {
+	switch strings.ToLower(str) {
+	case "cumualtive":
+		return CumulativeTemporality, true
+	case "delta":
+		return DeltaTemporality, true
+	}
+	return UndefinedTemporality, false
 }

@@ -195,9 +195,10 @@ func (v *Compiler) Collectors() []data.Collector {
 // tryToApplyHint looks for a Lightstep-specified hint structure
 // encoded as JSON in the description.  If valid, returns the modified
 // configuration, otherwise returns the default for the instrument.
-func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkinstrument.Descriptor, akind aggregation.Kind, acfg, defCfg aggregator.Config, hinted bool) {
+func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkinstrument.Descriptor, akind aggregation.Kind, tempo aggregation.Temporality, acfg, defCfg aggregator.Config, hinted bool) {
 	// These are the default behaviors, we'll use them unless there's a valid hint.
 	akind = v.views.Defaults.Aggregation(instrument.Kind)
+	tempo = v.views.Defaults.Temporality(instrument.Kind)
 	defCfg = v.views.Defaults.AggregationConfig(
 		instrument.Kind,
 		instrument.NumberKind,
@@ -206,14 +207,14 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 
 	// Check for required JSON symbols, empty strings, ...
 	if !strings.Contains(instrument.Description, "{") {
-		return instrument, akind, acfg, defCfg, hinted
+		return instrument, akind, tempo, acfg, defCfg, hinted
 	}
 
 	var hint view.Hint
 	if err := json.Unmarshal([]byte(instrument.Description), &hint); err != nil {
 		// This could be noisy if valid descriptions contain spurious '{' chars.
 		otel.Handle(fmt.Errorf("hint parse error: %w", err))
-		return instrument, akind, acfg, defCfg, hinted
+		return instrument, akind, tempo, acfg, defCfg, hinted
 	}
 
 	// Replace the hint input with its embedded description.
@@ -232,6 +233,15 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 		}
 	}
 
+	if hint.Temporality != "" {
+		parseTempo, ok := aggregation.ParseTemporality(hint.Temporality)
+		if !ok {
+			otel.Handle(fmt.Errorf("hint invalid temporality: %v", hint.Temporality))
+		} else if parseTempo != aggregation.UndefinedTemporality {
+			tempo = parseTempo
+		}
+	}
+
 	if hint.Config.Histogram.MaxSize != 0 {
 		cfg := histostruct.NewConfig(histostruct.WithMaxSize(hint.Config.Histogram.MaxSize))
 		cfg, err := cfg.Validate()
@@ -244,7 +254,7 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 		acfg.CardinalityLimit = hint.Config.CardinalityLimit
 	}
 
-	return instrument, akind, acfg, defCfg, hinted
+	return instrument, akind, tempo, acfg, defCfg, hinted
 }
 
 // Compile is called during NewInstrument by the Meter
@@ -267,7 +277,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 			continue
 		}
 
-		modified, hintAkind, hintAcfg, defCfg, hinted := v.tryToApplyHint(instrument)
+		modified, hintAkind, tempo, hintAcfg, defCfg, hinted := v.tryToApplyHint(instrument)
 		instrument = modified // the hint erases itself from the description
 
 		if akind == aggregation.UndefinedKind {
@@ -279,7 +289,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 			desc:     viewDescriptor(instrument, view),
 			kind:     akind,
 			acfg:     pickAggConfig(hintAcfg, defCfg, view.AggregatorConfig()),
-			tempo:    v.views.Defaults.Temporality(instrument.Kind),
+			tempo:    tempo,
 			hinted:   hinted,
 		}
 
@@ -293,7 +303,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 
 	// If there were no matching views, set the default aggregation.
 	if len(matches) == 0 {
-		modified, akind, acfg, _, hinted := v.tryToApplyHint(instrument)
+		modified, akind, tempo, acfg, _, hinted := v.tryToApplyHint(instrument)
 		instrument = modified // the hint erases itself from the description
 
 		if akind != aggregation.DropKind {
@@ -302,7 +312,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 				desc:     instrument,
 				kind:     akind,
 				acfg:     acfg,
-				tempo:    v.views.Defaults.Temporality(instrument.Kind),
+				tempo:    tempo,
 				hinted:   hinted,
 			})
 		}

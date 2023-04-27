@@ -1554,12 +1554,25 @@ func TestViewHints(t *testing.T) {
 
 	gg, err := testCompileDescUnit(
 		vc,
-		"gauge",
+		"cumulative_gauge",
 		sdkinstrument.SyncUpDownCounter, // updowncounter->gauge
 		number.Float64Kind,
 		`{
   "description": "check it",
   "aggregation": "gauge"
+}`,
+		"",
+	)
+	require.NoError(t, err)
+
+	dg, err := testCompileDescUnit(
+		vc,
+		"delta_gauge",
+		sdkinstrument.SyncUpDownCounter, // updowncounter->gauge
+		number.Float64Kind,
+		`{
+  "aggregation": "gauge",
+  "temporality": "delta"
 }`,
 		"",
 	)
@@ -1578,6 +1591,7 @@ func TestViewHints(t *testing.T) {
 		histo.NewAccumulator(set),
 		mmsc.NewAccumulator(set),
 		gg.NewAccumulator(set),
+		dg.NewAccumulator(set),
 	} {
 		for _, inp := range inputs {
 			acc.(Updater[float64]).Update(inp)
@@ -1595,8 +1609,12 @@ func TestViewHints(t *testing.T) {
 			test.Point(seq.Start, seq.Now, minmaxsumcount.NewFloat64(inputs...), cumulative, set.ToSlice()...),
 		),
 		test.Instrument(
-			test.DescriptorDescUnit("gauge", sdkinstrument.SyncUpDownCounter, number.Float64Kind, "check it", ""),
+			test.DescriptorDescUnit("cumulative_gauge", sdkinstrument.SyncUpDownCounter, number.Float64Kind, "check it", ""),
 			test.Point(seq.Start, seq.Now, gauge.NewFloat64(inputs[numInputs-1]), cumulative, set.ToSlice()...),
+		),
+		test.Instrument(
+			test.DescriptorDescUnit("delta_gauge", sdkinstrument.SyncUpDownCounter, number.Float64Kind, "", ""),
+			test.Point(seq.Last, seq.Now, gauge.NewFloat64(inputs[numInputs-1]), delta, set.ToSlice()...),
 		),
 	)
 
