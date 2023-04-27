@@ -1554,8 +1554,8 @@ func TestViewHints(t *testing.T) {
 
 	gg, err := testCompileDescUnit(
 		vc,
-		"cumulative_gauge",
-		sdkinstrument.SyncUpDownCounter, // updowncounter->gauge
+		"default_gauge",
+		sdkinstrument.SyncUpDownCounter, // updowncounter->gauge(default is cumulative)
 		number.Float64Kind,
 		`{
   "description": "check it",
@@ -1568,7 +1568,7 @@ func TestViewHints(t *testing.T) {
 	dg, err := testCompileDescUnit(
 		vc,
 		"delta_gauge",
-		sdkinstrument.SyncUpDownCounter, // updowncounter->gauge
+		sdkinstrument.SyncUpDownCounter, // updowncounter->gauge(hinted as delta)
 		number.Float64Kind,
 		`{
   "aggregation": "gauge",
@@ -1609,7 +1609,7 @@ func TestViewHints(t *testing.T) {
 			test.Point(seq.Start, seq.Now, minmaxsumcount.NewFloat64(inputs...), cumulative, set.ToSlice()...),
 		),
 		test.Instrument(
-			test.DescriptorDescUnit("cumulative_gauge", sdkinstrument.SyncUpDownCounter, number.Float64Kind, "check it", ""),
+			test.DescriptorDescUnit("default_gauge", sdkinstrument.SyncUpDownCounter, number.Float64Kind, "check it", ""),
 			test.Point(seq.Start, seq.Now, gauge.NewFloat64(inputs[numInputs-1]), cumulative, set.ToSlice()...),
 		),
 		test.Instrument(
