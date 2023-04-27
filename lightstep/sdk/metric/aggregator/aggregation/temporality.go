@@ -12,11 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//go:generate stringer -type=Temporality
-
 package aggregation // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 
-import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+import (
+	"strings"
+
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+)
 
 type Temporality uint8
 
@@ -56,4 +58,29 @@ func (t Temporality) Valid() bool {
 		return true
 	}
 	return false
+}
+
+const (
+	NameCumulative = "cumulative"
+	NameDelta      = "delta"
+)
+
+func (t Temporality) String() string {
+	switch t {
+	case DeltaTemporality:
+		return NameDelta
+	case CumulativeTemporality:
+		return NameCumulative
+	}
+	return "undefined"
+}
+
+func ParseTemporality(str string) (Temporality, bool) {
+	switch strings.ToLower(str) {
+	case NameCumulative:
+		return CumulativeTemporality, true
+	case NameDelta:
+		return DeltaTemporality, true
+	}
+	return UndefinedTemporality, false
 }

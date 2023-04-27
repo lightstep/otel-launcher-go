@@ -33,4 +33,7 @@ type Hint struct {
 	// Config configures the aggregator selected in the
 	// Aggregation field.
 	Config aggregator.JSONConfig `json:"config"`
+
+	// Temporality overrides the default temporality choice.
+	Temporality string `json:"temporality"`
 }

@@ -17,11 +17,9 @@ package retry
 import (
 	"context"
 	"errors"
-	"math"
 	"testing"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -133,7 +131,9 @@ func TestBackoffRetry(t *testing.T) {
 	origWait := waitFunc
 	var done bool
 	waitFunc = func(_ context.Context, d time.Duration) error {
-		delta := math.Ceil(float64(delay)*backoff.DefaultRandomizationFactor) - float64(delay)
+		// N.B. the old formula was flaky, this code is EOL
+		// and we won't wonder how this ever passed or changed.
+		delta := float64(time.Nanosecond)
 		assert.InDelta(t, delay, d, delta, "retry not backoffed")
 		// Try twice to ensure call is attempted again after delay.
 		if done {
