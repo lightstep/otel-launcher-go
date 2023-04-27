@@ -25,7 +25,6 @@ import (
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/trace"
 )
 
 func toTemporality(t aggregation.Temporality) pmetric.AggregationTemporality {
@@ -204,7 +203,7 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 	}
 }
 
-func (c *client) d2pd(in []trace.ReadOnlySpan) pmetric.Metrics {
+func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
 	c.once.Do(func() {
 		c.resource = pcommon.NewResource()
 		copyAttributes(

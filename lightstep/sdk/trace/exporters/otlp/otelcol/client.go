@@ -16,10 +16,11 @@ package otelcol
 
 import (
 	"context"
-	"fmt"
 	"sync"
+	"time"
 
 	"github.com/f5/otel-arrow-adapter/collector/gen/exporter/otlpexporter"
+	"github.com/go-logr/zapr"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -29,17 +30,18 @@ import (
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/otel"
 	globalmetric "go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/sdk/trace"
-	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
 
 type Option func(*Config)
 
 type Config struct {
-	// Batcher  batchprocessor.Config
+	Batcher  batchprocessor.Config
 	Exporter otlpexporter.Config
 }
 
@@ -48,19 +50,21 @@ type client struct {
 	resource pcommon.Resource
 
 	exporter exporter.Traces
-	// batcher  processor.Traces
+	batcher  processor.Traces
 	settings exporter.CreateSettings
 }
 
 func NewDefaultConfig() Config {
 	return Config{
-		// Batcher: batchprocessor.Config{
-		// 	Timeout:          0,
-		// 	SendBatchSize:    0,
-		// 	SendBatchMaxSize: 10,
-		// },
+		Batcher: batchprocessor.Config{
+			Timeout:          0,
+			SendBatchSize:    0,
+			SendBatchMaxSize: 10000,
+		},
 		Exporter: otlpexporter.Config{
-			TimeoutSettings: exporterhelper.NewDefaultTimeoutSettings(),
+			TimeoutSettings: exporterhelper.TimeoutSettings{
+				Timeout: 10 * time.Second,
+			},
 			RetrySettings: exporterhelper.RetrySettings{
 				Enabled: false,
 			},
@@ -71,10 +75,13 @@ func NewDefaultConfig() Config {
 				Headers:         map[string]configopaque.String{},
 				Compression:     configcompression.Zstd,
 				WriteBufferSize: 512 * 1024,
+				WaitForReady:    true,
 			},
 			Arrow: otlpexporter.ArrowSettings{
-				NumStreams: 1,
-				Enabled:    true,
+				// @@@ Not working right now.
+				Enabled:          false,
+				NumStreams:       1,
+				DisableDowngrade: true,
 			},
 		},
 	}
@@ -130,16 +137,26 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 	} else {
 		c.settings.ID = component.NewID("otlp/proto")
 	}
-	// @@@
+	// @@@ Someone else does this.
 	// logger, err := zap.NewProduction()
 	logger, err := zap.NewDevelopment()
 	if err != nil {
 		return nil, err
 	}
 
+	otel.SetLogger(zapr.NewLogger(logger))
+	// @@@ Do not do this for real, someone else should.
+	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
+		logger.Error("OTel SDK error", zap.Error(err))
+	}))
+
 	c.settings.TelemetrySettings.Logger = logger
+	// @@@ This is too much tracing, I think.
 	c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
-	c.settings.TelemetrySettings.MeterProvider = globalmetric.MeterProvider() // Note: becomes otel.GetMeterProvider()
+	// This is meta and we rely on global dependency injection,
+	// but we're hoping this works.
+	// Note: becomes otel.GetMeterProvider()
+	c.settings.TelemetrySettings.MeterProvider = globalmetric.MeterProvider()
 	c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
 
 	exp, err := otlpexporter.NewFactory().CreateTracesExporter(ctx, c.settings, &cfg.Exporter)
@@ -147,31 +164,29 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 		return nil, err
 	}
 
-	// bset := processor.CreateSettings{
-	// 	ID:                component.NewID("otlp/batch"),
-	// 	TelemetrySettings: c.settings.TelemetrySettings,
-	// 	BuildInfo:         c.settings.BuildInfo,
-	// }
+	bset := processor.CreateSettings{
+		ID:                component.NewID("otlp/batch"),
+		TelemetrySettings: c.settings.TelemetrySettings,
+		BuildInfo:         c.settings.BuildInfo,
+	}
 
-	// bat, err := batchprocessor.NewFactory().CreateTracesProcessor(ctx, bset, &cfg.Batcher, exp)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	bat, err := batchprocessor.NewFactory().CreateTracesProcessor(ctx, bset, &cfg.Batcher, exp)
+	if err != nil {
+		return nil, err
+	}
 
 	c.exporter = exp
-	// c.batcher = bat
-
-	fmt.Println("START, with config", cfg)
+	c.batcher = bat
 
 	err = exp.Start(ctx, c)
 	if err != nil {
 		return nil, err
 	}
 
-	// err = bat.Start(ctx, c)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	err = bat.Start(ctx, c)
+	if err != nil {
+		return nil, err
+	}
 
 	return c, nil
 }
@@ -180,25 +195,30 @@ func (c *client) String() string {
 	return "otel-arrow-adapter/tracesexporter"
 }
 
-// ExportSpans implements PushExporter.
-func (c *client) ExportSpans(ctx context.Context, data []trace.ReadOnlySpan) error {
-	fmt.Println("Export spans start")
-	defer fmt.Println("Export spans done")
-	// @@@ return c.batcher.ConsumeSpans(ctx, c.d2pd(data))
-	return c.exporter.ConsumeTraces(ctx, c.d2pd(data))
-}
+// // ExportMetrics implements PushExporter.
+// func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
+// 	return c.batcher.ConsumeMetrics(ctx, c.d2pd(data))
+// }
 
-// ShutdownSpans implements PushExporter.
-func (c *client) Shutdown(ctx context.Context) error {
-	var err error
-	// if err2 := c.batcher.Shutdown(ctx); err2 != nil {
-	// 	err = multierr.Append(err, err2)
-	// }
-	if err3 := c.exporter.Shutdown(ctx); err3 != nil {
-		err = multierr.Append(err, err3)
-	}
-	return err
-}
+// // ShutdownMetrics implements PushExporter.
+// func (c *client) ShutdownMetrics(ctx context.Context, data data.Metrics) error {
+// 	var err error
+// 	if err1 := c.ForceFlushMetrics(ctx, data); err1 != nil {
+// 		err = multierr.Append(err, err1)
+// 	}
+// 	if err2 := c.batcher.Shutdown(ctx); err2 != nil {
+// 		err = multierr.Append(err, err2)
+// 	}
+// 	if err3 := c.exporter.Shutdown(ctx); err3 != nil {
+// 		err = multierr.Append(err, err3)
+// 	}
+// 	return err
+// }
+
+// // ForceFlushMetrics implements PushExporter.
+// func (c *client) ForceFlushMetrics(ctx context.Context, data data.Metrics) error {
+// 	return c.ExportMetrics(ctx, data)
+// }
 
 // ReportFatalError implements component.Host.
 func (c *client) ReportFatalError(err error) {
