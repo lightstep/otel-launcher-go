@@ -88,6 +88,15 @@ To set the MinMaxSumCount aggregation for a specific histogram instrument:
 }
 ```
 
+To override the Temporality selected for a specific instrument:
+
+```
+{
+  "description": "measurement of ...",
+  "temporality": "delta"
+}
+```
+
 ### Synchronous Gauge instrument 
 
 [OpenTelemetry metrics API does not support a synchronous Gauge
@@ -122,6 +131,10 @@ For example, to configure a synchronous Gauge:
 	)
 ```
 
+Note that the API hint for Gauge aggregation can be combined with the
+API hint for temporality, allowing control over Gauge behavior
+independent of the default Temporality choice for UpDownCounter
+instruments.
 
 ### Performance settings
 

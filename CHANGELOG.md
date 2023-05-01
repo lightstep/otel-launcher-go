@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.16.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.16.0) - 2023-04-27)
+
+- LS Metrics SDK supports an API hint for controlling Temporality on a per-instrument basis. [#426](https://github.com/lightstep/otel-launcher-go/pull/426)
+
 ## [1.15.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.15.1) - 2023-04-03)
 
 - Correct race conditions related to sharing of the input attributes slice. [#422](https://github.com/lightstep/otel-launcher-go/pull/422)
