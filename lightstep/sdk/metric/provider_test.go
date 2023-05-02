@@ -30,6 +30,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -56,7 +57,7 @@ func TestOutputReuse(t *testing.T) {
 	attr := attribute.Int("K", 1)
 	attr2 := attribute.Int("L", 1)
 
-	cntr.Add(ctx, 1, attr)
+	cntr.Add(ctx, 1, metric.WithAttributes(attr))
 
 	// With a single point, check correct initial result.
 	reuse = rdr.Produce(&reuse)
@@ -76,7 +77,7 @@ func TestOutputReuse(t *testing.T) {
 	// address, new result.
 	pointAddrBefore := &reuse.Scopes[0].Instruments[0].Points[0]
 
-	cntr.Add(ctx, 1, attribute.Int("K", 1))
+	cntr.Add(ctx, 1, metric.WithAttributes(attribute.Int("K", 1)))
 
 	reuse = rdr.Produce(&reuse)
 
@@ -98,7 +99,7 @@ func TestOutputReuse(t *testing.T) {
 	// Give the points list a cap of 17 and make a second point, ensure
 	reuse.Scopes[0].Instruments[0].Points = make([]data.Point, 0, 17)
 
-	cntr.Add(ctx, 1, attr2)
+	cntr.Add(ctx, 1, metric.WithAttributes(attr2))
 
 	reuse = rdr.Produce(&reuse)
 
@@ -118,7 +119,7 @@ func TestOutputReuse(t *testing.T) {
 
 	// Make 20 more points, ensure capacity is greater than 17
 	for i := 0; i < 20; i++ {
-		cntr.Add(ctx, 1, attribute.Int("I", i))
+		cntr.Add(ctx, 1, metric.WithAttributes(attribute.Int("I", i)))
 	}
 
 	reuse = rdr.Produce(&reuse)
@@ -134,7 +135,7 @@ func TestOutputReuse(t *testing.T) {
 
 	fcntr := must(provider.Meter("real").Float64Counter("goodbye"))
 
-	fcntr.Add(ctx, 2, attr)
+	fcntr.Add(ctx, 2, metric.WithAttributes(attr))
 
 	reuse = rdr.Produce(&reuse)
 

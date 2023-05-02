@@ -28,6 +28,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -60,18 +61,18 @@ func TestSyncInsts(t *testing.T) {
 
 	attr := attribute.String("a", "B")
 
-	ci.Add(ctx, 2, attr)
-	cf.Add(ctx, 3, attr)
-	ui.Add(ctx, 4, attr)
-	uf.Add(ctx, 5, attr)
+	ci.Add(ctx, 2, metric.WithAttributes(attr))
+	cf.Add(ctx, 3, metric.WithAttributes(attr))
+	ui.Add(ctx, 4, metric.WithAttributes(attr))
+	uf.Add(ctx, 5, metric.WithAttributes(attr))
 
-	hi.Record(ctx, 2, attr)
-	hi.Record(ctx, 4, attr)
-	hi.Record(ctx, 8, attr)
+	hi.Record(ctx, 2, metric.WithAttributes(attr))
+	hi.Record(ctx, 4, metric.WithAttributes(attr))
+	hi.Record(ctx, 8, metric.WithAttributes(attr))
 
-	hf.Record(ctx, 8, attr)
-	hf.Record(ctx, 16, attr)
-	hf.Record(ctx, 32, attr)
+	hf.Record(ctx, 8, metric.WithAttributes(attr))
+	hf.Record(ctx, 16, metric.WithAttributes(attr))
+	hf.Record(ctx, 32, metric.WithAttributes(attr))
 
 	data := rdr.Produce(nil)
 	notime := time.Time{}

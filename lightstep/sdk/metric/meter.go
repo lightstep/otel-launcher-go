@@ -51,6 +51,8 @@ type (
 
 	// metricRegistration implements metric.Registration
 	metricRegistration struct {
+		embedded.Registration
+
 		lock     sync.Mutex
 		meter    *meter
 		callback *asyncstate.Callback

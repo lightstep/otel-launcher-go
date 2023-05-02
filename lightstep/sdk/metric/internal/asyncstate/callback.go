@@ -36,7 +36,7 @@ type Callback struct {
 
 // NewCallback returns a new Callback; this checks that each of the
 // provided instruments belongs to the same meter provider.
-func NewCallback(instruments []metric.Observer, opaque interface{}, function metric.Callback) (*Callback, error) {
+func NewCallback(instruments []metric.Observable, opaque interface{}, function metric.Callback) (*Callback, error) {
 	if len(instruments) == 0 {
 		return nil, fmt.Errorf("asynchronous callback without instruments")
 	}

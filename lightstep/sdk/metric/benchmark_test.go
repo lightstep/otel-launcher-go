@@ -22,6 +22,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 var unsafePerf = WithPerformance(sdkinstrument.Performance{
@@ -65,7 +66,7 @@ func BenchmarkCounterAddOneAttrSafe(b *testing.B) {
 	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attribute.String("K", "V"))
+		cntr.Add(ctx, 1, metric.WithAttributes(attribute.String("K", "V")))
 	}
 }
 
@@ -78,7 +79,7 @@ func BenchmarkCounterAddOneAttrUnsafe(b *testing.B) {
 	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attribute.String("K", "V"))
+		cntr.Add(ctx, 1, metric.WithAttributes(attribute.String("K", "V")))
 	}
 }
 
@@ -94,7 +95,7 @@ func BenchmarkCounterAddOneAttrSliceReuseSafe(b *testing.B) {
 	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attrs...)
+		cntr.Add(ctx, 1, metric.WithAttributes(attrs...))
 	}
 }
 
@@ -110,7 +111,7 @@ func BenchmarkCounterAddOneAttrSliceReuseUnsafe(b *testing.B) {
 	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attrs...)
+		cntr.Add(ctx, 1, metric.WithAttributes(attrs...))
 	}
 }
 
@@ -123,7 +124,7 @@ func BenchmarkCounterAddOneInvalidAttr(b *testing.B) {
 	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attribute.String("", "V"), attribute.String("K", "V"))
+		cntr.Add(ctx, 1, metric.WithAttributes(attribute.String("", "V"), attribute.String("K", "V")))
 	}
 }
 
@@ -136,7 +137,7 @@ func BenchmarkCounterAddManyAttrs(b *testing.B) {
 	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attribute.Int("K", i))
+		cntr.Add(ctx, 1, metric.WithAttributes(attribute.Int("K", i)))
 	}
 }
 
@@ -149,7 +150,7 @@ func BenchmarkCounterAddManyAttrsUnsafe(b *testing.B) {
 	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attribute.Int("K", i))
+		cntr.Add(ctx, 1, metric.WithAttributes(attribute.Int("K", i)))
 	}
 }
 
@@ -162,7 +163,7 @@ func BenchmarkCounterAddManyInvalidAttrs(b *testing.B) {
 	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attribute.Int("", i), attribute.Int("K", i))
+		cntr.Add(ctx, 1, metric.WithAttributes(attribute.Int("", i), attribute.Int("K", i)))
 	}
 }
 
@@ -175,7 +176,7 @@ func BenchmarkCounterAddManyInvalidAttrsUnsafe(b *testing.B) {
 	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attribute.Int("", i), attribute.Int("K", i))
+		cntr.Add(ctx, 1, metric.WithAttributes(attribute.Int("", i), attribute.Int("K", i)))
 	}
 }
 
@@ -192,7 +193,7 @@ func BenchmarkCounterAddManyFilteredAttrs(b *testing.B) {
 	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attribute.Int("L", i), attribute.Int("K", i))
+		cntr.Add(ctx, 1, metric.WithAttributes(attribute.Int("L", i), attribute.Int("K", i)))
 	}
 }
 
@@ -205,7 +206,7 @@ func BenchmarkCounterCollectOneAttrNoReuse(b *testing.B) {
 	cntr, _ := provider.Meter("test").Int64Counter("hello")
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attribute.Int("K", 1))
+		cntr.Add(ctx, 1, metric.WithAttributes(attribute.Int("K", 1)))
 
 		_ = rdr.Produce(nil)
 	}
@@ -222,7 +223,7 @@ func BenchmarkCounterCollectOneAttrWithReuse(b *testing.B) {
 	var reuse data.Metrics
 
 	for i := 0; i < b.N; i++ {
-		cntr.Add(ctx, 1, attribute.Int("K", 1))
+		cntr.Add(ctx, 1, metric.WithAttributes(attribute.Int("K", 1)))
 
 		reuse = rdr.Produce(&reuse)
 	}
@@ -240,7 +241,7 @@ func BenchmarkCounterCollectTenAttrs(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		for j := 0; j < 10; j++ {
-			cntr.Add(ctx, 1, attribute.Int("K", j))
+			cntr.Add(ctx, 1, metric.WithAttributes(attribute.Int("K", j)))
 		}
 		reuse = rdr.Produce(&reuse)
 	}
@@ -259,7 +260,7 @@ func BenchmarkCounterCollectTenAttrsTenTimes(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		for k := 0; k < 10; k++ {
 			for j := 0; j < 10; j++ {
-				cntr.Add(ctx, 1, attribute.Int("K", j))
+				cntr.Add(ctx, 1, metric.WithAttributes(attribute.Int("K", j)))
 			}
 			reuse = rdr.Produce(&reuse)
 		}

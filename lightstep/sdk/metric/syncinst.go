@@ -52,27 +52,27 @@ type (
 )
 
 func (i int64Counter) Add(ctx context.Context, value int64, options ...metric.AddOption) {
-	i.observer.ObserveInt64(ctx, value, options...)
+	i.observer.ObserveInt64(ctx, value, metric.NewAddConfig(options))
 }
 
 func (i int64UpDownCounter) Add(ctx context.Context, value int64, options ...metric.AddOption) {
-	i.observer.ObserveInt64(ctx, value, options...)
+	i.observer.ObserveInt64(ctx, value, metric.NewAddConfig(options))
 }
 
-func (i int64Histogram) Record(ctx context.Context, value int64, options ...metric.AddOption) {
-	i.observer.ObserveInt64(ctx, value, options...)
+func (i int64Histogram) Record(ctx context.Context, value int64, options ...metric.RecordOption) {
+	i.observer.ObserveInt64(ctx, value, metric.NewRecordConfig(options))
 }
 
 func (i float64Counter) Add(ctx context.Context, value float64, options ...metric.AddOption) {
-	i.observer.ObserveFloat64(ctx, value, options...)
+	i.observer.ObserveFloat64(ctx, value, metric.NewAddConfig(options))
 }
 
 func (i float64UpDownCounter) Add(ctx context.Context, value float64, options ...metric.AddOption) {
-	i.observer.ObserveFloat64(ctx, value, options...)
+	i.observer.ObserveFloat64(ctx, value, metric.NewAddConfig(options))
 }
 
-func (i float64Histogram) Record(ctx context.Context, value float64, options ...metric.AddOption) {
-	i.observer.ObserveFloat64(ctx, value, options...)
+func (i float64Histogram) Record(ctx context.Context, value float64, options ...metric.RecordOption) {
+	i.observer.ObserveFloat64(ctx, value, metric.NewRecordConfig(options))
 }
 
 func (m *meter) Int64Counter(name string, opts ...metric.Int64CounterOption) (metric.Int64Counter, error) {
@@ -86,21 +86,21 @@ func (m *meter) Int64UpDownCounter(name string, opts ...metric.Int64UpDownCounte
 }
 
 func (m *meter) Int64Histogram(name string, opts ...metric.Int64HistogramOption) (metric.Int64Histogram, error) {
-	inst, err := m.synchronousInstrument(name, metric.NewInt64Config(opts...), number.Int64Kind, sdkinstrument.SyncHistogram)
+	inst, err := m.synchronousInstrument(name, metric.NewInt64HistogramConfig(opts...), number.Int64Kind, sdkinstrument.SyncHistogram)
 	return int64Histogram{observer: inst}, err
 }
 
 func (m *meter) Float64Counter(name string, opts ...metric.Float64CounterOption) (metric.Float64Counter, error) {
-	inst, err := m.synchronousInstrument(name, metric.NewFloat64Config(opts...), number.Float64Kind, sdkinstrument.SyncCounter)
+	inst, err := m.synchronousInstrument(name, metric.NewFloat64CounterConfig(opts...), number.Float64Kind, sdkinstrument.SyncCounter)
 	return float64Counter{observer: inst}, err
 }
 
 func (m *meter) Float64UpDownCounter(name string, opts ...metric.Float64UpDownCounterOption) (metric.Float64UpDownCounter, error) {
-	inst, err := m.synchronousInstrument(name, metric.NewFloat64Config(opts...), number.Float64Kind, sdkinstrument.SyncUpDownCounter)
+	inst, err := m.synchronousInstrument(name, metric.NewFloat64UpDownCounterConfig(opts...), number.Float64Kind, sdkinstrument.SyncUpDownCounter)
 	return float64UpDownCounter{observer: inst}, err
 }
 
 func (m *meter) Float64Histogram(name string, opts ...metric.Float64HistogramOption) (metric.Float64Histogram, error) {
-	inst, err := m.synchronousInstrument(name, metric.NewFloat64Config(opts...), number.Float64Kind, sdkinstrument.SyncHistogram)
+	inst, err := m.synchronousInstrument(name, metric.NewFloat64HistogramConfig(opts...), number.Float64Kind, sdkinstrument.SyncHistogram)
 	return float64Histogram{observer: inst}, err
 }

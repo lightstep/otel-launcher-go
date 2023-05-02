@@ -35,7 +35,6 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
@@ -132,7 +131,7 @@ func TestNewCallbackError(t *testing.T) {
 
 	// nil callback error
 	cntr := testIntObserver(tsdk, "counter", sdkinstrument.AsyncCounter)
-	cb, err = NewCallback([]instrument.Asynchronous{cntr}, tsdk, nil)
+	cb, err = NewCallback([]metric.Observable{cntr}, tsdk, nil)
 	require.Error(t, err)
 	require.Nil(t, cb)
 }
@@ -144,36 +143,36 @@ func TestNewCallbackProviderMismatch(t *testing.T) {
 	instA0 := testIntObserver(test0, "A", sdkinstrument.AsyncCounter)
 	instB1 := testFloatObserver(test1, "A", sdkinstrument.AsyncCounter)
 
-	cb, err := NewCallback([]instrument.Asynchronous{instA0, instB1}, test0, nopCB)
+	cb, err := NewCallback([]metric.Observable{instA0, instB1}, test0, nopCB)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "asynchronous instrument belongs to a different meter")
 	require.Nil(t, cb)
 
-	cb, err = NewCallback([]instrument.Asynchronous{instA0, instB1}, test1, nopCB)
+	cb, err = NewCallback([]metric.Observable{instA0, instB1}, test1, nopCB)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "asynchronous instrument belongs to a different meter")
 	require.Nil(t, cb)
 
-	cb, err = NewCallback([]instrument.Asynchronous{instA0}, test0, nopCB)
+	cb, err = NewCallback([]metric.Observable{instA0}, test0, nopCB)
 	require.NoError(t, err)
 	require.NotNil(t, cb)
 
-	cb, err = NewCallback([]instrument.Asynchronous{instB1}, test1, nopCB)
+	cb, err = NewCallback([]metric.Observable{instB1}, test1, nopCB)
 	require.NoError(t, err)
 	require.NotNil(t, cb)
 
 	// nil value not of this SDK
-	var fake0 instrument.Asynchronous
-	cb, err = NewCallback([]instrument.Asynchronous{fake0}, test0, nopCB)
+	var fake0 metric.Observable
+	cb, err = NewCallback([]metric.Observable{fake0}, test0, nopCB)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "asynchronous instrument does not belong to this SDK")
 	require.Nil(t, cb)
 
 	// non-nil value not of this SDK
 	var fake1 struct {
-		instrument.Asynchronous
+		metric.Observable
 	}
-	cb, err = NewCallback([]instrument.Asynchronous{fake1}, test0, nopCB)
+	cb, err = NewCallback([]metric.Observable{fake1}, test0, nopCB)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "asynchronous instrument does not belong to this SDK")
 	require.Nil(t, cb)
@@ -188,7 +187,7 @@ func TestCallbackInvalidation(t *testing.T) {
 	var saveObs metric.Observer
 
 	cntr := testIntObserver(tsdk, "counter", sdkinstrument.AsyncCounter)
-	cb, err := NewCallback([]instrument.Asynchronous{cntr}, tsdk, func(ctx context.Context, obs metric.Observer) error {
+	cb, err := NewCallback([]metric.Observable{cntr}, tsdk, func(ctx context.Context, obs metric.Observer) error {
 		obs.ObserveInt64(cntr, called)
 		saveObs = obs
 		called++
@@ -234,7 +233,7 @@ func TestCallbackInstrumentUndeclaredForCalback(t *testing.T) {
 	cntr1 := testIntObserver(tt, "counter1", sdkinstrument.AsyncCounter)
 	cntr2 := testIntObserver(tt, "counter2", sdkinstrument.AsyncCounter)
 
-	cb, err := NewCallback([]instrument.Asynchronous{cntr1}, tt, func(ctx context.Context, obs metric.Observer) error {
+	cb, err := NewCallback([]metric.Observable{cntr1}, tt, func(ctx context.Context, obs metric.Observer) error {
 		obs.ObserveInt64(cntr2, called)
 		called++
 		return nil
@@ -294,7 +293,7 @@ func TestCallbackDisabledInstrument(t *testing.T) {
 	cntrDrop2 := testFloatObserver(tt, "drop2", sdkinstrument.AsyncCounter)
 	cntrKeep := testFloatObserver(tt, "keep", sdkinstrument.AsyncCounter)
 
-	cb, _ := NewCallback([]instrument.Asynchronous{cntrDrop1, cntrDrop2, cntrKeep}, tt, func(ctx context.Context, obs metric.Observer) error {
+	cb, _ := NewCallback([]metric.Observable{cntrDrop1, cntrDrop2, cntrKeep}, tt, func(ctx context.Context, obs metric.Observer) error {
 		obs.ObserveFloat64(cntrKeep, 1000)
 		obs.ObserveFloat64(cntrDrop1, 1001)
 		obs.ObserveFloat64(cntrDrop2, 1002)
@@ -353,7 +352,7 @@ func TestOutOfRangeValues(t *testing.T) {
 	u := testFloatObserver(tt, "testPatternU", sdkinstrument.AsyncUpDownCounter)
 	g := testFloatObserver(tt, "testPatternG", sdkinstrument.AsyncGauge)
 
-	cb, _ := NewCallback([]instrument.Asynchronous{
+	cb, _ := NewCallback([]metric.Observable{
 		c, u, g,
 	}, tt, func(ctx context.Context, obs metric.Observer) error {
 		obs.ObserveFloat64(c, math.NaN())
