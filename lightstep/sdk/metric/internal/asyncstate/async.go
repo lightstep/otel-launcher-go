@@ -25,7 +25,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type (
@@ -47,7 +47,7 @@ type (
 	// Observer is the implementation object associated with one
 	// asynchronous instrument.
 	Observer struct {
-		instrument.Asynchronous
+		metric.Observable
 
 		// opaque is used to ensure that callbacks are
 		// registered with instruments from the same provider.
@@ -115,7 +115,7 @@ func (obs *Observer) SnapshotAndProcess(state *State) {
 	}
 }
 
-func (obs *Observer) getOrCreate(cs *callbackState, attrs []attribute.KeyValue) viewstate.Accumulator {
+func (obs *Observer) getOrCreate(cs *callbackState, options []metric.ObserveOption) viewstate.Accumulator {
 	comp := obs.compiled[cs.state.pipe]
 
 	if comp == nil {
@@ -133,11 +133,8 @@ func (obs *Observer) getOrCreate(cs *callbackState, attrs []attribute.KeyValue) 
 		cs.state.store[obs] = imap
 	}
 
-	// Copy the attribute list in case the caller has multiple
-	// concurrent callers.
-	acpy := make([]attribute.KeyValue, len(attrs))
-	copy(acpy, attrs)
-	aset := attribute.NewSet(acpy...)
+	ocfg := metric.NewObserveConfig(options)
+	aset := ocfg.Attributes()
 	se, has := imap[aset]
 	if !has {
 		se = comp.NewAccumulator(aset)
@@ -146,7 +143,7 @@ func (obs *Observer) getOrCreate(cs *callbackState, attrs []attribute.KeyValue) 
 	return se
 }
 
-func Observe[N number.Any, Traits number.Traits[N]](inst instrument.Asynchronous, cs *callbackState, value N, attrs []attribute.KeyValue) {
+func Observe[N number.Any, Traits number.Traits[N]](inst metric.Observable, cs *callbackState, value N, options []metric.ObserveOption) {
 	cb := cs.getCallback()
 	if cb == nil {
 		otel.Handle(fmt.Errorf("async instrument used after callback return"))
@@ -167,7 +164,7 @@ func Observe[N number.Any, Traits number.Traits[N]](inst instrument.Asynchronous
 		return
 	}
 
-	if acc := obs.getOrCreate(cs, attrs); acc != nil {
+	if acc := obs.getOrCreate(cs, options); acc != nil {
 		acc.(viewstate.Updater[N]).Update(value)
 	}
 }

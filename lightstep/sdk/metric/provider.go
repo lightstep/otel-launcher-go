@@ -26,6 +26,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.uber.org/multierr"
@@ -36,6 +37,8 @@ import (
 // the same Views applied to them, and have their produced metric telemetry
 // passed to the configured Readers.
 type MeterProvider struct {
+	embedded.MeterProvider
+
 	cfg       config
 	startTime time.Time
 	lock      sync.Mutex

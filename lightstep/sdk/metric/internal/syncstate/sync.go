@@ -27,7 +27,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric"
 )
 
 var overflowAttributesFingerprint = fingerprintAttributes(pipeline.OverflowAttributes)
@@ -40,8 +40,6 @@ var overflowAttributesFingerprint = fingerprintAttributes(pipeline.OverflowAttri
 // method called whenever they are removed from the map, which can
 // happen when any reader collects the instrument.
 type Observer struct {
-	instrument.Synchronous
-
 	// descriptor is the API-provided descriptor for the
 	// instrument, unmodified by views.
 	descriptor sdkinstrument.Descriptor
@@ -58,8 +56,41 @@ type Observer struct {
 	// lock protects current.
 	lock sync.RWMutex
 
-	// current is protected by lock.
-	current map[uint64]*record
+	// currentFP is protected by lock.
+	currentFP mapByFP
+
+	// currentAS is protected by lock.
+	currentAS mapByAS
+}
+
+// mapByFP is a map of records where fingerprint-based lookup is being used.
+type mapByFP map[uint64]*record
+
+// mapByAS is a map of records where attribute.Set-based lookup is being used.
+type mapByAS map[attribute.Set]*record
+
+type anyMap[Key any] interface {
+	Delete(Key)
+	Put(Key, *record)
+}
+
+var _ anyMap[uint64] = mapByFP{}
+var _ anyMap[attribute.Set] = mapByAS{}
+
+func (m mapByFP) Delete(key uint64) {
+	delete(m, key)
+}
+
+func (m mapByFP) Put(key uint64, rec *record) {
+	m[key] = rec
+}
+
+func (m mapByAS) Delete(key attribute.Set) {
+	delete(m, key)
+}
+
+func (m mapByAS) Put(key attribute.Set, rec *record) {
+	m[key] = rec
 }
 
 // New builds a new synchronous instrument *Observer given the
@@ -81,7 +112,8 @@ func New(desc sdkinstrument.Descriptor, performance sdkinstrument.Performance, _
 	performance = performance.Validate()
 	return &Observer{
 		descriptor:  desc,
-		current:     map[uint64]*record{},
+		currentFP:   mapByFP{},
+		currentAS:   mapByAS{},
 		performance: performance,
 
 		// Note that viewstate.Combine is used to eliminate
@@ -96,6 +128,49 @@ func New(desc sdkinstrument.Descriptor, performance sdkinstrument.Performance, _
 	}
 }
 
+func snapshotAndProcessInMap[Key any, Map anyMap[Key]](records Map, key Key, reclist *record, inst *Observer) {
+	// reclist is a list of records for this fingerprint.
+	var head *record
+	var tail *record
+
+	// Scan reclist and modify the list. We're holding the
+	// lock giving exclusive access to the head-of-list
+	// and each next field, so the process here builds a new
+	// linked list after filtering records that are no longer
+	// in use.
+	for rec := reclist; rec != nil; rec = rec.next {
+		if inst.collect(rec) {
+			if head == nil {
+				// The first time a record will be kept,
+				// it becomes the head and tail.
+				head = rec
+				tail = rec
+			} else {
+				// Subsequently, update the tail of the
+				// list.  Note that this creates a
+				// temporarily invalid list will be
+				// repaired outside the loop, below.
+				tail.next = rec
+				tail = rec
+			}
+		}
+	}
+
+	// When no records are kept, delete the map entry.
+	if head == nil {
+		records.Delete(key)
+		return
+	}
+
+	// Otherwise, terminate the list that was built.
+	tail.next = nil
+
+	if head != reclist {
+		// If the head changes, update the map.
+		records.Put(key, head)
+	}
+}
+
 // SnapshotAndProcess calls SnapshotAndProcess() for all live
 // accumulators of this instrument.  Inactive accumulators will be
 // subsequently removed from the map.
@@ -103,53 +178,14 @@ func (inst *Observer) SnapshotAndProcess() {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
-	for key, reclist := range inst.current {
-		// reclist is a list of records for this fingerprint.
-		var head *record
-		var tail *record
-
-		// Scan reclist and modify the list. We're holding the
-		// lock giving exclusive access to the head-of-list
-		// and each next field, so the process here builds a new
-		// linked list after filtering records that are no longer
-		// in use.
-		for rec := reclist; rec != nil; rec = rec.next {
-			if inst.collect(key, rec) {
-				if head == nil {
-					// The first time a record will be kept,
-					// it becomes the head and tail.
-					head = rec
-					tail = rec
-				} else {
-					// Subsequently, update the tail of the
-					// list.  Note that this creates a
-					// temporarily invalid list will be
-					// repaired outside the loop, below.
-					tail.next = rec
-					tail = rec
-				}
-			}
-		}
-
-		// When no records are kept, delete the map entry.
-		if head == nil {
-			delete(inst.current, key)
-			continue
-		}
-
-		// Otherwise, terminate the list that was built.
-		tail.next = nil
-
-		if head != reclist {
-			// If the head changes, update the map.
-			inst.current[key] = head
-		}
+	for key, reclist := range inst.currentFP {
+		snapshotAndProcessInMap(inst.currentFP, key, reclist, inst)
 	}
 }
 
 // collect collects the record.  When the record has been inactive for
 // the configured number of periods, it is removed from memory.
-func (inst *Observer) collect(fp uint64, rec *record) bool {
+func (inst *Observer) collect(rec *record) bool {
 	if rec.normalCollect() {
 		rec.inactiveCount = 0
 		return true
@@ -312,16 +348,22 @@ func (rec *record) computeAttrsUnderLock(attrs []attribute.KeyValue) {
 	rec.attrsList = acpy
 }
 
-func (inst *Observer) ObserveInt64(ctx context.Context, num int64, attrs ...attribute.KeyValue) {
-	Observe[int64, number.Int64Traits](ctx, inst, num, attrs...)
+func (inst *Observer) AddInt64(ctx context.Context, num int64, options ...metric.AddOption) {
+	Observe[int64, number.Int64Traits](ctx, inst, num, metric.NewAddConfig(options))
 }
 
-func (inst *Observer) ObserveFloat64(ctx context.Context, num float64, attrs ...attribute.KeyValue) {
-	Observe[float64, number.Float64Traits](ctx, inst, num, attrs...)
+func (inst *Observer) AddFloat64(ctx context.Context, num float64, options ...metric.AddOption) {
+	Observe[float64, number.Float64Traits](ctx, inst, num, metric.NewAddConfig(options))
+}
+
+type anyConfig interface {
+	Attributes() attribute.Set
+	HasKeyValues() bool
+	KeyValues() []attribute.KeyValue
 }
 
 // Observe performs a generic update for any synchronous instrument.
-func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Observer, num N, attrs ...attribute.KeyValue) {
+func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Observer, num N, cfg anyConfig) {
 	if inst == nil {
 		// Instrument was completely disabled by the view.
 		return
@@ -333,8 +375,14 @@ func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Obs
 		return
 	}
 
-	rec := acquireUninitialized[N](inst, attrs)
+	var rec *record
 	defer rec.refMapped.unref()
+
+	if cfg.HasKeyValues() {
+		rec = acquireListUninitialized[N](inst, cfg.KeyValues())
+	} else {
+		rec = acquireSetUninitialized[N](inst, cfg.Attributes())
+	}
 
 	rec.readAccumulator().(viewstate.Updater[N]).Update(num)
 
@@ -436,16 +484,16 @@ func attributesEqual(a, b []attribute.KeyValue) bool {
 	return true
 }
 
-// acquireRead acquires the lock and searches for a `*record`.
+// acquireListRead acquires the lock and searches for a `*record`.
 // This returns the overflow attributes and fingerprint in case the
 // the cardinality limit is reached.  The caller should exchange their
 // fp and attrs for the ones returned by this call.
-func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) (uint64, []attribute.KeyValue, *record) {
+func acquireListRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) (uint64, []attribute.KeyValue, *record) {
 	inst.lock.RLock()
 	defer inst.lock.RUnlock()
 
 	overflow := false
-	fp, attrs, rec := acquireReadLocked(inst, fp, attrs, &overflow)
+	fp, attrs, rec := acquireListReadLocked(inst, fp, attrs, &overflow)
 
 	if rec != nil {
 		return fp, attrs, rec
@@ -457,11 +505,11 @@ func acquireRead(inst *Observer, fp uint64, attrs []attribute.KeyValue) (uint64,
 		return fp, attrs, nil
 	}
 	// In which case fp and attrs are now the overflow attributes.
-	return acquireReadLocked(inst, fp, attrs, &overflow)
+	return acquireListReadLocked(inst, fp, attrs, &overflow)
 }
 
-func acquireReadLocked(inst *Observer, fp uint64, attrs []attribute.KeyValue, overflow *bool) (uint64, []attribute.KeyValue, *record) {
-	rec := inst.current[fp]
+func acquireListReadLocked(inst *Observer, fp uint64, attrs []attribute.KeyValue, overflow *bool) (uint64, []attribute.KeyValue, *record) {
+	rec := inst.currentFP[fp]
 
 	// Potentially test for hash collisions.
 	if !inst.performance.IgnoreCollisions {
@@ -481,7 +529,7 @@ func acquireReadLocked(inst *Observer, fp uint64, attrs []attribute.KeyValue, ov
 	// attribute set.  Note this means we are performing
 	// two map lookups for overflowing attributes and only
 	// one lookup if the attribute set was preexisting.
-	if !*overflow && uint32(len(inst.current)) >= inst.performance.InstrumentCardinalityLimit-1 {
+	if !*overflow && uint32(len(inst.currentFP)) >= inst.performance.InstrumentCardinalityLimit-1 {
 		// Use the overflow attributes, repeat.
 		attrs = pipeline.OverflowAttributes
 		fp = overflowAttributesFingerprint
@@ -491,25 +539,25 @@ func acquireReadLocked(inst *Observer, fp uint64, attrs []attribute.KeyValue, ov
 	return fp, attrs, nil
 }
 
-// acquireUninitialized gets or creates a `*record` corresponding to
+// acquireListUninitialized gets or creates a `*record` corresponding to
 // `attrs`, the input attributes.  The returned record is mapped but
 // possibly not initialized.
-func acquireUninitialized[N number.Any](inst *Observer, attrs []attribute.KeyValue) *record {
+func acquireListUninitialized[N number.Any](inst *Observer, attrs []attribute.KeyValue) *record {
 	fp := fingerprintAttributes(attrs)
 
-	// acquireRead may replace fp and attrs when there is overflow.
+	// acquireListRead may replace fp and attrs when there is overflow.
 	var rec *record
-	fp, attrs, rec = acquireRead(inst, fp, attrs)
+	fp, attrs, rec = acquireListRead(inst, fp, attrs)
 	if rec != nil {
 		return rec
 	}
 
-	return acquireNotfound[N](inst, fp, attrs)
+	return acquireListNotfound[N](inst, fp, attrs)
 }
 
-// acquireNotfound is the code path taken when acquireRead does not
+// acquireListNotfound is the code path taken when acquireRead does not
 // locate a record.
-func acquireNotfound[N number.Any](inst *Observer, fp uint64, attrs []attribute.KeyValue) *record {
+func acquireListNotfound[N number.Any](inst *Observer, fp uint64, attrs []attribute.KeyValue) *record {
 	newRec := &record{
 		inst:      inst,
 		refMapped: newRefcountMapped(),
@@ -517,7 +565,7 @@ func acquireNotfound[N number.Any](inst *Observer, fp uint64, attrs []attribute.
 	newRec.computeAttrsUnderLock(attrs)
 
 	for {
-		acquired, loaded := acquireWrite(inst, fp, newRec)
+		acquired, loaded := acquireListWrite(inst, fp, newRec)
 
 		if !loaded {
 			// When this happens, we are waiting for the call to delete()
@@ -531,12 +579,12 @@ func acquireNotfound[N number.Any](inst *Observer, fp uint64, attrs []attribute.
 	}
 }
 
-// acquireWrite acquires the write lock and gets or sets a `*record`.
-func acquireWrite(inst *Observer, fp uint64, newRec *record) (*record, bool) {
+// acquireListWrite acquires the write lock and gets or sets a `*record`.
+func acquireListWrite(inst *Observer, fp uint64, newRec *record) (*record, bool) {
 	inst.lock.Lock()
 	defer inst.lock.Unlock()
 
-	for oldRec := inst.current[fp]; oldRec != nil; oldRec = oldRec.next {
+	for oldRec := inst.currentFP[fp]; oldRec != nil; oldRec = oldRec.next {
 
 		if inst.performance.IgnoreCollisions || attributesEqual(oldRec.attrsList, newRec.attrsList) {
 			if oldRec.refMapped.ref() {
@@ -547,7 +595,7 @@ func acquireWrite(inst *Observer, fp uint64, newRec *record) (*record, bool) {
 		}
 	}
 
-	newRec.next = inst.current[fp]
-	inst.current[fp] = newRec
+	newRec.next = inst.currentFP[fp]
+	inst.currentFP[fp] = newRec
 	return newRec, true
 }

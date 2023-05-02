@@ -20,9 +20,7 @@ import (
 	"sync"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 // Callback is the implementation object associated with one
@@ -38,7 +36,7 @@ type Callback struct {
 
 // NewCallback returns a new Callback; this checks that each of the
 // provided instruments belongs to the same meter provider.
-func NewCallback(instruments []instrument.Asynchronous, opaque interface{}, function metric.Callback) (*Callback, error) {
+func NewCallback(instruments []metric.Observer, opaque interface{}, function metric.Callback) (*Callback, error) {
 	if len(instruments) == 0 {
 		return nil, fmt.Errorf("asynchronous callback without instruments")
 	}
@@ -81,6 +79,8 @@ func (c *Callback) Run(ctx context.Context, state *State) {
 // callbackState is used to lookup the current callback and
 // pipeline from within an executing callback function.
 type callbackState struct {
+	metric.Observer
+
 	// lock protects callback, see invalidate() and getCallback()
 	lock sync.Mutex
 
@@ -104,10 +104,10 @@ func (cs *callbackState) getCallback() *Callback {
 	return cs.callback
 }
 
-func (cs *callbackState) ObserveFloat64(obsrv instrument.Float64Observable, value float64, attributes ...attribute.KeyValue) {
-	Observe[float64, number.Float64Traits](obsrv, cs, value, attributes)
+func (cs *callbackState) ObserveFloat64(obsrv metric.Float64Observable, value float64, options ...metric.ObserveOption) {
+	Observe[float64, number.Float64Traits](obsrv, cs, value, options)
 }
 
-func (cs *callbackState) ObserveInt64(obsrv instrument.Int64Observable, value int64, attributes ...attribute.KeyValue) {
-	Observe[int64, number.Int64Traits](obsrv, cs, value, attributes)
+func (cs *callbackState) ObserveInt64(obsrv metric.Int64Observable, value int64, options ...metric.ObserveOption) {
+	Observe[int64, number.Int64Traits](obsrv, cs, value, options)
 }

@@ -100,12 +100,12 @@ func testState(num int) *State {
 
 type intObserver struct {
 	*Observer
-	instrument.Int64Observable
+	metric.Int64Observable
 }
 
 type floatObserver struct {
 	*Observer
-	instrument.Float64Observable
+	metric.Float64Observable
 }
 
 func testIntObserver(tsdk *testSDK, name string, ik sdkinstrument.Kind) intObserver {
