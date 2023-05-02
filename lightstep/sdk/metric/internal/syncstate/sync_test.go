@@ -63,13 +63,17 @@ var (
 		InactiveCollectionPeriods: 1,
 	}
 
-	noAttrsCfg = metric.NewAddConfig(nil)
+	noAttrsCfg = attrsConfig()
 )
 
-func attrsConfig(attrs ...attribute.KeyValue) metric.AddConfig {
-	return metric.NewAddConfig([]metric.AddOption{
+func attrsConfig(attrs ...attribute.KeyValue) OpConfig {
+	acfg := metric.NewAddConfig([]metric.AddOption{
 		metric.WithAttributes(attrs...),
 	})
+	return OpConfig{
+		Attributes: acfg.Attributes(),
+		KeyValues:  acfg.KeyValues(),
+	}
 }
 
 func deltaUpdate[N number.Any](old, new N) N {
@@ -223,10 +227,7 @@ func testSyncStateConcurrencyWithPerf[N number.Any, Traits number.Traits[N]](t *
 			defer writers.Done()
 			rnd := rand.New(rand.NewSource(rand.Int63()))
 
-			// Note: actual config struct does not matter
-			cfg := metric.NewAddConfig([]metric.AddOption{
-				metric.WithAttributes(attrs[rnd.Intn(len(attrs))]),
-			})
+			cfg := attrsConfig(attrs[rnd.Intn(len(attrs))])
 
 			for j := 0; j < numUpdates/numRoutines; j++ {
 				Observe[N, Traits](ctx, inst, 1, cfg)

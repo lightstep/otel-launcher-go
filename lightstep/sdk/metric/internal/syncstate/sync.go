@@ -309,22 +309,23 @@ func (rec *record) computeAttrsUnderLock(attrs []attribute.KeyValue) {
 	rec.attrsList = acpy
 }
 
-type anyConfig interface {
-	Attributes() attribute.Set
-	HasKeyValues() bool
-	KeyValues() []attribute.KeyValue
+// OpConfig is the two fields of an {Add,Record}Config without an
+// interface conversion.
+type OpConfig struct {
+	Attributes attribute.Set
+	KeyValues  []attribute.KeyValue
 }
 
-func (inst *Observer) ObserveInt64(ctx context.Context, num int64, cfg anyConfig) {
+func (inst *Observer) ObserveInt64(ctx context.Context, num int64, cfg OpConfig) {
 	Observe[int64, number.Int64Traits](ctx, inst, num, cfg)
 }
 
-func (inst *Observer) ObserveFloat64(ctx context.Context, num float64, cfg anyConfig) {
+func (inst *Observer) ObserveFloat64(ctx context.Context, num float64, cfg OpConfig) {
 	Observe[float64, number.Float64Traits](ctx, inst, num, cfg)
 }
 
 // Observe performs a generic update for any synchronous instrument.
-func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Observer, num N, cfg anyConfig) {
+func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Observer, num N, cfg OpConfig) {
 	if inst == nil {
 		// Instrument was completely disabled by the view.
 		return
@@ -337,8 +338,10 @@ func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Obs
 	}
 
 	// @@@ Not what we want. @@@
-	aset := cfg.Attributes()
-	rec := acquireUninitialized[N](inst, aset.ToSlice())
+	// aset := cfg.Attributes()
+	// rec := acquireUninitialized[N](inst, aset.ToSlice())
+	rec := acquireUninitialized[N](inst, cfg.KeyValues)
+
 	defer rec.refMapped.unref()
 
 	rec.readAccumulator().(viewstate.Updater[N]).Update(num)

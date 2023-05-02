@@ -51,28 +51,44 @@ type (
 	}
 )
 
+func addToOpConfig(options []metric.AddOption) syncstate.OpConfig {
+	acfg := metric.NewAddConfig(options)
+	return syncstate.OpConfig{
+		Attributes: acfg.Attributes(),
+		KeyValues:  acfg.KeyValues(),
+	}
+}
+
+func recordToOpConfig(options []metric.RecordOption) syncstate.OpConfig {
+	rcfg := metric.NewRecordConfig(options)
+	return syncstate.OpConfig{
+		Attributes: rcfg.Attributes(),
+		KeyValues:  rcfg.KeyValues(),
+	}
+}
+
 func (i int64Counter) Add(ctx context.Context, value int64, options ...metric.AddOption) {
-	i.observer.ObserveInt64(ctx, value, metric.NewAddConfig(options))
+	i.observer.ObserveInt64(ctx, value, addToOpConfig(options))
 }
 
 func (i int64UpDownCounter) Add(ctx context.Context, value int64, options ...metric.AddOption) {
-	i.observer.ObserveInt64(ctx, value, metric.NewAddConfig(options))
+	i.observer.ObserveInt64(ctx, value, addToOpConfig(options))
 }
 
 func (i int64Histogram) Record(ctx context.Context, value int64, options ...metric.RecordOption) {
-	i.observer.ObserveInt64(ctx, value, metric.NewRecordConfig(options))
+	i.observer.ObserveInt64(ctx, value, recordToOpConfig(options))
 }
 
 func (i float64Counter) Add(ctx context.Context, value float64, options ...metric.AddOption) {
-	i.observer.ObserveFloat64(ctx, value, metric.NewAddConfig(options))
+	i.observer.ObserveFloat64(ctx, value, addToOpConfig(options))
 }
 
 func (i float64UpDownCounter) Add(ctx context.Context, value float64, options ...metric.AddOption) {
-	i.observer.ObserveFloat64(ctx, value, metric.NewAddConfig(options))
+	i.observer.ObserveFloat64(ctx, value, addToOpConfig(options))
 }
 
 func (i float64Histogram) Record(ctx context.Context, value float64, options ...metric.RecordOption) {
-	i.observer.ObserveFloat64(ctx, value, metric.NewRecordConfig(options))
+	i.observer.ObserveFloat64(ctx, value, recordToOpConfig(options))
 }
 
 func (m *meter) Int64Counter(name string, opts ...metric.Int64CounterOption) (metric.Int64Counter, error) {
