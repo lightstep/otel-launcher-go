@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/bypass"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
@@ -29,20 +30,7 @@ var unsafePerf = WithPerformance(sdkinstrument.Performance{
 	IgnoreCollisions: true,
 })
 
-// Tested prior to 0.11.0 release
-// goos: darwin
-// goarch: arm64
-// pkg: github.com/lightstep/otel-launcher-go/lightstep/sdk/metric
-// BenchmarkCounterAddNoAttrs-10                 	35354023	        33.79 ns/op	       0 B/op	       0 allocs/op
-// BenchmarkCounterAddOneAttr-10                 	14354538	        82.77 ns/op	      64 B/op	       1 allocs/op
-// BenchmarkCounterAddOneInvalidAttr-10          	 9307794	       128.4 ns/op	     128 B/op	       1 allocs/op
-// BenchmarkCounterAddManyAttrs-10               	 1000000	      1075 ns/op	     569 B/op	       6 allocs/op
-// BenchmarkCounterAddManyInvalidAttrs-10        	  832549	      1654 ns/op	    1080 B/op	      10 allocs/op
-// BenchmarkCounterAddManyFilteredAttrs-10       	 1000000	      1304 ns/op	     953 B/op	       8 allocs/op
-// BenchmarkCounterCollectOneAttrNoReuse-10      	 2537348	       468.0 ns/op	     400 B/op	       7 allocs/op
-// BenchmarkCounterCollectOneAttrWithReuse-10    	 3679694	       328.2 ns/op	     136 B/op	       3 allocs/op
-// BenchmarkCounterCollectTenAttrs-10            	  715490	      1635 ns/op	     712 B/op	      12 allocs/op
-// BenchmarkCounterCollectTenAttrsTenTimes-10    	   72478	     16475 ns/op	    7128 B/op	     120 allocs/op
+// Tested prior to 0.17.0 release
 
 func BenchmarkCounterAddNoAttrs(b *testing.B) {
 	ctx := context.Background()
@@ -70,6 +58,19 @@ func BenchmarkCounterAddOneAttrSafe(b *testing.B) {
 	}
 }
 
+func BenchmarkCounterAddOneAttrSafeBypass(b *testing.B) {
+	ctx := context.Background()
+	rdr := NewManualReader("bench")
+	provider := NewMeterProvider(WithReader(rdr))
+	b.ReportAllocs()
+
+	cntr, _ := provider.Meter("test").Int64Counter("hello")
+
+	for i := 0; i < b.N; i++ {
+		cntr.(bypass.FastInt64Adder).AddWithKeyValues(ctx, 1, attribute.String("K", "V"))
+	}
+}
+
 func BenchmarkCounterAddOneAttrUnsafe(b *testing.B) {
 	ctx := context.Background()
 	rdr := NewManualReader("bench")
@@ -80,6 +81,19 @@ func BenchmarkCounterAddOneAttrUnsafe(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		cntr.Add(ctx, 1, metric.WithAttributes(attribute.String("K", "V")))
+	}
+}
+
+func BenchmarkCounterAddOneAttrUnsafeBypass(b *testing.B) {
+	ctx := context.Background()
+	rdr := NewManualReader("bench")
+	provider := NewMeterProvider(WithReader(rdr), unsafePerf)
+	b.ReportAllocs()
+
+	cntr, _ := provider.Meter("test").Int64Counter("hello")
+
+	for i := 0; i < b.N; i++ {
+		cntr.(bypass.FastInt64Adder).AddWithKeyValues(ctx, 1, attribute.String("K", "V"))
 	}
 }
 
@@ -99,6 +113,22 @@ func BenchmarkCounterAddOneAttrSliceReuseSafe(b *testing.B) {
 	}
 }
 
+func BenchmarkCounterAddOneAttrSliceReuseSafeBypass(b *testing.B) {
+	ctx := context.Background()
+	rdr := NewManualReader("bench")
+	provider := NewMeterProvider(WithReader(rdr))
+	b.ReportAllocs()
+
+	attrs := []attribute.KeyValue{
+		attribute.String("K", "V"),
+	}
+	cntr, _ := provider.Meter("test").Int64Counter("hello")
+
+	for i := 0; i < b.N; i++ {
+		cntr.(bypass.FastInt64Adder).AddWithKeyValues(ctx, 1, attrs...)
+	}
+}
+
 func BenchmarkCounterAddOneAttrSliceReuseUnsafe(b *testing.B) {
 	ctx := context.Background()
 	rdr := NewManualReader("bench")
@@ -112,6 +142,22 @@ func BenchmarkCounterAddOneAttrSliceReuseUnsafe(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		cntr.Add(ctx, 1, metric.WithAttributes(attrs...))
+	}
+}
+
+func BenchmarkCounterAddOneAttrSliceReuseUnsafeBypass(b *testing.B) {
+	ctx := context.Background()
+	rdr := NewManualReader("bench")
+	provider := NewMeterProvider(WithReader(rdr), unsafePerf)
+	b.ReportAllocs()
+
+	attrs := []attribute.KeyValue{
+		attribute.String("K", "V"),
+	}
+	cntr, _ := provider.Meter("test").Int64Counter("hello")
+
+	for i := 0; i < b.N; i++ {
+		cntr.(bypass.FastInt64Adder).AddWithKeyValues(ctx, 1, attrs...)
 	}
 }
 

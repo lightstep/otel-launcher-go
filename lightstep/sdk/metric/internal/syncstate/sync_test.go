@@ -72,7 +72,6 @@ func attrsConfig(attrs ...attribute.KeyValue) OpConfig {
 	})
 	return OpConfig{
 		Attributes: acfg.Attributes(),
-		KeyValues:  acfg.KeyValues(),
 	}
 }
 

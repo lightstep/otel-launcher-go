@@ -337,10 +337,14 @@ func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Obs
 		return
 	}
 
-	// @@@ Not what we want. @@@
-	// aset := cfg.Attributes()
-	// rec := acquireUninitialized[N](inst, aset.ToSlice())
-	rec := acquireUninitialized[N](inst, cfg.KeyValues)
+	var rec *record
+	if cfg.KeyValues != nil {
+		rec = acquireUninitialized[N](inst, cfg.KeyValues)
+	} else {
+		// TODO: This is a new code path for optimization,
+		// for now fall back to the slow path.
+		rec = acquireUninitialized[N](inst, cfg.Attributes.ToSlice())
+	}
 
 	defer rec.refMapped.unref()
 

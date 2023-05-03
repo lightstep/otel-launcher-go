@@ -17,9 +17,11 @@ package metric // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/me
 import (
 	"context"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/bypass"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/syncstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 )
@@ -51,40 +53,88 @@ type (
 	}
 )
 
+var (
+	_ bypass.FastInt64Adder    = int64Counter{}
+	_ bypass.FastInt64Adder    = int64UpDownCounter{}
+	_ bypass.FastInt64Recorder = int64Histogram{}
+
+	_ bypass.FastFloat64Adder    = float64Counter{}
+	_ bypass.FastFloat64Adder    = float64UpDownCounter{}
+	_ bypass.FastFloat64Recorder = float64Histogram{}
+)
+
 func addToOpConfig(options []metric.AddOption) syncstate.OpConfig {
 	acfg := metric.NewAddConfig(options)
 	return syncstate.OpConfig{
+		// Note: OTel-Go forces construction of an attribute set.
+		// Can't set KeyValues here.
 		Attributes: acfg.Attributes(),
-		KeyValues:  acfg.KeyValues(),
 	}
 }
 
 func recordToOpConfig(options []metric.RecordOption) syncstate.OpConfig {
 	rcfg := metric.NewRecordConfig(options)
 	return syncstate.OpConfig{
+		// Note: OTel-Go forces construction of an attribute set.
+		// Can't set KeyValues here.
 		Attributes: rcfg.Attributes(),
-		KeyValues:  rcfg.KeyValues(),
 	}
+}
+
+func (i int64Counter) AddWithKeyValues(ctx context.Context, value int64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveInt64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
 }
 
 func (i int64Counter) Add(ctx context.Context, value int64, options ...metric.AddOption) {
 	i.observer.ObserveInt64(ctx, value, addToOpConfig(options))
 }
 
+func (i int64UpDownCounter) AddWithKeyValues(ctx context.Context, value int64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveInt64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
+}
+
 func (i int64UpDownCounter) Add(ctx context.Context, value int64, options ...metric.AddOption) {
 	i.observer.ObserveInt64(ctx, value, addToOpConfig(options))
+}
+
+func (i int64Histogram) RecordWithKeyValues(ctx context.Context, value int64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveInt64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
 }
 
 func (i int64Histogram) Record(ctx context.Context, value int64, options ...metric.RecordOption) {
 	i.observer.ObserveInt64(ctx, value, recordToOpConfig(options))
 }
 
+func (i float64Counter) AddWithKeyValues(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveFloat64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
+}
+
 func (i float64Counter) Add(ctx context.Context, value float64, options ...metric.AddOption) {
 	i.observer.ObserveFloat64(ctx, value, addToOpConfig(options))
 }
 
+func (i float64UpDownCounter) AddWithKeyValues(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveFloat64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
+}
+
 func (i float64UpDownCounter) Add(ctx context.Context, value float64, options ...metric.AddOption) {
 	i.observer.ObserveFloat64(ctx, value, addToOpConfig(options))
+}
+
+func (i float64Histogram) RecordWithKeyValues(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveFloat64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
 }
 
 func (i float64Histogram) Record(ctx context.Context, value float64, options ...metric.RecordOption) {
