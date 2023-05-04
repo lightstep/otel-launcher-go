@@ -74,6 +74,8 @@ func copyAttributes(dest pcommon.Map, src attribute.Set) {
 			for _, v := range inA.Value.AsStringSlice() {
 				sl.AppendEmpty().SetStr(v)
 			}
+		default:
+			panic("unhandled case")
 		}
 	}
 }
@@ -100,6 +102,8 @@ func copySumPoints(m pmetric.Metric, inM data.Instrument, mono bool) {
 			dp.SetDoubleValue(number.ToFloat64(t.Sum()))
 		case *sum.NonMonotonicFloat64:
 			dp.SetDoubleValue(number.ToFloat64(t.Sum()))
+		default:
+			panic("unhandled case")
 		}
 	}
 }
@@ -120,12 +124,15 @@ func copyGaugePoints(m pmetric.Metric, inM data.Instrument) {
 			dp.SetIntValue(number.ToInt64(t.Gauge()))
 		case *gauge.Float64:
 			dp.SetDoubleValue(number.ToFloat64(t.Gauge()))
+		default:
+			panic("unhandled case")
 		}
 	}
 }
 
 func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 	s := m.SetEmptyExponentialHistogram()
+	s.SetAggregationTemporality(toTemporality(inM.Points[0].Temporality))
 
 	for _, inP := range inM.Points {
 		dp := s.DataPoints().AppendEmpty()
@@ -145,8 +152,12 @@ func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 				dp.SetMax(t.Max().CoerceToFloat64(number.Int64Kind))
 				dp.SetMin(t.Min().CoerceToFloat64(number.Int64Kind))
 			}
-			copyHistogramBuckets(dp.Positive(), t.Positive())
-			copyHistogramBuckets(dp.Negative(), t.Negative())
+			if t.Positive().Len() != 0 {
+				copyHistogramBuckets(dp.Positive(), t.Positive())
+			}
+			if t.Negative().Len() != 0 {
+				copyHistogramBuckets(dp.Negative(), t.Negative())
+			}
 		case *histogram.Float64:
 			dp.SetSum(number.ToFloat64(t.Sum()))
 			dp.SetCount(t.Count())
@@ -156,8 +167,14 @@ func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 				dp.SetMax(number.ToFloat64(t.Max()))
 				dp.SetMin(number.ToFloat64(t.Min()))
 			}
-			copyHistogramBuckets(dp.Positive(), t.Positive())
-			copyHistogramBuckets(dp.Negative(), t.Negative())
+			if t.Positive().Len() != 0 {
+				copyHistogramBuckets(dp.Positive(), t.Positive())
+			}
+			if t.Negative().Len() != 0 {
+				copyHistogramBuckets(dp.Negative(), t.Negative())
+			}
+		default:
+			panic("unhandled case")
 		}
 	}
 }
@@ -175,6 +192,7 @@ func copyHistogramBuckets(dest pmetric.ExponentialHistogramDataPointBuckets, src
 
 func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 	s := m.SetEmptyHistogram()
+	s.SetAggregationTemporality(toTemporality(inM.Points[0].Temporality))
 
 	for _, inP := range inM.Points {
 		dp := s.DataPoints().AppendEmpty()
@@ -185,20 +203,22 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 		copyAttributes(dp.Attributes(), inP.Attributes)
 
 		switch t := inP.Aggregation.(type) {
-		case *histogram.Int64:
+		case *minmaxsumcount.Int64:
 			dp.SetSum(t.Sum().CoerceToFloat64(number.Int64Kind))
 			dp.SetCount(t.Count())
 			if t.Count() != 0 {
 				dp.SetMax(number.ToFloat64(t.Max()))
 				dp.SetMin(number.ToFloat64(t.Min()))
 			}
-		case *histogram.Float64:
+		case *minmaxsumcount.Float64:
 			dp.SetSum(number.ToFloat64(t.Sum()))
 			dp.SetCount(t.Count())
 			if t.Count() != 0 {
 				dp.SetMax(number.ToFloat64(t.Max()))
 				dp.SetMin(number.ToFloat64(t.Min()))
 			}
+		default:
+			panic("unhandled case")
 		}
 	}
 }

@@ -80,7 +80,6 @@ func NewDefaultConfig() Config {
 				WaitForReady:    true,
 			},
 			Arrow: otlpexporter.ArrowSettings{
-				// @@@ Not working right now.
 				Enabled:          false,
 				NumStreams:       1,
 				DisableDowngrade: true,
@@ -153,8 +152,11 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	}))
 
 	c.settings.TelemetrySettings.Logger = logger
-	// @@@ This is too much tracing, I think.
+
+	// @@@ This is too much tracing, I think, but we need a non-nil value.
+	// so use a Noop if not this.
 	c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
+
 	// This is meta and we rely on global dependency injection,
 	// but we're hoping this works.
 	// Note: becomes otel.GetMeterProvider()
