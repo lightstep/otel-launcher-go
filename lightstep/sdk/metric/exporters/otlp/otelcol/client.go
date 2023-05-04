@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/f5/otel-arrow-adapter/collector/gen/exporter/otlpexporter"
-	"github.com/go-logr/zapr"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"go.opentelemetry.io/collector/component"
@@ -138,30 +137,21 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	} else {
 		c.settings.ID = component.NewID("otlp/proto")
 	}
-	// @@@ Someone else does this.
-	// logger, err := zap.NewProduction()
-	logger, err := zap.NewDevelopment()
+	logger, err := zap.NewProduction()
 	if err != nil {
 		return nil, err
 	}
 
-	otel.SetLogger(zapr.NewLogger(logger))
-	// @@@ Do not do this for real, someone else should.
-	otel.SetErrorHandler(otel.ErrorHandlerFunc(func(err error) {
-		logger.Error("OTel SDK error", zap.Error(err))
-	}))
-
 	c.settings.TelemetrySettings.Logger = logger
-
-	// @@@ This is too much tracing, I think, but we need a non-nil value.
-	// so use a Noop if not this.
-	c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
 
 	// This is meta and we rely on global dependency injection,
 	// but we're hoping this works.
 	// Note: becomes otel.GetMeterProvider()
 	c.settings.TelemetrySettings.MeterProvider = globalmetric.MeterProvider()
 	c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
+
+	// Note: this may be too much tracing.
+	c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
 
 	exp, err := otlpexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
 	if err != nil {
