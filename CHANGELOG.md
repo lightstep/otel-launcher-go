@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+- Exporter now based on OTel collector batchprocessor (for splitting) and otlpexporter. [#445](https://github.com/lightstep/otel-launcher-go/pull/445)
+
 ## [1.16.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.16.0) - 2023-04-27)
 
 - LS Metrics SDK supports an API hint for controlling Temporality on a per-instrument basis. [#426](https://github.com/lightstep/otel-launcher-go/pull/426)
