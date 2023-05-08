@@ -7,7 +7,6 @@ require (
 	github.com/f5/otel-arrow-adapter v0.0.0-20230407165153-7ac49c4f4aae
 	github.com/go-logr/logr v1.2.4
 	github.com/go-logr/stdr v1.2.2
-	github.com/go-logr/zapr v1.2.3
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/lightstep/go-expohisto v1.0.0
