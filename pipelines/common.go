@@ -15,10 +15,12 @@
 package pipelines
 
 import (
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otelcol"
+
+	"go.opentelemetry.io/collector/config/configtls"
 	oldotlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"google.golang.org/grpc/credentials"
 
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
@@ -56,6 +58,8 @@ type PipelineConfig struct {
 
 	// Credentials carries the TLS settings.
 	Credentials credentials.TransportCredentials
+	// TLSSetting is the newer form.
+	TLSSetting *configtls.TLSClientSetting
 
 	// UseLightstepMetricsSDK determines whether to use the metrics
 	// SDK at ../lightstep/sdk/metric.
@@ -64,15 +68,17 @@ type PipelineConfig struct {
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)
 
-func (p PipelineConfig) secureMetricOption() (otlpmetricgrpc.Option, oldotlpmetricgrpc.Option) {
+func (p PipelineConfig) secureMetricOption() (otelcol.Option, oldotlpmetricgrpc.Option) {
 	if p.Insecure {
-		return otlpmetricgrpc.WithInsecure(), oldotlpmetricgrpc.WithInsecure()
+		return otelcol.WithInsecure(), oldotlpmetricgrpc.WithInsecure()
 	} else if p.Credentials != nil {
-		return otlpmetricgrpc.WithTLSCredentials(p.Credentials), oldotlpmetricgrpc.WithTLSCredentials(p.Credentials)
+		return nil, oldotlpmetricgrpc.WithTLSCredentials(p.Credentials)
+	} else if p.TLSSetting != nil {
+		return otelcol.WithTLSSetting(*p.TLSSetting), nil
 	}
-	return otlpmetricgrpc.WithTLSCredentials(
-			credentials.NewClientTLSFromCert(nil, ""),
-		), oldotlpmetricgrpc.WithTLSCredentials(
+	return otelcol.WithTLSSetting(configtls.TLSClientSetting{
+			Insecure: true,
+		}), oldotlpmetricgrpc.WithTLSCredentials(
 			credentials.NewClientTLSFromCert(nil, ""),
 		)
 }

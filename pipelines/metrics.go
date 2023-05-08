@@ -23,8 +23,7 @@ import (
 	// The Lightstep SDK
 	sdkmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otelcol"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 
@@ -127,6 +126,13 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 			return nil, fmt.Errorf("failed to create metric exporter: %v", err)
 		}
 
+		if c.TLSSetting != nil {
+			// Credentials is not used
+			c.Credentials = nil
+		} else if c.Credentials != nil {
+			return nil, fmt.Errorf("use TLSSettings with the Lightstep metrics SDK, not Credentials")
+		}
+
 		sdk := sdkmetric.NewMeterProvider(
 			sdkmetric.WithResource(c.Resource),
 			sdkmetric.WithReader(
@@ -141,6 +147,14 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 		}
 
 	} else {
+
+		if c.Credentials != nil {
+			// TLSSetting is not used
+			c.TLSSetting = nil
+		} else if c.TLSSetting != nil {
+			return nil, fmt.Errorf("use Credentials with the OTel-Go metrics SDK, not TLSSetting")
+		}
+
 		// Install the OTel-Go community metrics SDK.
 		metricExporter, err := c.newOtelMetricsExporter(otelPref, otelSecure)
 		if err != nil {
@@ -179,6 +193,7 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 				continue
 			}
 			for _, f := range fs {
+
 				if err := f(provider); err != nil {
 					otel.Handle(fmt.Errorf("failed to start %v instrumentation: %w", name, err))
 				}
@@ -190,22 +205,16 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 	return shutdown, nil
 }
 
-func (c PipelineConfig) newClient(secure otlpmetricgrpc.Option) (otlpmetric.Client, error) {
-	return otlpmetricgrpc.NewClient(
+func (c PipelineConfig) newMetricsExporter(secure otelcol.Option) (sdkmetric.PushExporter, error) {
+	return otelcol.NewExporter(
 		context.Background(),
-		secure,
-		otlpmetricgrpc.WithEndpoint(c.Endpoint),
-		otlpmetricgrpc.WithHeaders(c.Headers),
-		otlpmetricgrpc.WithCompressor(gzip.Name),
+		otelcol.NewConfig(
+			secure,
+			otelcol.WithEndpoint(c.Endpoint),
+			otelcol.WithHeaders(c.Headers),
+			otelcol.WithCompressor(gzip.Name),
+		),
 	)
-}
-
-func (c PipelineConfig) newMetricsExporter(secure otlpmetricgrpc.Option) (*otlpmetric.Exporter, error) {
-	client, err := c.newClient(secure)
-	if err != nil {
-		return nil, err
-	}
-	return otlpmetric.New(client), nil
 }
 
 func (c PipelineConfig) newOtelMetricsExporter(temporality otelsdkmetric.TemporalitySelector, secureOpt otelotlpmetricgrpc.Option) (otelsdkmetric.Exporter, error) {
