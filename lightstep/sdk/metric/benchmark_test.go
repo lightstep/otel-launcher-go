@@ -30,7 +30,26 @@ var unsafePerf = WithPerformance(sdkinstrument.Performance{
 	IgnoreCollisions: true,
 })
 
-// Tested prior to 0.17.0 release
+// Tested prior to 1.17.0 release
+// goos: darwin
+// goarch: arm64
+// pkg: github.com/lightstep/otel-launcher-go/lightstep/sdk/metric
+// BenchmarkCounterAddNoAttrs-10                    	32278780	        37.43 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkCounterAddOneAttrSafe-10                	14648950	        81.16 ns/op	      64 B/op	       1 allocs/op
+// BenchmarkCounterAddOneAttrUnsafe-10              	16286137	        73.14 ns/op	      64 B/op	       1 allocs/op
+// BenchmarkCounterAddOneAttrSliceReuseSafe-10      	22135064	        54.10 ns/op	       0 B/op	       0 allocs/op
+// BenchmarkCounterAddOneAttrSliceReuseUnsafe-10    	25858933	        46.81 ns/op	       0 B/op	       0 allocs/op
+// 2023/05/03 17:04:01 use of empty attribute key, e.g., metric name "hello" with value "V"
+// BenchmarkCounterAddOneInvalidAttr-10             	 9953920	       118.5 ns/op	     128 B/op	       1 allocs/op
+// BenchmarkCounterAddManyAttrs-10                  	12176029	        96.97 ns/op	      64 B/op	       1 allocs/op
+// BenchmarkCounterAddManyAttrsUnsafe-10            	13241512	        88.42 ns/op	      64 B/op	       1 allocs/op
+// BenchmarkCounterAddManyInvalidAttrs-10           	 8614119	       134.7 ns/op	     128 B/op	       1 allocs/op
+// BenchmarkCounterAddManyInvalidAttrsUnsafe-10     	 9404649	       124.8 ns/op	     128 B/op	       1 allocs/op
+// BenchmarkCounterAddManyFilteredAttrs-10          	 8649364	       137.7 ns/op	     128 B/op	       1 allocs/op
+// BenchmarkCounterCollectOneAttrNoReuse-10         	 2633346	       454.0 ns/op	     400 B/op	       7 allocs/op
+// BenchmarkCounterCollectOneAttrWithReuse-10       	 3539598	       338.0 ns/op	     136 B/op	       3 allocs/op
+// BenchmarkCounterCollectTenAttrs-10               	  718842	      1659 ns/op	     712 B/op	      12 allocs/op
+// BenchmarkCounterCollectTenAttrsTenTimes-10       	   71664	     16535 ns/op	    7120 B/op	     120 allocs/op
 
 func BenchmarkCounterAddNoAttrs(b *testing.B) {
 	ctx := context.Background()

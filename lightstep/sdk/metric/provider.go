@@ -110,6 +110,11 @@ func (mp *MeterProvider) Meter(name string, options ...metric.MeterOption) metri
 	mp.lock.Lock()
 	defer mp.lock.Unlock()
 
+	if mp.meters == nil {
+		// Have been shutdown
+		return metric.NewNoopMeter()
+	}
+
 	m := mp.meters[lib]
 	if m != nil {
 		return m

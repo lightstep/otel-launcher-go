@@ -28,16 +28,14 @@ Differences from the OpenTelemetry metrics SDK specification:
    "stateless" temporality preference in the launcher.](../../../README.md#temporality-settings).
 3. Synchronous Gauge instrument behavior is [supported using an API 
    hint](#metric-instrument-hints-api).
-4. The OTLP exporter is the only provided exporter.
+4. The OTLP exporter is the only provided exporter.  The OTLP exporter
+   is based on the OTel-Core `batchprocessor` and the OTel-Arrow
+   `otlpexporter` collector components.
 
 These differences aside, this SDK features a complete implementation
 of the OpenTelemetry SDK specification with support for multiple
 readers.  It is possible, for example, to configure multiple OTLP
 exporters with different views and destinations.
-
-This SDK re-uses substantial portions of the community metrics SDK,
-including the OTLP gRPC client and the ExponentialHistogram mapping
-functions.
 
 Lightstep expects to continue maintaining this implementation until
 the community SDK supports configuring the behaviors listed above.

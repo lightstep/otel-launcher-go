@@ -84,3 +84,14 @@ func ParseTemporality(str string) (Temporality, bool) {
 	}
 	return UndefinedTemporality, false
 }
+
+func LowMemoryTemporality(k sdkinstrument.Kind) Temporality {
+	switch k {
+	case sdkinstrument.SyncUpDownCounter, sdkinstrument.AsyncUpDownCounter:
+		return CumulativeTemporality
+	case sdkinstrument.SyncCounter, sdkinstrument.SyncHistogram:
+		return DeltaTemporality
+	default:
+		return CumulativeTemporality
+	}
+}
