@@ -58,8 +58,12 @@ func (o metricProviderOption) apply(c *config) {
 var (
 	// Attribute sets for CPU time measurements.
 
-	AttributeCPUTimeUser   = []attribute.KeyValue{attribute.String("state", "user")}
-	AttributeCPUTimeSystem = []attribute.KeyValue{attribute.String("state", "system")}
+	AttributeCPUTimeUser = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("state", "user")),
+	}
+	AttributeCPUTimeSystem = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("state", "system")),
+	}
 )
 
 // newConfig computes a config from a list of Options.

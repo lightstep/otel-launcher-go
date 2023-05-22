@@ -20,7 +20,6 @@ import (
 	"runtime/metrics"
 
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/metric/instrument"
@@ -110,9 +109,9 @@ func newBuiltinRuntime(meter metric.Meter, af allFunc, rf readFunc) *builtinRunt
 func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 	all := r.allFunc()
 
-	var instruments []instrument.Asynchronous
+	var instruments []metric.Observable
 	var samples []metrics.Sample
-	var instAttrs [][]attribute.KeyValue
+	var instAttrs [][]metric.ObserveOption
 
 	for _, m := range all {
 		// each should match one
@@ -137,10 +136,10 @@ func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 
 		description := fmt.Sprintf("%s from runtime/metrics", pattern)
 
-		unitOpt := instrument.WithUnit(munit)
-		descOpt := instrument.WithDescription(description)
+		unitOpt := metric.WithUnit(munit)
+		descOpt := metric.WithDescription(description)
 
-		var inst instrument.Asynchronous
+		var inst metric.Observable
 		switch kind {
 		case builtinCounter:
 			switch m.Kind {
@@ -182,7 +181,9 @@ func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 		}
 		samples = append(samples, samp)
 		instruments = append(instruments, inst)
-		instAttrs = append(instAttrs, attrs)
+		instAttrs = append(instAttrs, []metric.ObserveOption{
+			metric.WithAttributes(attrs...),
+		})
 	}
 
 	if _, err := r.meter.RegisterCallback(func(ctx context.Context, obs metric.Observer) error {

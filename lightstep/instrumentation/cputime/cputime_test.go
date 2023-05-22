@@ -22,9 +22,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel/attribute"
+	apimetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
+
+func attrSlice(opts []apimetric.ObserveOption) []attribute.KeyValue {
+	cfg := apimetric.NewObserveConfig(opts)
+	attrs := cfg.Attributes()
+	return attrs.ToSlice()
+}
 
 func getMetric(metrics []metricdata.Metrics, name string, lbl attribute.KeyValue) float64 {
 	for _, m := range metrics {
@@ -109,8 +116,8 @@ func TestProcessCPU(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, len(data.ScopeMetrics))
 
-	processUser := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeUser[0])
-	processSystem := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", AttributeCPUTimeSystem[0])
+	processUser := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", attrSlice(AttributeCPUTimeUser)[0])
+	processSystem := getMetric(data.ScopeMetrics[0].Metrics, "process.cpu.time", attrSlice(AttributeCPUTimeSystem)[0])
 
 	afterUser, afterSystem, _ := c.getProcessTimes(ctx)
 

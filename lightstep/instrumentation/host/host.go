@@ -65,20 +65,36 @@ func (o metricProviderOption) apply(c *config) {
 var (
 	// Attribute sets for CPU time measurements.
 
-	AttributeCPUTimeUser   = []attribute.KeyValue{attribute.String("state", "user")}
-	AttributeCPUTimeSystem = []attribute.KeyValue{attribute.String("state", "system")}
-	AttributeCPUTimeOther  = []attribute.KeyValue{attribute.String("state", "other")}
-	AttributeCPUTimeIdle   = []attribute.KeyValue{attribute.String("state", "idle")}
+	AttributeCPUTimeUser = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("state", "user")),
+	}
+	AttributeCPUTimeSystem = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("state", "system")),
+	}
+	AttributeCPUTimeOther = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("state", "other")),
+	}
+	AttributeCPUTimeIdle = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("state", "idle")),
+	}
 
 	// Attribute sets used for Memory measurements.
 
-	AttributeMemoryAvailable = []attribute.KeyValue{attribute.String("state", "available")}
-	AttributeMemoryUsed      = []attribute.KeyValue{attribute.String("state", "used")}
+	AttributeMemoryAvailable = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("state", "available")),
+	}
+	AttributeMemoryUsed = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("state", "used")),
+	}
 
 	// Attribute sets used for Network measurements.
 
-	AttributeNetworkTransmit = []attribute.KeyValue{attribute.String("direction", "transmit")}
-	AttributeNetworkReceive  = []attribute.KeyValue{attribute.String("direction", "receive")}
+	AttributeNetworkTransmit = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("direction", "transmit")),
+	}
+	AttributeNetworkReceive = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("direction", "receive")),
+	}
 )
 
 // newConfig computes a config from a list of Options.
