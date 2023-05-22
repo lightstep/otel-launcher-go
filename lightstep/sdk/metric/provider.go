@@ -27,6 +27,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
+	"go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"go.uber.org/multierr"
@@ -112,7 +113,7 @@ func (mp *MeterProvider) Meter(name string, options ...metric.MeterOption) metri
 
 	if mp.meters == nil {
 		// Have been shutdown
-		return metric.NewNoopMeter()
+		return noop.NewMeterProvider().Meter(name)
 	}
 
 	m := mp.meters[lib]
