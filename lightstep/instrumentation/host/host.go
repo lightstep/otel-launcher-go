@@ -26,7 +26,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 // Host reports the work-in-progress conventional host metrics specified by OpenTelemetry.
@@ -128,10 +127,10 @@ func (h *host) register() error {
 	var (
 		err error
 
-		hostCPUTime           instrument.Float64ObservableCounter
-		hostMemoryUsage       instrument.Int64ObservableUpDownCounter
-		hostMemoryUtilization instrument.Float64ObservableGauge
-		networkIOUsage        instrument.Int64ObservableCounter
+		hostCPUTime           metric.Float64ObservableCounter
+		hostMemoryUsage       metric.Int64ObservableUpDownCounter
+		hostMemoryUtilization metric.Float64ObservableGauge
+		networkIOUsage        metric.Int64ObservableCounter
 
 		// lock prevents a race between batch observer and instrument registration.
 		lock sync.Mutex
@@ -142,8 +141,8 @@ func (h *host) register() error {
 
 	if hostCPUTime, err = h.meter.Float64ObservableCounter(
 		"system.cpu.time",
-		instrument.WithUnit("s"),
-		instrument.WithDescription(
+		metric.WithUnit("s"),
+		metric.WithDescription(
 			"Accumulated CPU time spent by this process host attributed by state (User, System, Other, Idle)",
 		),
 	); err != nil {
@@ -152,8 +151,8 @@ func (h *host) register() error {
 
 	if hostMemoryUsage, err = h.meter.Int64ObservableUpDownCounter(
 		"system.memory.usage",
-		instrument.WithUnit("By"),
-		instrument.WithDescription(
+		metric.WithUnit("By"),
+		metric.WithDescription(
 			"Memory usage of this process host attributed by memory state (Used, Available)",
 		),
 	); err != nil {
@@ -162,7 +161,7 @@ func (h *host) register() error {
 
 	if hostMemoryUtilization, err = h.meter.Float64ObservableGauge(
 		"system.memory.utilization",
-		instrument.WithDescription(
+		metric.WithDescription(
 			"Memory utilization of this process host attributed by memory state (Used, Available)",
 		),
 	); err != nil {
@@ -171,8 +170,8 @@ func (h *host) register() error {
 
 	if networkIOUsage, err = h.meter.Int64ObservableCounter(
 		"system.network.io",
-		instrument.WithUnit("By"),
-		instrument.WithDescription(
+		metric.WithUnit("By"),
+		metric.WithDescription(
 			"Bytes transferred attributed by direction (Transmit, Receive)",
 		),
 	); err != nil {

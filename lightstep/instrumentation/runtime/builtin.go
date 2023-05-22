@@ -22,7 +22,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 // namePrefix is prefixed onto OTel instrument names.
@@ -192,9 +191,9 @@ func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 		for idx, samp := range samples {
 			switch samp.Value.Kind() {
 			case metrics.KindUint64:
-				obs.ObserveInt64(instruments[idx].(instrument.Int64Observable), int64(samp.Value.Uint64()), instAttrs[idx]...)
+				obs.ObserveInt64(instruments[idx].(metric.Int64Observable), int64(samp.Value.Uint64()), instAttrs[idx]...)
 			case metrics.KindFloat64:
-				obs.ObserveFloat64(instruments[idx].(instrument.Float64Observable), samp.Value.Float64(), instAttrs[idx]...)
+				obs.ObserveFloat64(instruments[idx].(metric.Float64Observable), samp.Value.Float64(), instAttrs[idx]...)
 			default:
 				// KindFloat64Histogram (unsupported in OTel) and KindBad
 				// (unsupported by runtime/metrics).  Neither should happen
