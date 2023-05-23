@@ -17,70 +17,156 @@ package metric // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/me
 import (
 	"context"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/bypass"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/syncstate"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/embedded"
 )
 
 type (
-	int64AnyCounter struct {
-		*syncstate.Observer
+	int64Counter struct {
+		embedded.Int64Counter
+		observer *syncstate.Observer
+	}
+	int64UpDownCounter struct {
+		embedded.Int64UpDownCounter
+		observer *syncstate.Observer
 	}
 	int64Histogram struct {
-		*syncstate.Observer
+		embedded.Int64Histogram
+		observer *syncstate.Observer
 	}
-	float64AnyCounter struct {
-		*syncstate.Observer
+	float64Counter struct {
+		embedded.Float64Counter
+		observer *syncstate.Observer
+	}
+	float64UpDownCounter struct {
+		embedded.Float64UpDownCounter
+		observer *syncstate.Observer
 	}
 	float64Histogram struct {
-		*syncstate.Observer
+		embedded.Float64Histogram
+		observer *syncstate.Observer
 	}
 )
 
-func (i int64AnyCounter) Add(ctx context.Context, value int64, attrs ...attribute.KeyValue) {
-	i.ObserveInt64(ctx, value, attrs...)
+var (
+	_ bypass.FastInt64Adder    = int64Counter{}
+	_ bypass.FastInt64Adder    = int64UpDownCounter{}
+	_ bypass.FastInt64Recorder = int64Histogram{}
+
+	_ bypass.FastFloat64Adder    = float64Counter{}
+	_ bypass.FastFloat64Adder    = float64UpDownCounter{}
+	_ bypass.FastFloat64Recorder = float64Histogram{}
+)
+
+func addToOpConfig(options []metric.AddOption) syncstate.OpConfig {
+	acfg := metric.NewAddConfig(options)
+	return syncstate.OpConfig{
+		// Note: OTel-Go forces construction of an attribute set.
+		// Can't set KeyValues here.
+		Attributes: acfg.Attributes(),
+	}
 }
 
-func (i int64Histogram) Record(ctx context.Context, value int64, attrs ...attribute.KeyValue) {
-	i.ObserveInt64(ctx, value, attrs...)
+func recordToOpConfig(options []metric.RecordOption) syncstate.OpConfig {
+	rcfg := metric.NewRecordConfig(options)
+	return syncstate.OpConfig{
+		// Note: OTel-Go forces construction of an attribute set.
+		// Can't set KeyValues here.
+		Attributes: rcfg.Attributes(),
+	}
 }
 
-func (i float64AnyCounter) Add(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
-	i.ObserveFloat64(ctx, value, attrs...)
+func (i int64Counter) AddWithKeyValues(ctx context.Context, value int64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveInt64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
 }
 
-func (i float64Histogram) Record(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
-	i.ObserveFloat64(ctx, value, attrs...)
+func (i int64Counter) Add(ctx context.Context, value int64, options ...metric.AddOption) {
+	i.observer.ObserveInt64(ctx, value, addToOpConfig(options))
 }
 
-func (m *meter) Int64Counter(name string, opts ...instrument.Int64Option) (instrument.Int64Counter, error) {
-	inst, err := m.synchronousInstrument(name, instrument.NewInt64Config(opts...), number.Int64Kind, sdkinstrument.SyncCounter)
-	return int64AnyCounter{Observer: inst}, err
+func (i int64UpDownCounter) AddWithKeyValues(ctx context.Context, value int64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveInt64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
 }
 
-func (m *meter) Int64UpDownCounter(name string, opts ...instrument.Int64Option) (instrument.Int64UpDownCounter, error) {
-	inst, err := m.synchronousInstrument(name, instrument.NewInt64Config(opts...), number.Int64Kind, sdkinstrument.SyncUpDownCounter)
-	return int64AnyCounter{Observer: inst}, err
+func (i int64UpDownCounter) Add(ctx context.Context, value int64, options ...metric.AddOption) {
+	i.observer.ObserveInt64(ctx, value, addToOpConfig(options))
 }
 
-func (m *meter) Int64Histogram(name string, opts ...instrument.Int64Option) (instrument.Int64Histogram, error) {
-	inst, err := m.synchronousInstrument(name, instrument.NewInt64Config(opts...), number.Int64Kind, sdkinstrument.SyncHistogram)
-	return int64Histogram{Observer: inst}, err
+func (i int64Histogram) RecordWithKeyValues(ctx context.Context, value int64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveInt64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
 }
 
-func (m *meter) Float64Counter(name string, opts ...instrument.Float64Option) (instrument.Float64Counter, error) {
-	inst, err := m.synchronousInstrument(name, instrument.NewFloat64Config(opts...), number.Float64Kind, sdkinstrument.SyncCounter)
-	return float64AnyCounter{Observer: inst}, err
+func (i int64Histogram) Record(ctx context.Context, value int64, options ...metric.RecordOption) {
+	i.observer.ObserveInt64(ctx, value, recordToOpConfig(options))
 }
 
-func (m *meter) Float64UpDownCounter(name string, opts ...instrument.Float64Option) (instrument.Float64UpDownCounter, error) {
-	inst, err := m.synchronousInstrument(name, instrument.NewFloat64Config(opts...), number.Float64Kind, sdkinstrument.SyncUpDownCounter)
-	return float64AnyCounter{Observer: inst}, err
+func (i float64Counter) AddWithKeyValues(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveFloat64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
 }
 
-func (m *meter) Float64Histogram(name string, opts ...instrument.Float64Option) (instrument.Float64Histogram, error) {
-	inst, err := m.synchronousInstrument(name, instrument.NewFloat64Config(opts...), number.Float64Kind, sdkinstrument.SyncHistogram)
-	return float64Histogram{Observer: inst}, err
+func (i float64Counter) Add(ctx context.Context, value float64, options ...metric.AddOption) {
+	i.observer.ObserveFloat64(ctx, value, addToOpConfig(options))
+}
+
+func (i float64UpDownCounter) AddWithKeyValues(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveFloat64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
+}
+
+func (i float64UpDownCounter) Add(ctx context.Context, value float64, options ...metric.AddOption) {
+	i.observer.ObserveFloat64(ctx, value, addToOpConfig(options))
+}
+
+func (i float64Histogram) RecordWithKeyValues(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
+	i.observer.ObserveFloat64(ctx, value, syncstate.OpConfig{
+		KeyValues: attrs,
+	})
+}
+
+func (i float64Histogram) Record(ctx context.Context, value float64, options ...metric.RecordOption) {
+	i.observer.ObserveFloat64(ctx, value, recordToOpConfig(options))
+}
+
+func (m *meter) Int64Counter(name string, opts ...metric.Int64CounterOption) (metric.Int64Counter, error) {
+	inst, err := m.synchronousInstrument(name, metric.NewInt64CounterConfig(opts...), number.Int64Kind, sdkinstrument.SyncCounter)
+	return int64Counter{observer: inst}, err
+}
+
+func (m *meter) Int64UpDownCounter(name string, opts ...metric.Int64UpDownCounterOption) (metric.Int64UpDownCounter, error) {
+	inst, err := m.synchronousInstrument(name, metric.NewInt64UpDownCounterConfig(opts...), number.Int64Kind, sdkinstrument.SyncUpDownCounter)
+	return int64UpDownCounter{observer: inst}, err
+}
+
+func (m *meter) Int64Histogram(name string, opts ...metric.Int64HistogramOption) (metric.Int64Histogram, error) {
+	inst, err := m.synchronousInstrument(name, metric.NewInt64HistogramConfig(opts...), number.Int64Kind, sdkinstrument.SyncHistogram)
+	return int64Histogram{observer: inst}, err
+}
+
+func (m *meter) Float64Counter(name string, opts ...metric.Float64CounterOption) (metric.Float64Counter, error) {
+	inst, err := m.synchronousInstrument(name, metric.NewFloat64CounterConfig(opts...), number.Float64Kind, sdkinstrument.SyncCounter)
+	return float64Counter{observer: inst}, err
+}
+
+func (m *meter) Float64UpDownCounter(name string, opts ...metric.Float64UpDownCounterOption) (metric.Float64UpDownCounter, error) {
+	inst, err := m.synchronousInstrument(name, metric.NewFloat64UpDownCounterConfig(opts...), number.Float64Kind, sdkinstrument.SyncUpDownCounter)
+	return float64UpDownCounter{observer: inst}, err
+}
+
+func (m *meter) Float64Histogram(name string, opts ...metric.Float64HistogramOption) (metric.Float64Histogram, error) {
+	inst, err := m.synchronousInstrument(name, metric.NewFloat64HistogramConfig(opts...), number.Float64Kind, sdkinstrument.SyncHistogram)
+	return float64Histogram{observer: inst}, err
 }

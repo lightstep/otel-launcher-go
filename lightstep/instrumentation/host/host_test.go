@@ -29,9 +29,16 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"go.opentelemetry.io/otel/attribute"
+	apimetric "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
+
+func attrSlice(opts []apimetric.ObserveOption) []attribute.KeyValue {
+	cfg := apimetric.NewObserveConfig(opts)
+	attrs := cfg.Attributes()
+	return attrs.ToSlice()
+}
 
 func getMetric(metrics []metricdata.Metrics, name string, lbl attribute.KeyValue) float64 {
 	for _, m := range metrics {
@@ -83,7 +90,6 @@ func getMetric(metrics []metricdata.Metrics, name string, lbl attribute.KeyValue
 	}
 	panic(fmt.Sprintf("Could not locate a metric in test output, name: %s, keyValue: %v", name, lbl))
 }
-
 func TestHostCPU(t *testing.T) {
 	ctx := context.Background()
 	reader := metric.NewManualReader()
@@ -115,8 +121,8 @@ func TestHostCPU(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, len(data.ScopeMetrics))
 
-	hostUser := getMetric(data.ScopeMetrics[0].Metrics, "system.cpu.time", AttributeCPUTimeUser[0])
-	hostSystem := getMetric(data.ScopeMetrics[0].Metrics, "system.cpu.time", AttributeCPUTimeSystem[0])
+	hostUser := getMetric(data.ScopeMetrics[0].Metrics, "system.cpu.time", attrSlice(AttributeCPUTimeUser)[0])
+	hostSystem := getMetric(data.ScopeMetrics[0].Metrics, "system.cpu.time", attrSlice(AttributeCPUTimeSystem)[0])
 
 	hostAfter, err := cpu.TimesWithContext(ctx, false)
 	require.NoError(t, err)
@@ -157,19 +163,19 @@ func TestHostMemory(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 1, len(data.ScopeMetrics))
 
-	hostUsed := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.usage", AttributeMemoryUsed[0])
+	hostUsed := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.usage", attrSlice(AttributeMemoryUsed)[0])
 	assert.Greater(t, hostUsed, 0.0)
 	assert.LessOrEqual(t, hostUsed, float64(vMem.Total))
 
-	hostAvailable := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.usage", AttributeMemoryAvailable[0])
+	hostAvailable := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.usage", attrSlice(AttributeMemoryAvailable)[0])
 	assert.GreaterOrEqual(t, hostAvailable, 0.0)
 	assert.Less(t, hostAvailable, float64(vMem.Total))
 
-	hostUsedUtil := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.utilization", AttributeMemoryUsed[0])
+	hostUsedUtil := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.utilization", attrSlice(AttributeMemoryUsed)[0])
 	assert.Greater(t, hostUsedUtil, 0.0)
 	assert.LessOrEqual(t, hostUsedUtil, 1.0)
 
-	hostAvailableUtil := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.utilization", AttributeMemoryAvailable[0])
+	hostAvailableUtil := getMetric(data.ScopeMetrics[0].Metrics, "system.memory.utilization", attrSlice(AttributeMemoryAvailable)[0])
 	assert.GreaterOrEqual(t, hostAvailableUtil, 0.0)
 	assert.Less(t, hostAvailableUtil, 1.0)
 
@@ -244,8 +250,8 @@ func TestHostNetwork(t *testing.T) {
 	err = reader.Collect(ctx, &data)
 	require.NoError(t, err)
 	require.Equal(t, 1, len(data.ScopeMetrics))
-	hostTransmit := getMetric(data.ScopeMetrics[0].Metrics, "system.network.io", AttributeNetworkTransmit[0])
-	hostReceive := getMetric(data.ScopeMetrics[0].Metrics, "system.network.io", AttributeNetworkReceive[0])
+	hostTransmit := getMetric(data.ScopeMetrics[0].Metrics, "system.network.io", attrSlice(AttributeNetworkTransmit)[0])
+	hostReceive := getMetric(data.ScopeMetrics[0].Metrics, "system.network.io", attrSlice(AttributeNetworkReceive)[0])
 
 	// Check that the recorded measurements reflect the same change:
 	require.LessOrEqual(t, uint64(howMuch), uint64(hostTransmit)-hostBefore[0].BytesSent)

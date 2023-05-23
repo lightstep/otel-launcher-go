@@ -38,6 +38,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
@@ -61,7 +62,18 @@ var (
 		IgnoreCollisions:          true,
 		InactiveCollectionPeriods: 1,
 	}
+
+	noAttrsCfg = attrsConfig()
 )
+
+func attrsConfig(attrs ...attribute.KeyValue) OpConfig {
+	acfg := metric.NewAddConfig([]metric.AddOption{
+		metric.WithAttributes(attrs...),
+	})
+	return OpConfig{
+		Attributes: acfg.Attributes(),
+	}
+}
 
 func deltaUpdate[N number.Any](old, new N) N {
 	return old + new
@@ -214,8 +226,10 @@ func testSyncStateConcurrencyWithPerf[N number.Any, Traits number.Traits[N]](t *
 			defer writers.Done()
 			rnd := rand.New(rand.NewSource(rand.Int63()))
 
+			cfg := attrsConfig(attrs[rnd.Intn(len(attrs))])
+
 			for j := 0; j < numUpdates/numRoutines; j++ {
-				Observe[N, Traits](ctx, inst, 1, attrs[rnd.Intn(len(attrs))])
+				Observe[N, Traits](ctx, inst, 1, cfg)
 			}
 		}()
 	}
@@ -260,9 +274,9 @@ func TestSyncStatePartialNoopInstrument(t *testing.T) {
 	inst := New(desc, safePerf, nil, pipes)
 	require.NotNil(t, inst)
 
-	inst.ObserveFloat64(ctx, 1)
-	inst.ObserveFloat64(ctx, 2)
-	inst.ObserveFloat64(ctx, 3)
+	inst.ObserveFloat64(ctx, 1, noAttrsCfg)
+	inst.ObserveFloat64(ctx, 2, noAttrsCfg)
+	inst.ObserveFloat64(ctx, 3, noAttrsCfg)
 
 	inst.SnapshotAndProcess()
 
@@ -328,9 +342,9 @@ func TestSyncStateFullNoopInstrument(t *testing.T) {
 	inst := New(desc, safePerf, nil, pipes)
 	require.Nil(t, inst)
 
-	inst.ObserveFloat64(ctx, 1)
-	inst.ObserveFloat64(ctx, 2)
-	inst.ObserveFloat64(ctx, 3)
+	inst.ObserveFloat64(ctx, 1, noAttrsCfg)
+	inst.ObserveFloat64(ctx, 2, noAttrsCfg)
+	inst.ObserveFloat64(ctx, 3, noAttrsCfg)
 
 	// There's no instrument, nothing to Snapshot
 	require.Equal(t, 0, len(vcs[0].Collectors()))
@@ -364,13 +378,13 @@ func TestOutOfRangeValues(t *testing.T) {
 		var negOne aggregation.Aggregation
 
 		if desc.NumberKind == number.Float64Kind {
-			inst.ObserveFloat64(ctx, -1)
-			inst.ObserveFloat64(ctx, math.NaN())
-			inst.ObserveFloat64(ctx, math.Inf(+1))
-			inst.ObserveFloat64(ctx, math.Inf(-1))
+			inst.ObserveFloat64(ctx, -1, noAttrsCfg)
+			inst.ObserveFloat64(ctx, math.NaN(), noAttrsCfg)
+			inst.ObserveFloat64(ctx, math.Inf(+1), noAttrsCfg)
+			inst.ObserveFloat64(ctx, math.Inf(-1), noAttrsCfg)
 			negOne = sum.NewNonMonotonicFloat64(-1)
 		} else {
-			inst.ObserveInt64(ctx, -1)
+			inst.ObserveInt64(ctx, -1, noAttrsCfg)
 			negOne = sum.NewNonMonotonicInt64(-1)
 		}
 
@@ -462,9 +476,9 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	inst := New(indesc, safePerf, nil, pipes)
 	require.NotNil(t, inst)
 
-	inst.ObserveFloat64(ctx, 1)
-	inst.ObserveFloat64(ctx, 2)
-	inst.ObserveFloat64(ctx, 3)
+	inst.ObserveFloat64(ctx, 1, noAttrsCfg)
+	inst.ObserveFloat64(ctx, 2, noAttrsCfg)
+	inst.ObserveFloat64(ctx, 3, noAttrsCfg)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -498,8 +512,8 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	)
 
 	// Set again
-	inst.ObserveFloat64(ctx, 172)
-	inst.ObserveFloat64(ctx, 175)
+	inst.ObserveFloat64(ctx, 172, noAttrsCfg)
+	inst.ObserveFloat64(ctx, 175, noAttrsCfg)
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -519,8 +533,8 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	)
 
 	// Set different attribute sets, leave the first (empty set) unused.
-	inst.ObserveFloat64(ctx, 1333, attribute.String("A", "B"))
-	inst.ObserveFloat64(ctx, 1337, attribute.String("C", "D"))
+	inst.ObserveFloat64(ctx, 1333, attrsConfig(attribute.String("A", "B")))
+	inst.ObserveFloat64(ctx, 1337, attrsConfig(attribute.String("C", "D")))
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -549,10 +563,10 @@ func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	// sequence number (as opposed to random choice, which would
 	// happen naturally b/c of map iteration).
 	for i := 0; i < 1000; i++ {
-		inst.ObserveFloat64(ctx, float64(i), attribute.Int("ignored", i), attribute.String("A", "B"))
+		inst.ObserveFloat64(ctx, float64(i), attrsConfig(attribute.Int("ignored", i), attribute.String("A", "B")))
 	}
 	for i := 1000; i > 0; i-- {
-		inst.ObserveFloat64(ctx, float64(i), attribute.Int("ignored", i), attribute.String("C", "D"))
+		inst.ObserveFloat64(ctx, float64(i), attrsConfig(attribute.Int("ignored", i), attribute.String("C", "D")))
 	}
 
 	inst.SnapshotAndProcess()
@@ -762,8 +776,8 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 	attr1 := attribute.Int64(fpKey, fpInt1)
 	attr2 := attribute.Int64(fpKey, fpInt2)
 
-	inst.ObserveFloat64(ctx, 1, attr1)
-	inst.ObserveFloat64(ctx, 2, attr2)
+	inst.ObserveFloat64(ctx, 1, attrsConfig(attr1))
+	inst.ObserveFloat64(ctx, 2, attrsConfig(attr2))
 
 	// collect reader 0
 	inst.SnapshotAndProcess()
@@ -810,8 +824,8 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 	require.Equal(t, 0, vcs[0].Collectors()[0].InMemorySize())
 
 	// Use both again, collect reader 0 again
-	inst.ObserveFloat64(ctx, 5, attr1)
-	inst.ObserveFloat64(ctx, 6, attr2)
+	inst.ObserveFloat64(ctx, 5, attrsConfig(attr1))
+	inst.ObserveFloat64(ctx, 6, attrsConfig(attr2))
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -840,7 +854,7 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 	require.Equal(t, 2, vcs[0].Collectors()[0].InMemorySize())
 
 	// Update attr1, collect reader 0
-	inst.ObserveFloat64(ctx, 25, attr1)
+	inst.ObserveFloat64(ctx, 25, attrsConfig(attr1))
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -864,7 +878,7 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 	require.Equal(t, 1, vcs[0].Collectors()[0].InMemorySize())
 
 	// Update attr2, collect reader 0
-	inst.ObserveFloat64(ctx, 32, attr2)
+	inst.ObserveFloat64(ctx, 32, attrsConfig(attr2))
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -953,8 +967,8 @@ func TestDuplicateFingerprintCollisionIgnored(t *testing.T) {
 	attr2 := attribute.Int64(fpKey, fpInt2)
 
 	// Because of the duplicate, the first attribute set wins.
-	inst.ObserveFloat64(ctx, 1, attr1)
-	inst.ObserveFloat64(ctx, 2, attr2)
+	inst.ObserveFloat64(ctx, 1, attrsConfig(attr1))
+	inst.ObserveFloat64(ctx, 2, attrsConfig(attr2))
 
 	// collect reader
 	inst.SnapshotAndProcess()
@@ -997,8 +1011,8 @@ func TestDuplicateFingerprintCollisionIgnored(t *testing.T) {
 
 	// Use both attribute sets in the opposite order, collect
 	// reader again.
-	inst.ObserveFloat64(ctx, 6, attr2)
-	inst.ObserveFloat64(ctx, 5, attr1)
+	inst.ObserveFloat64(ctx, 6, attrsConfig(attr2))
+	inst.ObserveFloat64(ctx, 5, attrsConfig(attr1))
 
 	inst.SnapshotAndProcess()
 	test.RequireEqualMetrics(
@@ -1079,7 +1093,7 @@ func TestRecordInactivity(t *testing.T) {
 				)
 			}
 
-			inst.ObserveFloat64(ctx, 17, attr)
+			inst.ObserveFloat64(ctx, 17, attrsConfig(attr))
 
 			// collect reader
 			inst.SnapshotAndProcess()
@@ -1105,7 +1119,7 @@ func TestRecordInactivity(t *testing.T) {
 			// Inactive for the up to the allowed inactivity.
 			repeatedlyNothing()
 
-			inst.ObserveFloat64(ctx, 23, attr)
+			inst.ObserveFloat64(ctx, 23, attrsConfig(attr))
 
 			// collect reader again, but an update came in.
 			inst.SnapshotAndProcess()
@@ -1154,7 +1168,7 @@ func TestCardinalityOverflowCumulative(t *testing.T) {
 	var oflow int
 
 	for i := 0; i < total; i++ {
-		inst.ObserveFloat64(ctx, 1, attribute.Int("i", i))
+		inst.ObserveFloat64(ctx, 1, attrsConfig(attribute.Int("i", i)))
 
 		if i < int(perf.InstrumentCardinalityLimit)-1 {
 			expectPoints = append(expectPoints, test.Point(
@@ -1193,7 +1207,7 @@ func TestCardinalityOverflowCumulative(t *testing.T) {
 	// Repeat with all new attributes; since this is cumulative,
 	// the original set is retained an this goes entirely to overflow.
 	for i := 0; i < total; i++ {
-		inst.ObserveFloat64(ctx, 1, attribute.Int("i", total+i))
+		inst.ObserveFloat64(ctx, 1, attrsConfig(attribute.Int("i", total+i)))
 		oflow++
 	}
 	// Replace the overflow value
@@ -1254,7 +1268,7 @@ func TestCardinalityOverflowAvoidedDelta(t *testing.T) {
 			// attr is unique on every iteration
 			attr := attribute.String("s", fmt.Sprint(uniq))
 			uniq++
-			inst.ObserveInt64(ctx, 1, attr)
+			inst.ObserveInt64(ctx, 1, attrsConfig(attr))
 
 			expectPoints = append(expectPoints, test.Point(
 				middleTime, endTime,
@@ -1317,7 +1331,7 @@ func TestCardinalityOverflowOscillationDelta(t *testing.T) {
 		var oflow int
 
 		for i := 0; i < total; i++ {
-			inst.ObserveFloat64(ctx, 1, attribute.Int("uniq", uniq))
+			inst.ObserveFloat64(ctx, 1, attrsConfig(attribute.Int("uniq", uniq)))
 
 			// Note: on even intervals, the overflow will
 			// be as we expect, and in odd intervals, the
@@ -1404,14 +1418,14 @@ func TestInputAttributeSliceRaceCondition(t *testing.T) {
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 1000; i++ {
-			inst.ObserveFloat64(ctx, 1, attrs...)
+			inst.ObserveFloat64(ctx, 1, attrsConfig(attrs...))
 		}
 	}()
 
 	go func() {
 		defer wg.Done()
 		for i := 0; i < 1000; i++ {
-			inst.ObserveFloat64(ctx, 1, attrs...)
+			inst.ObserveFloat64(ctx, 1, attrsConfig(attrs...))
 		}
 	}()
 

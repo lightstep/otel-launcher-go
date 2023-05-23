@@ -26,7 +26,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
 
@@ -36,6 +36,8 @@ type (
 	// produced by an instrumentation scope will use metric instruments from a
 	// single meter.
 	meter struct {
+		embedded.Meter
+
 		library   instrumentation.Library
 		provider  *MeterProvider
 		compilers pipeline.Register[*viewstate.Compiler]
@@ -49,6 +51,8 @@ type (
 
 	// metricRegistration implements metric.Registration
 	metricRegistration struct {
+		embedded.Registration
+
 		lock     sync.Mutex
 		meter    *meter
 		callback *asyncstate.Callback
@@ -69,7 +73,7 @@ var ErrAlreadyUnregistered = fmt.Errorf("callback was already unregistered")
 
 // RegisterCallback registers the function f to be called when any of the
 // insts Collect method is called.
-func (m *meter) RegisterCallback(function metric.Callback, instruments ...instrument.Asynchronous) (metric.Registration, error) {
+func (m *meter) RegisterCallback(function metric.Callback, instruments ...metric.Observable) (metric.Registration, error) {
 	cb, err := asyncstate.NewCallback(instruments, m, function)
 
 	var reg metric.Registration

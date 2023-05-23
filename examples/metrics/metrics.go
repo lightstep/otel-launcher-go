@@ -32,8 +32,8 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/launcher"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 	metricglobal "go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 func main() {
@@ -56,7 +56,7 @@ func main() {
 	c2, _ := meter.Int64UpDownCounter(prefix + "updowncounter")
 	hist, _ := meter.Float64Histogram(prefix + "histogram")
 	mmsc, _ := meter.Float64Histogram(prefix+"mmsc",
-		instrument.WithDescription(`{
+		metric.WithDescription(`{
   "aggregation": "minmaxsumcount"
 }`),
 	)
@@ -83,8 +83,8 @@ func main() {
 
 	_, err := meter.Int64ObservableCounter(
 		prefix+"counterobserver",
-		instrument.WithInt64Callback(
-			func(ctx context.Context, obs instrument.Int64Observer) error {
+		metric.WithInt64Callback(
+			func(ctx context.Context, obs metric.Int64Observer) error {
 				obs.Observe(int64(time.Since(startTime).Seconds()))
 				return nil
 			},
@@ -97,8 +97,8 @@ func main() {
 
 	_, err = meter.Int64ObservableUpDownCounter(
 		prefix+"updowncounterobserver",
-		instrument.WithInt64Callback(
-			func(ctx context.Context, obs instrument.Int64Observer) error {
+		metric.WithInt64Callback(
+			func(ctx context.Context, obs metric.Int64Observer) error {
 				obs.Observe(-int64(time.Since(startTime).Seconds()))
 				return nil
 			},
@@ -111,8 +111,8 @@ func main() {
 
 	_, err = meter.Int64ObservableGauge(
 		prefix+"gauge",
-		instrument.WithInt64Callback(
-			func(ctx context.Context, obs instrument.Int64Observer) error {
+		metric.WithInt64Callback(
+			func(ctx context.Context, obs metric.Int64Observer) error {
 				obs.Observe(int64(50 + rand.NormFloat64()*50))
 				return nil
 			},
@@ -125,14 +125,14 @@ func main() {
 
 	_, err = meter.Float64ObservableGauge(
 		prefix+"sine_wave",
-		instrument.WithFloat64Callback(
-			func(ctx context.Context, obs instrument.Float64Observer) error {
+		metric.WithFloat64Callback(
+			func(ctx context.Context, obs metric.Float64Observer) error {
 				secs := float64(time.Now().UnixNano()) / float64(time.Second)
 
-				obs.Observe(math.Sin(secs/(50*math.Pi)), attribute.String("period", "fastest"))
-				obs.Observe(math.Sin(secs/(200*math.Pi)), attribute.String("period", "fast"))
-				obs.Observe(math.Sin(secs/(1000*math.Pi)), attribute.String("period", "regular"))
-				obs.Observe(math.Sin(secs/(5000*math.Pi)), attribute.String("period", "slow"))
+				obs.Observe(math.Sin(secs/(50*math.Pi)), metric.WithAttributes(attribute.String("period", "fastest")))
+				obs.Observe(math.Sin(secs/(200*math.Pi)), metric.WithAttributes(attribute.String("period", "fast")))
+				obs.Observe(math.Sin(secs/(1000*math.Pi)), metric.WithAttributes(attribute.String("period", "regular")))
+				obs.Observe(math.Sin(secs/(5000*math.Pi)), metric.WithAttributes(attribute.String("period", "slow")))
 				return nil
 			},
 		),

@@ -21,7 +21,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/global"
-	"go.opentelemetry.io/otel/metric/instrument"
 )
 
 // processStartTime should be initialized before the first GC, ideally.
@@ -58,8 +57,12 @@ func (o metricProviderOption) apply(c *config) {
 var (
 	// Attribute sets for CPU time measurements.
 
-	AttributeCPUTimeUser   = []attribute.KeyValue{attribute.String("state", "user")}
-	AttributeCPUTimeSystem = []attribute.KeyValue{attribute.String("state", "system")}
+	AttributeCPUTimeUser = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("state", "user")),
+	}
+	AttributeCPUTimeSystem = []metric.ObserveOption{
+		metric.WithAttributes(attribute.String("state", "system")),
+	}
 )
 
 // newConfig computes a config from a list of Options.
@@ -90,14 +93,14 @@ func (c *cputime) register() error {
 	var (
 		err error
 
-		processCPUTime instrument.Float64ObservableCounter
-		processUptime  instrument.Float64ObservableUpDownCounter
+		processCPUTime metric.Float64ObservableCounter
+		processUptime  metric.Float64ObservableUpDownCounter
 	)
 
 	if processCPUTime, err = c.meter.Float64ObservableCounter(
 		"process.cpu.time",
-		instrument.WithUnit("s"),
-		instrument.WithDescription(
+		metric.WithUnit("s"),
+		metric.WithDescription(
 			"Accumulated CPU time spent by this process attributed by state (User, System, ...)",
 		),
 	); err != nil {
@@ -106,8 +109,8 @@ func (c *cputime) register() error {
 
 	if processUptime, err = c.meter.Float64ObservableUpDownCounter(
 		"process.uptime",
-		instrument.WithUnit("s"),
-		instrument.WithDescription("Seconds since application was initialized"),
+		metric.WithUnit("s"),
+		metric.WithDescription("Seconds since application was initialized"),
 	); err != nil {
 		return err
 	}

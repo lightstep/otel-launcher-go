@@ -79,7 +79,7 @@ func NewDefaultConfig() Config {
 				WaitForReady:    true,
 			},
 			Arrow: otlpexporter.ArrowSettings{
-				Enabled:          false,
+				Disabled:         true,
 				NumStreams:       1,
 				DisableDowngrade: true,
 			},
@@ -132,7 +132,7 @@ func WithTLSSetting(tlss configtls.TLSClientSetting) Option {
 func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	c := &client{}
 
-	if cfg.Exporter.Arrow.Enabled {
+	if !cfg.Exporter.Arrow.Disabled {
 		c.settings.ID = component.NewID("otlp/arrow")
 	} else {
 		c.settings.ID = component.NewID("otlp/proto")

@@ -36,7 +36,7 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric/instrument"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/resource"
 	colmetricspb "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
@@ -167,9 +167,7 @@ func (t *clientTestSuite) SetupSuite() {
 
 	factory := otlpreceiver.NewFactory()
 	cfg := factory.CreateDefaultConfig().(*otlpreceiver.Config)
-	cfg.Protocols.Arrow = &otlpreceiver.ArrowSettings{
-		Enabled: true,
-	}
+	cfg.Protocols.Arrow = &otlpreceiver.ArrowSettings{}
 	cfg.GRPC.NetAddr = confignet.NetAddr{Endpoint: t.addr, Transport: "tcp"}
 	cfg.HTTP = nil
 
@@ -256,12 +254,12 @@ func (t *clientTestSuite) TestCounterAndGauge() {
 	counter, _ := meter.Int64Counter("how-many")
 
 	meter.Int64ObservableGauge("pressure",
-		instrument.WithInt64Callback(func(_ context.Context, obs instrument.Int64Observer) error {
-			obs.Observe(2, testStmtAttrs...)
+		metric.WithInt64Callback(func(_ context.Context, obs metric.Int64Observer) error {
+			obs.Observe(2, metric.WithAttributes(testStmtAttrs...))
 			return nil
 		}))
 
-	counter.Add(ctx, 1, testStmtAttrs...)
+	counter.Add(ctx, 1, metric.WithAttributes(testStmtAttrs...))
 
 	_ = t.sdk.Shutdown(ctx)
 
@@ -335,20 +333,20 @@ func (t *clientTestSuite) TestUpDownCounters() {
 	meter := t.sdk.Meter("test-meter")
 
 	counter, _ := meter.Float64UpDownCounter("in-flight",
-		instrument.WithDescription(`{ "temporality": "delta" }`),
+		metric.WithDescription(`{ "temporality": "delta" }`),
 	)
 
 	meter.Float64ObservableUpDownCounter("in-use",
-		instrument.WithFloat64Callback(func(_ context.Context, obs instrument.Float64Observer) error {
-			obs.Observe(2, testStmtAttrs...)
+		metric.WithFloat64Callback(func(_ context.Context, obs metric.Float64Observer) error {
+			obs.Observe(2, metric.WithAttributes(testStmtAttrs...))
 			return nil
 		}))
 
-	counter.Add(ctx, 1, testStmtAttrs...)
+	counter.Add(ctx, 1, metric.WithAttributes(testStmtAttrs...))
 
 	_ = t.sdk.ForceFlush(ctx)
 
-	counter.Add(ctx, 1, testStmtAttrs...)
+	counter.Add(ctx, 1, metric.WithAttributes(testStmtAttrs...))
 
 	_ = t.sdk.Shutdown(ctx)
 
@@ -423,19 +421,19 @@ func (t *clientTestSuite) TestHistograms() {
 	meter := t.sdk.Meter("test-meter")
 
 	histo1, _ := meter.Int64Histogram("duration",
-		instrument.WithUnit("ms"),
-		instrument.WithDescription(`{ "config": { "histogram": { "max_size": 4 } } }`))
+		metric.WithUnit("ms"),
+		metric.WithDescription(`{ "config": { "histogram": { "max_size": 4 } } }`))
 	histo2, _ := meter.Float64Histogram("latency",
-		instrument.WithDescription(`{ "aggregation": "minmaxsumcount", "temporality": "cumulative" }`),
+		metric.WithDescription(`{ "aggregation": "minmaxsumcount", "temporality": "cumulative" }`),
 	)
 
-	histo1.Record(ctx, 1, testStmtAttrs...)
-	histo1.Record(ctx, 2, testStmtAttrs...)
-	histo1.Record(ctx, 4, testStmtAttrs...)
+	histo1.Record(ctx, 1, metric.WithAttributes(testStmtAttrs...))
+	histo1.Record(ctx, 2, metric.WithAttributes(testStmtAttrs...))
+	histo1.Record(ctx, 4, metric.WithAttributes(testStmtAttrs...))
 
-	histo2.Record(ctx, 1, testStmtAttrs...)
-	histo2.Record(ctx, 2, testStmtAttrs...)
-	histo2.Record(ctx, 4, testStmtAttrs...)
+	histo2.Record(ctx, 1, metric.WithAttributes(testStmtAttrs...))
+	histo2.Record(ctx, 2, metric.WithAttributes(testStmtAttrs...))
+	histo2.Record(ctx, 4, metric.WithAttributes(testStmtAttrs...))
 
 	_ = t.sdk.Shutdown(ctx)
 

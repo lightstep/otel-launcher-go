@@ -28,7 +28,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/instrument"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -47,12 +46,12 @@ func TestAsyncInstsMultiCallback(t *testing.T) {
 	attr := attribute.String("a", "B")
 
 	reg, err := provider.Meter("test").RegisterCallback(func(ctx context.Context, observer metric.Observer) error {
-		observer.ObserveInt64(ci, 2, attr)
-		observer.ObserveFloat64(cf, 3, attr)
-		observer.ObserveInt64(ui, 4, attr)
-		observer.ObserveFloat64(uf, 5, attr)
-		observer.ObserveInt64(gi, 6, attr)
-		observer.ObserveFloat64(gf, 7, attr)
+		observer.ObserveInt64(ci, 2, metric.WithAttributes(attr))
+		observer.ObserveFloat64(cf, 3, metric.WithAttributes(attr))
+		observer.ObserveInt64(ui, 4, metric.WithAttributes(attr))
+		observer.ObserveFloat64(uf, 5, metric.WithAttributes(attr))
+		observer.ObserveInt64(gi, 6, metric.WithAttributes(attr))
+		observer.ObserveFloat64(gf, 7, metric.WithAttributes(attr))
 		return nil
 	}, ci, cf, ui, uf, gi, gf)
 
@@ -137,49 +136,49 @@ func TestAsyncInstsSingleCallback(t *testing.T) {
 	attr := attribute.String("a", "B")
 
 	_ = must(tm.Int64ObservableCounter("icount",
-		instrument.WithInt64Callback(
-			func(ctx context.Context, obs instrument.Int64Observer) error {
-				obs.Observe(2, attr)
+		metric.WithInt64Callback(
+			func(ctx context.Context, obs metric.Int64Observer) error {
+				obs.Observe(2, metric.WithAttributes(attr))
 				return nil
 			},
 		),
 	))
 	_ = must(tm.Float64ObservableCounter("fcount",
-		instrument.WithFloat64Callback(
-			func(ctx context.Context, obs instrument.Float64Observer) error {
-				obs.Observe(3, attr)
+		metric.WithFloat64Callback(
+			func(ctx context.Context, obs metric.Float64Observer) error {
+				obs.Observe(3, metric.WithAttributes(attr))
 				return nil
 			},
 		),
 	))
 	_ = must(tm.Int64ObservableUpDownCounter("iupcount",
-		instrument.WithInt64Callback(
-			func(ctx context.Context, obs instrument.Int64Observer) error {
-				obs.Observe(4, attr)
+		metric.WithInt64Callback(
+			func(ctx context.Context, obs metric.Int64Observer) error {
+				obs.Observe(4, metric.WithAttributes(attr))
 				return nil
 			},
 		),
 	))
 	_ = must(tm.Float64ObservableUpDownCounter("fupcount",
-		instrument.WithFloat64Callback(
-			func(ctx context.Context, obs instrument.Float64Observer) error {
-				obs.Observe(5, attr)
+		metric.WithFloat64Callback(
+			func(ctx context.Context, obs metric.Float64Observer) error {
+				obs.Observe(5, metric.WithAttributes(attr))
 				return nil
 			},
 		),
 	))
 	_ = must(tm.Int64ObservableGauge("igauge",
-		instrument.WithInt64Callback(
-			func(ctx context.Context, obs instrument.Int64Observer) error {
-				obs.Observe(6, attr)
+		metric.WithInt64Callback(
+			func(ctx context.Context, obs metric.Int64Observer) error {
+				obs.Observe(6, metric.WithAttributes(attr))
 				return nil
 			},
 		),
 	))
 	_ = must(tm.Float64ObservableGauge("fgauge",
-		instrument.WithFloat64Callback(
-			func(ctx context.Context, obs instrument.Float64Observer) error {
-				obs.Observe(7, attr)
+		metric.WithFloat64Callback(
+			func(ctx context.Context, obs metric.Float64Observer) error {
+				obs.Observe(7, metric.WithAttributes(attr))
 				return nil
 			},
 		),
