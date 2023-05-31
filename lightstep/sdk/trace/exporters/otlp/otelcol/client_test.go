@@ -16,9 +16,10 @@ package otelcol
 
 import (
 	"context"
-	"encoding/json"
+	// "encoding/json"
 	"fmt"
 	"net"
+	// "strings"
 	"testing"
 	"time"
 
@@ -39,8 +40,8 @@ import (
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
-	"google.golang.org/protobuf/encoding/prototext"
-	// "google.golang.org/protobuf/proto"
+	// "google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 )
 
 // Note: unclear which test support library we should use until this
@@ -92,12 +93,11 @@ func (t *clientTestSuite) SetupTest() {
 	)
 	t.NoError(err)
 
-	bsp := sdktrace.NewBatchSpanProcessor(exp)
 	t.sdk = sdktrace.NewTracerProvider(
 		sdktrace.WithResource(
 			resource.NewSchemaless(testResourceAttrs...),
 		),
-		sdktrace.WithSpanProcessor(bsp),
+		sdktrace.WithBatcher(exp),
 	)
 }
 
@@ -185,7 +185,7 @@ func (t *clientTestSuite) TestSpan() {
 
 	t.assertTimestamps()
 
-	data, err := ptraceotlp.NewExportRequestFromTraces(t.sink.AllTraces()[0]).MarshalJSON()
+	data, err := ptraceotlp.NewExportRequestFromTraces(t.sink.AllTraces()[0]).MarshalProto()
 	t.NoError(err)
 
 	expectedSpanID, err := span.SpanContext().SpanID().MarshalJSON()
@@ -226,43 +226,7 @@ func (t *clientTestSuite) TestSpan() {
 								TraceId: expectedTraceID, 
 								Kind: tracev1.Span_SPAN_KIND_INTERNAL,
 								Name: "ExecuteRequest",
-							},
-						},
-					},
-				},
-			},
-			{
-				Resource: &resourcev1.Resource{
-					Attributes: []*commonpb.KeyValue{
-						&commonpb.KeyValue{
-							Key: "property",
-							Value: &commonpb.AnyValue{
-								Value: &commonpb.AnyValue_StringValue{
-									StringValue: "value",
-								}, 
-							},
-						},
-						&commonpb.KeyValue{
-							Key: "service.name",
-							Value: &commonpb.AnyValue{
-								Value: &commonpb.AnyValue_StringValue{
-									StringValue: "tester",
-								}, 
-							},
-						},
-					},
-				},
-				ScopeSpans: []*tracev1.ScopeSpans{
-					&tracev1.ScopeSpans{
-						Scope: &commonpb.InstrumentationScope{
-							Name: "test-tracer",
-						},
-						Spans: []*tracev1.Span{
-							&tracev1.Span{
-								SpanId: expectedSpanID, 
-								TraceId: expectedTraceID, 
-								Kind: tracev1.Span_SPAN_KIND_INTERNAL,
-								Name: "ExecuteRequest",
+								Status: &tracev1.Status{},
 							},
 						},
 					},
@@ -272,12 +236,11 @@ func (t *clientTestSuite) TestSpan() {
 	}
 
 	var export coltracepb.ExportTraceServiceRequest
-	t.NoError(json.Unmarshal(data, &export))
+	t.NoError(proto.Unmarshal(data, &export))
 	fmt.Println("THIS IS THE EXPECTED")
-	fmt.Println(&expect)
+	fmt.Println(expect.String())
 	fmt.Println("THIS IS THE EXPORT")
-	fmt.Println(&export)
+	fmt.Println(export.String())
 
-
-	t.Empty(cmp.Diff(prototext.Format(&expect), string(data)))
+	t.Empty(cmp.Diff(expect.String(), export.String()))
 }
