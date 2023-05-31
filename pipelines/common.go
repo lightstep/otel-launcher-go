@@ -77,7 +77,7 @@ func (p PipelineConfig) secureMetricOption() (otelcol.Option, oldotlpmetricgrpc.
 		return otelcol.WithTLSSetting(*p.TLSSetting), nil
 	}
 	return otelcol.WithTLSSetting(configtls.TLSClientSetting{
-			Insecure: true,
+			Insecure: false,
 		}), oldotlpmetricgrpc.WithTLSCredentials(
 			credentials.NewClientTLSFromCert(nil, ""),
 		)

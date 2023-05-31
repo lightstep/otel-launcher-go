@@ -52,7 +52,9 @@ func newTLSConfig() *tls.Config {
 func newTLSClientSetting() *configtls.TLSClientSetting {
 	return &configtls.TLSClientSetting{
 		TLSSetting: configtls.TLSSetting{
-			CAFile: "testdata/caroot.crt",
+			CAFile:   "test/testdata/caroot.crt",
+			CertFile: "test/testdata/testserver.crt",
+			KeyFile:  "test/testdata/testserver.key",
 		},
 		ServerName: test.ServerName,
 	}
@@ -116,7 +118,7 @@ func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 	server := test.NewServer()
 	defer server.Stop()
 
-	shutdown, err := NewMetricsPipeline(PipelineConfig{
+	cfg := PipelineConfig{
 		Endpoint: fmt.Sprintf("%s:%d", test.ServerName, server.SecureMetricsPort),
 		Headers: map[string]string{
 			"test-header": "test-value",
@@ -126,13 +128,18 @@ func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 			attribute.String("test-r1", "test-v1"),
 		),
 		ReportingPeriod:         "24h",
-		Credentials:             credentials.NewTLS(newTLSConfig()),
-		TLSSetting:              newTLSClientSetting(),
 		MetricsBuiltinsEnabled:  builtins,
 		MetricsBuiltinLibraries: []string{"cputime:stable"},
 		UseLightstepMetricsSDK:  lightstepSDK,
-	})
-	assert.NoError(t, err)
+	}
+	if lightstepSDK {
+		cfg.TLSSetting = newTLSClientSetting()
+	} else {
+		cfg.Credentials = credentials.NewTLS(newTLSConfig())
+	}
+
+	shutdown, err := NewMetricsPipeline(cfg)
+	require.NoError(t, err)
 
 	meter := metricglobal.Meter("test-library")
 	counter, err := meter.Float64Counter("test-counter")
@@ -160,9 +167,10 @@ func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 }
 
 // TODO: Fix the secure test for the TLSClientSettings-based setup.
-// func TestSecureMetricsAltSDK(t *testing.T) {
-// 	testSecureMetrics(t, true, true)
-// }
+// Failure is transport: authentication handshake failed: tls: failed to verify certificate: x509: “TestServer” certificate is not standards compliant\"
+func TestSecureMetricsAltSDK(t *testing.T) {
+	testSecureMetrics(t, true, true)
+}
 
 func TestSecureMetricsOldSDK(t *testing.T) {
 	testSecureMetrics(t, false, true)
@@ -177,9 +185,10 @@ func TestInsecureMetricsOldSDK(t *testing.T) {
 }
 
 // TODO: Fix the secure test for the TLSClientSettings-based setup.
-// func TestSecureMetricsAltSDKNoBuiltins(t *testing.T) {
-// 	testSecureMetrics(t, true, false)
-// }
+// Failure is transport: authentication handshake failed: tls: failed to verify certificate: x509: “TestServer” certificate is not standards compliant\"
+func TestSecureMetricsAltSDKNoBuiltins(t *testing.T) {
+	testSecureMetrics(t, true, false)
+}
 
 func TestSecureMetricsOldSDKNoBuiltins(t *testing.T) {
 	testSecureMetrics(t, false, false)
