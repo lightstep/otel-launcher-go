@@ -52,60 +52,7 @@ var (
 		attribute.String("service.name", "tester"),
 		attribute.String("property", "value"),
 	}
-
-	testStmtAttrs = []attribute.KeyValue{
-		attribute.String("A", "1"),
-		attribute.Int("B", 2),
-	}
 )
-
-func attrs2otlp(kvs ...attribute.KeyValue) []*commonpb.KeyValue {
-	var r []*commonpb.KeyValue
-	for _, kv := range kvs {
-		switch kv.Value.Type() {
-		case attribute.BOOL:
-			r = append(r, &commonpb.KeyValue{
-				Key: string(kv.Key),
-				Value: &commonpb.AnyValue{
-					Value: &commonpb.AnyValue_BoolValue{
-						BoolValue: kv.Value.AsBool(),
-					},
-				},
-			})
-		case attribute.INT64:
-			r = append(r, &commonpb.KeyValue{
-				Key: string(kv.Key),
-				Value: &commonpb.AnyValue{
-					Value: &commonpb.AnyValue_IntValue{
-						IntValue: kv.Value.AsInt64(),
-					},
-				},
-			})
-		case attribute.FLOAT64:
-			r = append(r, &commonpb.KeyValue{
-				Key: string(kv.Key),
-				Value: &commonpb.AnyValue{
-					Value: &commonpb.AnyValue_DoubleValue{
-						DoubleValue: kv.Value.AsFloat64(),
-					},
-				},
-			})
-		case attribute.STRING:
-			r = append(r, &commonpb.KeyValue{
-				Key: string(kv.Key),
-				Value: &commonpb.AnyValue{
-					Value: &commonpb.AnyValue_StringValue{
-						StringValue: kv.Value.AsString(),
-					},
-				},
-			})
-		default:
-			// Note: Missing tests here.
-			panic("untested cases")
-		}
-	}
-	return r
-}
 
 type clientTestSuite struct {
 	suite.Suite
