@@ -128,7 +128,7 @@ func (t *clientTestSuite) SetupSuite() {
 	t.sink = tc
 }
 
-func (t *clientTestSuite) checkTimedPoint(p timedPoint) {
+func (t *clientTestSuite) checkSpanTimestamps(p timedPoint) {
 	if p.StartTimestamp() != 0 {
 		t.LessOrEqual(t.before, p.StartTimestamp().AsTime())
 	}
@@ -154,7 +154,7 @@ func (t *clientTestSuite) assertTimestamps() {
 				ss := rs.ScopeSpans().At(si)
 				for mi := 0; mi < ss.Spans().Len(); mi++ {
 					s := ss.Spans().At(mi)
-					t.checkTimedPoint(s)
+					t.checkSpanTimestamps(s)
 				}
 			}
 		}
