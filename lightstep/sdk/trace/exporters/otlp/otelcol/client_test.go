@@ -58,7 +58,7 @@ type clientTestSuite struct {
 	suite.Suite
 
 	addr   string
-	recv   receiver.Metrics
+	recv   receiver.Traces
 	sink   *consumertest.TracesSink
 	sdk    *sdktrace.TracerProvider
 	before time.Time
