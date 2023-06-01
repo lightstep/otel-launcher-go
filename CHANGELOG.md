@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.17.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.17.1) - 2023-06-01)
+
+- Lightstep metrics SDK would improperly set the `Insecure` TLS setting when not configured for insecure transport. [#465](https://github.com/lightstep/otel-launcher-go/pull/465)
+
 ## [1.17.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.17.0) - 2023-05-22)
 
 - Update to OTel-Go API v0.38.1. [#447](https://github.com/lightstep/otel-launcher-go/pull/447)
