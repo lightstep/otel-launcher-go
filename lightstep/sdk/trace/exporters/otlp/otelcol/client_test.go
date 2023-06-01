@@ -166,10 +166,6 @@ func timeNow() time.Time {
 	return time.Now()
 }
 
-func newFloat64(x float64) *float64 {
-	return &x
-}
-
 func (t *clientTestSuite) TestSpan() {
 	ctx := context.Background()
 
