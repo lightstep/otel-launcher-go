@@ -17,7 +17,6 @@ package otelcol
 import (
 	"context"
 	"encoding/hex"
-	"fmt"
 	"net"
 	"strconv"
 	"testing"
