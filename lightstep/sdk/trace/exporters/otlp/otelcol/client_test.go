@@ -16,10 +16,10 @@ package otelcol
 
 import (
 	"context"
-	// "encoding/json"
+	"encoding/hex"
 	"fmt"
 	"net"
-	// "strings"
+	"strconv"
 	"testing"
 	"time"
 
@@ -40,7 +40,7 @@ import (
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
-	// "google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -188,6 +188,9 @@ func (t *clientTestSuite) TestSpan() {
 	t.NoError(err)
 	expectedTraceID, err := span.SpanContext().TraceID().MarshalJSON()
 	t.NoError(err)
+	// trim quotes
+	unqSpanID, _ := strconv.Unquote(string(expectedSpanID))
+	unqTraceID, _ := strconv.Unquote(string(expectedTraceID))
 	expect := coltracepb.ExportTraceServiceRequest{
 		ResourceSpans: []*tracev1.ResourceSpans{
 			{
@@ -218,8 +221,8 @@ func (t *clientTestSuite) TestSpan() {
 						},
 						Spans: []*tracev1.Span{
 							&tracev1.Span{
-								SpanId: expectedSpanID, 
-								TraceId: expectedTraceID, 
+								SpanId: []byte(unqSpanID),
+								TraceId: []byte(unqTraceID),
 								Kind: tracev1.Span_SPAN_KIND_INTERNAL,
 								Name: "ExecuteRequest",
 								Status: &tracev1.Status{},
@@ -233,10 +236,12 @@ func (t *clientTestSuite) TestSpan() {
 
 	var export coltracepb.ExportTraceServiceRequest
 	t.NoError(proto.Unmarshal(data, &export))
-	fmt.Println("THIS IS THE EXPECTED")
-	fmt.Println(expect.String())
-	fmt.Println("THIS IS THE EXPORT")
-	fmt.Println(export.String())
 
-	t.Empty(cmp.Diff(expect.String(), export.String()))
+	// For some reason SpanId gets marshaled into a string with hex escape sequence
+	// e.g. \xaf\xa3\x0e\xcdR\xe7\xe2\x1e instead of afa30ecd52e7e21e
+	exportSpan := export.ResourceSpans[0].ScopeSpans[0].Spans[0]
+	exportSpan.SpanId = []byte(hex.EncodeToString(exportSpan.SpanId))
+	exportSpan.TraceId = []byte(hex.EncodeToString(exportSpan.TraceId))
+
+	t.Empty(cmp.Diff(prototext.Format(&expect), prototext.Format(&export)))
 }
