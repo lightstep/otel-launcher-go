@@ -127,6 +127,9 @@ func (c *client) d2pd(in []trace.ReadOnlySpan) ptrace.Traces {
 		s.SetStartTimestamp(pcommon.NewTimestampFromTime(tr.StartTime()))
 		s.SetEndTimestamp(pcommon.NewTimestampFromTime(tr.EndTime()))
 		s.SetTraceID(pcommon.TraceID(tr.SpanContext().TraceID()))
+		s.TraceState().FromRaw(tr.SpanContext().TraceState().String())
+		s.Status().SetCode(ptrace.StatusCode(tr.Status().Code))
+		s.Status().SetMessage(tr.Status().Description)
 
 		copyAttributes(s.Attributes(), attribute.NewSet(tr.Attributes()...))
 		copyEvents(s.Events(), tr.Events())

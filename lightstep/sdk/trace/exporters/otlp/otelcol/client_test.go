@@ -29,6 +29,7 @@ import (
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer/consumertest"
 	"go.opentelemetry.io/collector/pdata/pcommon"
+	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/receivertest"
@@ -299,6 +300,9 @@ func (t *clientTestSuite) TestD2PD() {
 	t.Equal(uint32(roSpan.DroppedLinks()), actualSpan.DroppedLinksCount())
 	t.Equal(uint32(roSpan.DroppedEvents()), actualSpan.DroppedEventsCount())
 	t.Equal(uint32(roSpan.SpanKind()), uint32(actualSpan.Kind()))
+	t.Equal(roSpan.SpanContext().TraceState().String(), actualSpan.TraceState().AsRaw())
+	t.Equal(ptrace.StatusCode(roSpan.Status().Code), actualSpan.Status().Code())
+	t.Equal(roSpan.Status().Description, actualSpan.Status().Message())
 
 	for _, attr := range roSpan.Attributes() {
 		actualVal, ok := actualSpan.Attributes().Get(string(attr.Key))
