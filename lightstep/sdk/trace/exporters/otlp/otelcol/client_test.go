@@ -306,8 +306,8 @@ func (t *clientTestSuite) TestD2PD() {
 		t.Equal(attr.Value.AsString(), actualVal.AsString())
 	}
 
-	for _, event := range roSpan.Events() {
-		actualEvent := actualSpan.Events().At(0)
+	for i, event := range roSpan.Events() {
+		actualEvent := actualSpan.Events().At(i)
 		t.Equal(event.Time.Nanosecond(), actualEvent.Timestamp().AsTime().Nanosecond())
 		t.Equal(event.Name, actualEvent.Name())
 		t.Equal(uint32(event.DroppedAttributeCount), actualEvent.DroppedAttributesCount())
@@ -316,6 +316,20 @@ func (t *clientTestSuite) TestD2PD() {
 			actualEventVal, ok := actualEvent.Attributes().Get(string(attr.Key))
 			t.True(ok)
 			t.Equal(attr.Value.AsString(), actualEventVal.AsString())
+		}
+	}
+
+	for i, link := range roSpan.Links() {
+		actualLink := actualSpan.Links().At(i)
+		t.Equal(link.DroppedAttributeCount, actualLink.DroppedAttributesCount())
+		t.Equal(link.SpanContext.SpanID(), actualLink.SpanID())
+		t.Equal(link.SpanContext.TraceID(), actualLink.TraceID())
+		t.Equal(link.SpanContext.TraceState().String(), actualLink.TraceState().AsRaw())
+
+		for _, attr := range link.Attributes {
+			actualLinkVal, ok := actualLink.Attributes().Get(string(attr.Key))
+			t.True(ok)
+			t.Equal(attr.Value.AsString(), actualLinkVal.AsString())
 		}
 	}
 }

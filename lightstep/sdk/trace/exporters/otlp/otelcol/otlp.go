@@ -64,6 +64,29 @@ func copyAttributes(dest pcommon.Map, src attribute.Set) {
 	}
 }
 
+func copyEvents(dest ptrace.SpanEventSlice, events []trace.Event) {
+	for _, event := range events {
+		e1 := dest.AppendEmpty()
+		e1.SetDroppedAttributesCount(uint32(event.DroppedAttributeCount))
+		e1.SetName(event.Name)
+		e1.SetTimestamp(pcommon.Timestamp((event.Time.Nanosecond())))
+
+		copyAttributes(e1.Attributes(), attribute.NewSet(event.Attributes...))
+	}
+}
+
+func copyLinks(dest ptrace.SpanLinkSlice, links []trace.Link) {
+	for _, link := range links {
+		l1 := dest.AppendEmpty()
+		l1.SetDroppedAttributesCount(uint32(link.DroppedAttributeCount))
+		l1.SetSpanID(pcommon.SpanID(link.SpanContext.SpanID()))
+		l1.SetTraceID(pcommon.TraceID(link.SpanContext.TraceID()))
+		l1.TraceState().FromRaw(link.SpanContext.TraceState().String())
+
+		copyAttributes(l1.Attributes(), attribute.NewSet(link.Attributes...))
+	}
+}
+
 func (c *client) d2pd(in []trace.ReadOnlySpan) ptrace.Traces {
 	c.once.Do(func() {
 		c.resource = pcommon.NewResource()
@@ -105,20 +128,9 @@ func (c *client) d2pd(in []trace.ReadOnlySpan) ptrace.Traces {
 		s.SetEndTimestamp(pcommon.NewTimestampFromTime(tr.EndTime()))
 		s.SetTraceID(pcommon.TraceID(tr.SpanContext().TraceID()))
 
-		for _, attr := range tr.Attributes() {
-			s.Attributes().PutStr(string(attr.Key), attr.Value.AsString())
-		}
-
-		for _, event := range tr.Events() {
-			e1 := s.Events().AppendEmpty()
-			e1.SetDroppedAttributesCount(uint32(event.DroppedAttributeCount))
-			e1.SetName(event.Name)
-			e1.SetTimestamp(pcommon.Timestamp((event.Time.Nanosecond())))
-
-			for _, attr := range event.Attributes {
-				e1.Attributes().PutStr(string(attr.Key), attr.Value.AsString())
-			}
-		}
+		copyAttributes(s.Attributes(), attribute.NewSet(tr.Attributes()...))
+		copyEvents(s.Events(), tr.Events())
+		copyLinks(s.Links(), tr.Links())
 	}
 
 	return out
