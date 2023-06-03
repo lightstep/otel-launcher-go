@@ -225,6 +225,16 @@ func (t *clientTestSuite) TestSpan() {
 								Kind: tracev1.Span_SPAN_KIND_INTERNAL,
 								Name: "ExecuteRequest",
 								Status: &tracev1.Status{},
+								Attributes: []*commonpb.KeyValue{
+									&commonpb.KeyValue{
+										Key: "test-attribute-1",
+										Value: &commonpb.AnyValue{
+											Value: &commonpb.AnyValue_StringValue{
+												StringValue: "test-value-1",
+											},
+										},
+									},
+								},
 							},
 						},
 					},
@@ -243,4 +253,39 @@ func (t *clientTestSuite) TestSpan() {
 	exportSpan.TraceId = []byte(hex.EncodeToString(exportSpan.TraceId))
 
 	t.Empty(cmp.Diff(prototext.Format(&expect), prototext.Format(&export)))
+}
+
+func (t *clientTestSuite) TestD2PD() {
+	ctx := context.Background()
+
+	tracer := t.sdk.Tracer("test-tracer")
+	_, span := tracer.Start(ctx, "ExecuteRequest")
+	span.SetAttributes(attribute.String("test-attribute-1", "test-value-1"))
+	span.AddEvent("test event")
+	span.End()
+
+	_ = t.sdk.Shutdown(ctx)
+
+	t.Equal(1, len(t.sink.AllTraces()))
+
+	t.assertTimestamps()
+
+	roSpan := span.(sdktrace.ReadOnlySpan)
+	c := client{}
+	roSpanArr := []sdktrace.ReadOnlySpan{roSpan}
+	ptraceObj := c.d2pd(roSpanArr)
+
+	actualSpan := ptraceObj.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0)
+	t.Equal(uint32(roSpan.DroppedAttributes()), actualSpan.DroppedAttributesCount())
+	t.Equal(uint32(roSpan.DroppedLinks()), actualSpan.DroppedLinksCount())
+	t.Equal(uint32(roSpan.DroppedEvents()), actualSpan.DroppedEventsCount())
+	t.Equal(uint32(roSpan.SpanKind()), uint32(actualSpan.Kind()))
+
+
+	for _, attr := range roSpan.Attributes() {
+		actualVal, ok := actualSpan.Attributes().Get(string(attr.Key))
+		t.True(ok)
+		t.Equal(attr.Value.AsString(), actualVal.AsString())
+
+	}
 }

@@ -74,6 +74,7 @@ func (c *client) d2pd(in []trace.ReadOnlySpan) ptrace.Traces {
 			)
 		}
 	})
+
 	out := ptrace.NewTraces()
 	rs := out.ResourceSpans().AppendEmpty()
 
@@ -103,6 +104,11 @@ func (c *client) d2pd(in []trace.ReadOnlySpan) ptrace.Traces {
 		s.SetStartTimestamp(pcommon.NewTimestampFromTime(tr.StartTime()))
 		s.SetEndTimestamp(pcommon.NewTimestampFromTime(tr.EndTime()))
 		s.SetTraceID(pcommon.TraceID(tr.SpanContext().TraceID()))
+
+
+		for _, attr := range tr.Attributes() {
+			s.Attributes().PutStr(string(attr.Key), attr.Value.AsString())
+		}
 	}
 
 	return out
