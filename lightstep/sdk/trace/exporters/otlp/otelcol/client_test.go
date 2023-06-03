@@ -34,12 +34,13 @@ import (
 	"go.opentelemetry.io/collector/receiver/receivertest"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/trace"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
-	"google.golang.org/protobuf/encoding/prototext"
+	// "google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -171,7 +172,7 @@ func (t *clientTestSuite) TestSpan() {
 	tracer := t.sdk.Tracer("test-tracer")
 	_, span := tracer.Start(ctx, "ExecuteRequest")
 	span.SetAttributes(attribute.String("test-attribute-1", "test-value-1"))
-	span.AddEvent("test event")
+	span.AddEvent("test event", trace.WithAttributes(attribute.String("test-event-attribute-1", "test-event-value-1"))) 
 	span.End()
 
 	_ = t.sdk.Shutdown(ctx)
@@ -190,6 +191,7 @@ func (t *clientTestSuite) TestSpan() {
 	// trim quotes
 	unqSpanID, _ := strconv.Unquote(string(expectedSpanID))
 	unqTraceID, _ := strconv.Unquote(string(expectedTraceID))
+	roSpan := span.(sdktrace.ReadOnlySpan)
 	expect := coltracepb.ExportTraceServiceRequest{
 		ResourceSpans: []*tracev1.ResourceSpans{
 			{
@@ -235,6 +237,23 @@ func (t *clientTestSuite) TestSpan() {
 										},
 									},
 								},
+								Events: []*tracev1.Span_Event{
+									{
+										TimeUnixNano: uint64(roSpan.Events()[0].Time.Nanosecond()),
+										Name: "test event",
+										Attributes: []*commonpb.KeyValue{
+											{
+												Key: "test-event-attribute-1",
+												Value: &commonpb.AnyValue{
+													Value: &commonpb.AnyValue_StringValue{
+														StringValue: "test-event-value-1",
+													},
+												},
+											},
+										},
+										DroppedAttributesCount: uint32(roSpan.DroppedAttributes()), 
+									},
+								},
 							},
 						},
 					},
@@ -252,7 +271,7 @@ func (t *clientTestSuite) TestSpan() {
 	exportSpan.SpanId = []byte(hex.EncodeToString(exportSpan.SpanId))
 	exportSpan.TraceId = []byte(hex.EncodeToString(exportSpan.TraceId))
 
-	t.Empty(cmp.Diff(prototext.Format(&expect), prototext.Format(&export)))
+	t.Empty(cmp.Diff(expect.String(), export.String()))
 }
 
 func (t *clientTestSuite) TestD2PD() {
@@ -281,11 +300,22 @@ func (t *clientTestSuite) TestD2PD() {
 	t.Equal(uint32(roSpan.DroppedEvents()), actualSpan.DroppedEventsCount())
 	t.Equal(uint32(roSpan.SpanKind()), uint32(actualSpan.Kind()))
 
-
 	for _, attr := range roSpan.Attributes() {
 		actualVal, ok := actualSpan.Attributes().Get(string(attr.Key))
 		t.True(ok)
 		t.Equal(attr.Value.AsString(), actualVal.AsString())
+	}
 
+	for _, event := range roSpan.Events() {
+		actualEvent := actualSpan.Events().At(0)
+		t.Equal(event.Time.Nanosecond(), actualEvent.Timestamp().AsTime().Nanosecond())
+		t.Equal(event.Name, actualEvent.Name())
+		t.Equal(uint32(event.DroppedAttributeCount), actualEvent.DroppedAttributesCount())
+		
+		for _, attr := range event.Attributes {
+			actualEventVal, ok := actualEvent.Attributes().Get(string(attr.Key))
+			t.True(ok)
+			t.Equal(attr.Value.AsString(), actualEventVal.AsString())
+		}
 	}
 }
