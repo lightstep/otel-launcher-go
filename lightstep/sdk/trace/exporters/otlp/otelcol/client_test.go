@@ -281,7 +281,13 @@ func (t *clientTestSuite) TestD2PD() {
 	tracer := t.sdk.Tracer("test-tracer")
 	_, span := tracer.Start(ctx, "ExecuteRequest")
 	span.SetAttributes(attribute.String("test-attribute-1", "test-value-1"))
-	span.AddEvent("test event")
+	span.AddEvent("test event", trace.WithAttributes(attribute.String("test-event-attribute-1", "test-event-value-1")))
+
+	_, childSpan := tracer.Start(ctx, "child")
+	childSpan.SetAttributes(attribute.String("test-attribute-2", "test-value-2"))
+	childSpan.AddEvent("child test event", trace.WithAttributes(attribute.String("test-child-event-attribute-2", "test-child-event-value-2")))
+	childSpan.End()
+
 	span.End()
 
 	_ = t.sdk.Shutdown(ctx)
