@@ -3,6 +3,8 @@ module github.com/lightstep/otel-launcher-go
 go 1.18
 
 require (
+	github.com/f5/otel-arrow-adapter v0.0.0-20230522233737-dc34685b4828
+	github.com/google/go-cmp v0.5.9
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.17.1
 	github.com/lightstep/otel-launcher-go/pipelines v1.17.1
 	github.com/sethvargo/go-envconfig v0.8.3
