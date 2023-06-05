@@ -21,6 +21,8 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 )
 
+// TODO: this function is repeated in the sdk/metric exporter
+// so consider creating an internal package to share common code.
 func copyAttributes(dest pcommon.Map, src attribute.Set) {
 	for iter := src.Iter(); iter.Next(); {
 		inA := iter.Attribute()
