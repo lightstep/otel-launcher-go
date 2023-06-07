@@ -8,7 +8,7 @@ require (
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.17.1
 	github.com/lightstep/otel-launcher-go/pipelines v1.17.1
 	github.com/sethvargo/go-envconfig v0.8.3
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector v0.78.1
 	go.opentelemetry.io/collector/component v0.78.1
 	go.opentelemetry.io/collector/consumer v0.78.1
