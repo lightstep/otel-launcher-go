@@ -120,6 +120,7 @@ github.com/fatih/color v1.7.0/go.mod h1:Zm6kSWBoL9eyXnKyktHP6abPY2pDugNf5Kwzbycv
 github.com/fatih/color v1.9.0/go.mod h1:eQcE1qtQxscV5RaZvpXrrb8Drkc3/DdQ+uUYCNjL+zU=
 github.com/fatih/structs v1.1.0/go.mod h1:9NiDSp5zOcgEDl+j00MP/WkGVPOlPRLejGD8Ga6PJ7M=
 github.com/felixge/httpsnoop v1.0.3 h1:s/nj+GCswXYzN5v2DpNMuMQYe+0DDwt5WVCU6CWBdXk=
+github.com/felixge/httpsnoop v1.0.3/go.mod h1:m8KPJKqk1gH5J9DgRY2ASl2lWCfGKXixSwevea8zH2U=
 github.com/fogleman/gg v1.2.1-0.20190220221249-0403632d5b90/go.mod h1:R/bRT+9gY/C5z7JzPU0zXsXHKM4/ayA+zqcVNZzPa1k=
 github.com/fsnotify/fsnotify v1.4.9/go.mod h1:znqG4EE+3YCdAaPaxE2ZRY/06pZUdp0tY4IgpuI1SZQ=
 github.com/fsnotify/fsnotify v1.6.0 h1:n+5WquG0fcWoWp6xPWfHdbskMCQaFnG6PfBrh1Ky4HY=
@@ -393,6 +394,7 @@ github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6L
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.10.0 h1:TMyTOH3F/DB16zRVcYyreMH6GnZZrwQVAoYjRBZyWFQ=
 github.com/rs/cors v1.9.0 h1:l9HGsTsHJcvW14Nk7J9KFz8bzeAWXn3CG6bgt7LsrAE=
+github.com/rs/cors v1.9.0/go.mod h1:XyqrcTp5zjWr1wsJ8PIRZssZ8b/WMcMf71DJnit4EMU=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/ryanuber/columnize v2.1.0+incompatible/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/ryanuber/go-glob v1.0.0/go.mod h1:807d1WSdnB0XRJzKNil9Om6lcp/3a0v4qIHxIXzX/Yc=
@@ -470,11 +472,13 @@ go.opentelemetry.io/collector/processor/batchprocessor v0.78.1 h1:rrKVGvbnzWls1U
 go.opentelemetry.io/collector/processor/batchprocessor v0.78.1/go.mod h1:6rdnvQXPzo0sIhrUVK4bpZ7EmDdR+bSpTdf7gmChhUU=
 go.opentelemetry.io/collector/receiver v0.78.1 h1:MSgnfyIk2OATOvVLJhTFH29rObN6umCEqbeuGLfdUhw=
 go.opentelemetry.io/collector/receiver v0.78.1/go.mod h1:3uz9mktAkTBFcAkwapirH6InuPUL44Oa6MnoXmQJ2ms=
+go.opentelemetry.io/collector/semconv v0.78.1 h1:YlhokDVTP+gw6yKA0Jc2FcfddhD+a6E5Ixmby5xBWs0=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.41.1 h1:Ei1FUQ5CbSNkl2o/XAiksXSyQNAeJBX3ivqJpJ254Ak=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.41.1/go.mod h1:f7TOPTlEcliCBlOYPuNnZTuND71MVTAoINWIt1SmP/c=
 go.opentelemetry.io/contrib/instrumentation/host v0.41.1 h1:B/s7HG33iwus4cwd8NsPk9H6nLKJpLcLgGV2D9RkfsI=
 go.opentelemetry.io/contrib/instrumentation/host v0.41.1/go.mod h1:OdaD/6LjpX5H0ZCKf9EgR6yKFQihVizQMBRLFGlyTP4=
 go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.41.1 h1:pX+lppB8PArapyhS6nBStyQmkaDUPWdQf0UmEGRCQ54=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.41.1/go.mod h1:2FmkXne0k9nkp27LD/m+uoh8dNlstsiCJ7PLc/S72aI=
 go.opentelemetry.io/contrib/instrumentation/runtime v0.41.1 h1:KXWR7rFIuQLMo/dHu/DTev7qdQdTuGCxTfEUZdLaMfs=
 go.opentelemetry.io/contrib/instrumentation/runtime v0.41.1/go.mod h1:fNv3vYJmbcUl4qVQK9tbAVBQjTAbfDDQa/cFgpOTm50=
 go.opentelemetry.io/contrib/propagators/b3 v1.16.1 h1:Y9Dk1kR93eSHadRTkqnm+QyQVhHthCcvTkoP/Afh7+4=
