@@ -29,7 +29,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/baggage"
-	metricglobal "go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
@@ -714,7 +713,7 @@ func (suite *testSuite) TestLightstepMetricsSDK() {
 	)
 	defer lsOtel.Shutdown()
 
-	sdk := metricglobal.MeterProvider()
+	sdk := otel.GetMeterProvider()
 	if _, ok := sdk.(*sdkmetric.MeterProvider); !ok {
 		suite.T().Errorf("did not find a lightstep metrics SDK")
 	}

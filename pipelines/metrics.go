@@ -39,7 +39,6 @@ import (
 	// OTel APIs
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
-	metricglobal "go.opentelemetry.io/otel/metric/global"
 
 	// The otel Metrics SDK
 	otelotlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
@@ -167,7 +166,7 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 				otelsdkmetric.WithInterval(period),
 			)),
 		)
-		metricglobal.SetMeterProvider(meterProvider)
+		otel.SetMeterProvider(meterProvider)
 		provider = meterProvider
 		shutdown = func() error {
 			return meterProvider.Shutdown(context.Background())
@@ -201,7 +200,7 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 		}
 	}
 
-	metricglobal.SetMeterProvider(provider)
+	otel.SetMeterProvider(provider)
 	return shutdown, nil
 }
 
