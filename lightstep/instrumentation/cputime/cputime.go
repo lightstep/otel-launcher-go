@@ -18,9 +18,9 @@ import (
 	"context"
 	"time"
 
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	"go.opentelemetry.io/otel/metric/global"
 )
 
 // processStartTime should be initialized before the first GC, ideally.
@@ -68,7 +68,7 @@ var (
 // newConfig computes a config from a list of Options.
 func newConfig(opts ...Option) config {
 	c := config{
-		MeterProvider: global.MeterProvider(),
+		MeterProvider: otel.GetMeterProvider(),
 	}
 	for _, opt := range opts {
 		opt.apply(&c)
@@ -80,7 +80,7 @@ func newConfig(opts ...Option) config {
 func Start(opts ...Option) error {
 	cfg := newConfig(opts...)
 	if cfg.MeterProvider == nil {
-		cfg.MeterProvider = global.MeterProvider()
+		cfg.MeterProvider = otel.GetMeterProvider()
 	}
 	c, err := newCputime(cfg)
 	if err != nil {

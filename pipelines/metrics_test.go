@@ -30,7 +30,6 @@ import (
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
-	metricglobal "go.opentelemetry.io/otel/metric/global"
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
@@ -86,7 +85,7 @@ func testInsecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 	})
 	assert.NoError(t, err)
 
-	meter := metricglobal.Meter("test-library")
+	meter := otel.Meter("test-library")
 	counter, err := meter.Float64Counter("test-counter")
 	assert.NoError(t, err)
 	counter.Add(context.Background(), 1)
@@ -141,7 +140,7 @@ func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 	shutdown, err := NewMetricsPipeline(cfg)
 	require.NoError(t, err)
 
-	meter := metricglobal.Meter("test-library")
+	meter := otel.Meter("test-library")
 	counter, err := meter.Float64Counter("test-counter")
 	assert.NoError(t, err)
 	counter.Add(context.Background(), 1)

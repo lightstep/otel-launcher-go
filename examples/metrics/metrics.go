@@ -31,9 +31,9 @@ import (
 	"time"
 
 	"github.com/lightstep/otel-launcher-go/launcher"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
-	metricglobal "go.opentelemetry.io/otel/metric/global"
 )
 
 func main() {
@@ -43,7 +43,7 @@ func main() {
 	prefix := fmt.Sprint("otel.", name, ".")
 
 	ctx := context.Background()
-	meter := metricglobal.Meter("testing")
+	meter := otel.Meter("testing")
 
 	// This example shows 1 instrument each for synchronous and
 	// asynchronous Counter and UpDownCounter.  The two monotonic

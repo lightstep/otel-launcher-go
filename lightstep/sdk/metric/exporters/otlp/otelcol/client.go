@@ -34,7 +34,6 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/otel"
-	globalmetric "go.opentelemetry.io/otel/metric/global"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
@@ -147,7 +146,7 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	// This is meta and we rely on global dependency injection,
 	// but we're hoping this works.
 	// Note: becomes otel.GetMeterProvider()
-	c.settings.TelemetrySettings.MeterProvider = globalmetric.MeterProvider()
+	c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
 	c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
 
 	// Note: this may be too much tracing.

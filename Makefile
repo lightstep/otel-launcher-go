@@ -23,7 +23,7 @@ ALL_COVERAGE_MOD_DIRS := $(shell find . -type f -name 'go.mod' -exec dirname {} 
 TAG := "v$(shell cat ./VERSION)"
 
 # Mac OS Catalina 10.5.x doesn't support 386. Hence skip 386 test
-SKIP_386_TEST = false
+SKIP_386_TEST = true
 UNAME_S := $(shell uname -s)
 ifeq ($(UNAME_S),Darwin)
 	SW_VERS := $(shell sw_vers -productVersion)

@@ -111,7 +111,7 @@ func (c *client) d2pd(in []trace.ReadOnlySpan) ptrace.Traces {
 		// input is list of ReadOnlySpans. Add spans to the same scopespan
 		// until new scope name is encountered.
 		if ssName := tr.InstrumentationScope().Name; ssName != curName {
-			curName = ssName 
+			curName = ssName
 			ss = rs.ScopeSpans().AppendEmpty()
 			ss.SetSchemaUrl(tr.InstrumentationScope().SchemaURL)
 			ss.Scope().SetName(tr.InstrumentationScope().Name)
