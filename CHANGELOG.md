@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.18.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.0) - 2023-06-16)
+
+- Modifies the exporter names used in the two OTel-Collector-based exporters. [#480](https://github.com/lightstep/otel-launcher-go/pull/480)
+
 ## [1.18.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.0) - 2023-06-12)
 
 - Adds support for collector based exporting (using batch processor and otlp exporter) for otel-go traces.  [#464](https://github.com/lightstep/otel-launcher-go/pull/464)

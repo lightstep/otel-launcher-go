@@ -5,8 +5,8 @@ go 1.18
 require (
 	github.com/f5/otel-arrow-adapter v0.0.0-20230612212022-445aac7c6ae8
 	github.com/google/go-cmp v0.5.9
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.18.0
-	github.com/lightstep/otel-launcher-go/pipelines v1.18.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.18.1
+	github.com/lightstep/otel-launcher-go/pipelines v1.18.1
 	github.com/sethvargo/go-envconfig v0.8.3
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector v0.79.0
@@ -55,7 +55,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/knadh/koanf v1.5.0 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.18.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.18.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
 	github.com/minio/c2goasm v0.0.0-20190812172519-36a3d3bbc4f3 // indirect
