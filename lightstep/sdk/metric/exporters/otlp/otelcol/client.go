@@ -132,9 +132,9 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	c := &client{}
 
 	if !cfg.Exporter.Arrow.Disabled {
-		c.settings.ID = component.NewID("otlp/arrow")
+		c.settings.ID = component.NewID("otel/sdk/arrow")
 	} else {
-		c.settings.ID = component.NewID("otlp/proto")
+		c.settings.ID = component.NewID("otel/sdk/otlp")
 	}
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -158,7 +158,7 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	}
 
 	bset := processor.CreateSettings{
-		ID:                component.NewID("otlp/batch"),
+		ID:                component.NewID("otel/sdk/batch"),
 		TelemetrySettings: c.settings.TelemetrySettings,
 		BuildInfo:         c.settings.BuildInfo,
 	}
