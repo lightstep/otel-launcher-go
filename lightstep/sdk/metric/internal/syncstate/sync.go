@@ -339,6 +339,11 @@ func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Obs
 		return
 	}
 
+	// TODO: Here, apply the measurement processor if it is non-nil
+	if inst.performance.MeasurementProcessor != nil {
+
+	}
+
 	var rec *recordKV
 	if cfg.KeyValues != nil {
 		rec = acquireUninitializedKV[N](inst, cfg.KeyValues)
