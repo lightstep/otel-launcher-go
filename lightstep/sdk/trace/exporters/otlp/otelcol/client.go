@@ -16,10 +16,10 @@ package otelcol
 
 import (
 	"context"
-	"sync"
 	"time"
 
 	"github.com/f5/otel-arrow-adapter/collector/gen/exporter/otlpexporter"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -27,7 +27,6 @@ import (
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
-	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/otel"
@@ -44,8 +43,7 @@ type Config struct {
 }
 
 type client struct {
-	once     sync.Once
-	resource pcommon.Resource
+	internal.ResourceMap
 
 	exporter exporter.Traces
 	batcher  processor.Traces
