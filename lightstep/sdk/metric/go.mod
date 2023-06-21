@@ -10,7 +10,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/lightstep/go-expohisto v1.0.0
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.18.2
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.18.3
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector v0.79.0
 	go.opentelemetry.io/collector/component v0.79.0
@@ -86,3 +86,6 @@ require (
 )
 
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/internal => ../internal
+
+// 1.18.2 has a broken lightstep/sdk/internal dependency.
+retract v1.18.2
