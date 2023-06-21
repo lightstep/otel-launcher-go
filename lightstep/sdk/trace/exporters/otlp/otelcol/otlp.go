@@ -15,56 +15,12 @@
 package otelcol
 
 import (
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/ptrace"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/trace"
 )
-
-// TODO: this function is repeated in the sdk/metric exporter
-// so consider creating an internal package to share common code.
-func copyAttributes(dest pcommon.Map, src attribute.Set) {
-	for iter := src.Iter(); iter.Next(); {
-		inA := iter.Attribute()
-		key := string(inA.Key)
-		switch inA.Value.Type() {
-		case attribute.BOOL:
-			dest.PutBool(key, inA.Value.AsBool())
-		case attribute.INT64:
-			dest.PutInt(key, inA.Value.AsInt64())
-		case attribute.FLOAT64:
-			dest.PutDouble(key, inA.Value.AsFloat64())
-		case attribute.STRING:
-			dest.PutStr(key, inA.Value.AsString())
-		case attribute.BOOLSLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsBoolSlice()))
-			for _, v := range inA.Value.AsBoolSlice() {
-				sl.AppendEmpty().SetBool(v)
-			}
-		case attribute.INT64SLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsInt64Slice()))
-			for _, v := range inA.Value.AsInt64Slice() {
-				sl.AppendEmpty().SetInt(v)
-			}
-		case attribute.FLOAT64SLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsFloat64Slice()))
-			for _, v := range inA.Value.AsFloat64Slice() {
-				sl.AppendEmpty().SetDouble(v)
-			}
-		case attribute.STRINGSLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsStringSlice()))
-			for _, v := range inA.Value.AsStringSlice() {
-				sl.AppendEmpty().SetStr(v)
-			}
-		default:
-			panic("unhandled case")
-		}
-	}
-}
 
 func copyEvents(dest ptrace.SpanEventSlice, events []trace.Event) {
 	for _, event := range events {
@@ -73,7 +29,7 @@ func copyEvents(dest ptrace.SpanEventSlice, events []trace.Event) {
 		e1.SetName(event.Name)
 		e1.SetTimestamp(pcommon.Timestamp((event.Time.Nanosecond())))
 
-		copyAttributes(e1.Attributes(), attribute.NewSet(event.Attributes...))
+		internal.CopyAttributes(e1.Attributes(), attribute.NewSet(event.Attributes...))
 	}
 }
 
@@ -85,25 +41,19 @@ func copyLinks(dest ptrace.SpanLinkSlice, links []trace.Link) {
 		l1.SetTraceID(pcommon.TraceID(link.SpanContext.TraceID()))
 		l1.TraceState().FromRaw(link.SpanContext.TraceState().String())
 
-		copyAttributes(l1.Attributes(), attribute.NewSet(link.Attributes...))
+		internal.CopyAttributes(l1.Attributes(), attribute.NewSet(link.Attributes...))
 	}
 }
 
 func (c *client) d2pd(in []trace.ReadOnlySpan) ptrace.Traces {
-	c.once.Do(func() {
-		c.resource = pcommon.NewResource()
-		for _, tr := range in {
-			copyAttributes(
-				c.resource.Attributes(),
-				attribute.NewSet(tr.Resource().Attributes()...),
-			)
-		}
-	})
-
 	out := ptrace.NewTraces()
+
+	if len(in) == 0 {
+		return out
+	}
 	rs := out.ResourceSpans().AppendEmpty()
 
-	c.resource.CopyTo(rs.Resource())
+	c.ResourceMap.Get(in[0].Resource()).CopyTo(rs.Resource())
 
 	curName := ""
 	var ss ptrace.ScopeSpans
@@ -133,7 +83,7 @@ func (c *client) d2pd(in []trace.ReadOnlySpan) ptrace.Traces {
 		s.Status().SetCode(ptrace.StatusCode(tr.Status().Code))
 		s.Status().SetMessage(tr.Status().Description)
 
-		copyAttributes(s.Attributes(), attribute.NewSet(tr.Attributes()...))
+		internal.CopyAttributes(s.Attributes(), attribute.NewSet(tr.Attributes()...))
 		copyEvents(s.Events(), tr.Events())
 		copyLinks(s.Links(), tr.Links())
 	}

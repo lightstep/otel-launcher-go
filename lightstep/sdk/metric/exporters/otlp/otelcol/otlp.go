@@ -15,6 +15,7 @@
 package otelcol
 
 import (
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
@@ -24,7 +25,6 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
-	"go.opentelemetry.io/otel/attribute"
 )
 
 func toTemporality(t aggregation.Temporality) pmetric.AggregationTemporality {
@@ -35,49 +35,6 @@ func toTemporality(t aggregation.Temporality) pmetric.AggregationTemporality {
 		return pmetric.AggregationTemporalityDelta
 	}
 	return pmetric.AggregationTemporalityUnspecified
-}
-
-func copyAttributes(dest pcommon.Map, src attribute.Set) {
-	for iter := src.Iter(); iter.Next(); {
-		inA := iter.Attribute()
-		key := string(inA.Key)
-		switch inA.Value.Type() {
-		case attribute.BOOL:
-			dest.PutBool(key, inA.Value.AsBool())
-		case attribute.INT64:
-			dest.PutInt(key, inA.Value.AsInt64())
-		case attribute.FLOAT64:
-			dest.PutDouble(key, inA.Value.AsFloat64())
-		case attribute.STRING:
-			dest.PutStr(key, inA.Value.AsString())
-		case attribute.BOOLSLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsBoolSlice()))
-			for _, v := range inA.Value.AsBoolSlice() {
-				sl.AppendEmpty().SetBool(v)
-			}
-		case attribute.INT64SLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsInt64Slice()))
-			for _, v := range inA.Value.AsInt64Slice() {
-				sl.AppendEmpty().SetInt(v)
-			}
-		case attribute.FLOAT64SLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsFloat64Slice()))
-			for _, v := range inA.Value.AsFloat64Slice() {
-				sl.AppendEmpty().SetDouble(v)
-			}
-		case attribute.STRINGSLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsStringSlice()))
-			for _, v := range inA.Value.AsStringSlice() {
-				sl.AppendEmpty().SetStr(v)
-			}
-		default:
-			panic("unhandled case")
-		}
-	}
 }
 
 func copySumPoints(m pmetric.Metric, inM data.Instrument, mono bool) {
@@ -91,7 +48,7 @@ func copySumPoints(m pmetric.Metric, inM data.Instrument, mono bool) {
 		dp.SetStartTimestamp(pcommon.NewTimestampFromTime(inP.Start))
 		dp.SetTimestamp(pcommon.NewTimestampFromTime(inP.End))
 
-		copyAttributes(dp.Attributes(), inP.Attributes)
+		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
 		switch t := inP.Aggregation.(type) {
 		case *sum.MonotonicInt64:
@@ -117,7 +74,7 @@ func copyGaugePoints(m pmetric.Metric, inM data.Instrument) {
 		// Note: no start timestamp
 		dp.SetTimestamp(pcommon.NewTimestampFromTime(inP.End))
 
-		copyAttributes(dp.Attributes(), inP.Attributes)
+		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
 		switch t := inP.Aggregation.(type) {
 		case *gauge.Int64:
@@ -140,7 +97,7 @@ func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 		dp.SetStartTimestamp(pcommon.NewTimestampFromTime(inP.Start))
 		dp.SetTimestamp(pcommon.NewTimestampFromTime(inP.End))
 
-		copyAttributes(dp.Attributes(), inP.Attributes)
+		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
 		switch t := inP.Aggregation.(type) {
 		case *histogram.Int64:
@@ -200,7 +157,7 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 		dp.SetStartTimestamp(pcommon.NewTimestampFromTime(inP.Start))
 		dp.SetTimestamp(pcommon.NewTimestampFromTime(inP.End))
 
-		copyAttributes(dp.Attributes(), inP.Attributes)
+		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
 		switch t := inP.Aggregation.(type) {
 		case *minmaxsumcount.Int64:
@@ -224,17 +181,10 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 }
 
 func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
-	c.once.Do(func() {
-		c.resource = pcommon.NewResource()
-		copyAttributes(
-			c.resource.Attributes(),
-			attribute.NewSet(in.Resource.Attributes()...),
-		)
-	})
 	out := pmetric.NewMetrics()
 	rm := out.ResourceMetrics().AppendEmpty()
 
-	c.resource.CopyTo(rm.Resource())
+	c.ResourceMap.Get(in.Resource).CopyTo(rm.Resource())
 
 	for _, inS := range in.Scopes {
 		sm := rm.ScopeMetrics().AppendEmpty()
