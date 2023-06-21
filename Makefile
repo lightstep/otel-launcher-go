@@ -17,6 +17,7 @@ TOOLS_MOD_DIR := ./tools
 # All source code and documents. Used in spell check.
 ALL_DOCS := $(shell find . -name '*.md' -type f | sort)
 # All directories with go.mod files related to opentelemetry library. Used for building, testing and linting.
+ALLINCLUSIVE_MODULES := $(shell find . -type f -name "go.mod" -exec dirname {} \; | sort )
 ALL_GO_MOD_DIRS := $(filter-out $(TOOLS_MOD_DIR), $(shell find . -type f -name 'go.mod' -exec dirname {} \; | sort))
 ALL_MODULES := $(filter-out $(TOOLS_MOD_DIR), $(shell find . -type f -name "go.mod" -exec dirname {} \; | sort | egrep  '^./' ))
 ALL_COVERAGE_MOD_DIRS := $(shell find . -type f -name 'go.mod' -exec dirname {} \; | egrep -v '^./example|^$(TOOLS_MOD_DIR)' | sort)
@@ -41,6 +42,7 @@ GOTEST_WITH_COVERAGE = $(GOTEST) -coverprofile=coverage.txt -covermode=atomic -c
 .PHONY: precommit
 
 TOOLS_DIR := $(abspath ./.tools)
+
 
 $(TOOLS_DIR)/golangci-lint: $(TOOLS_MOD_DIR)/go.mod $(TOOLS_MOD_DIR)/go.sum $(TOOLS_MOD_DIR)/tools.go
 	cd $(TOOLS_MOD_DIR) && \
@@ -162,6 +164,12 @@ ifdef ver
 else
 		@echo 'ver not defined. call make ver=<version eg 1.2.3> version'
 endif
+
+.PHONY: gotidy
+gotidy:
+	@set -e; for dir in $(ALLINCLUSIVE_MODULES); do \
+	  (echo Tidying "$${dir}" && cd $${dir} && go mod tidy ); \
+	done
 
 .PHONY: add-tag
 add-tag:
