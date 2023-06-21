@@ -8,11 +8,15 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
-## [1.18.2](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.0) - 2023-06-21)
+## [1.18.3](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.3) - 2023-06-21)
+
+- Re-release. [#492](https://github.com/lightstep/otel-launcher-go/pull/492)
+
+## [1.18.2](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.2) - 2023-06-21)
 
 - Support for multi-resource export pipelines as a special case. [#490](https://github.com/lightstep/otel-launcher-go/pull/490)
 
-## [1.18.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.0) - 2023-06-16)
+## [1.18.1](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.1) - 2023-06-16)
 
 - Modifies the exporter names used in the two OTel-Collector-based exporters. [#480](https://github.com/lightstep/otel-launcher-go/pull/480)
 

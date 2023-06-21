@@ -3,8 +3,8 @@ module github.com/lightstep/otel-launcher-go
 go 1.18
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.18.2
-	github.com/lightstep/otel-launcher-go/pipelines v1.18.2
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.18.3
+	github.com/lightstep/otel-launcher-go/pipelines v1.18.3
 	github.com/sethvargo/go-envconfig v0.8.3
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/otel v1.16.0
@@ -42,8 +42,8 @@ require (
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/knadh/koanf v1.5.0 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.18.2 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.18.2 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.18.3 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.18.3 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
 	github.com/minio/c2goasm v0.0.0-20190812172519-36a3d3bbc4f3 // indirect
@@ -115,3 +115,6 @@ replace github.com/lightstep/otel-launcher-go/lightstep/instrumentation => ./lig
 // default temporality preference; use 1.10.1 instead or consider
 // upgrading to a 2.x release.
 retract v1.10.0
+
+// 1.18.2 has a broken lightstep/sdk/internal dependency.
+retract v1.18.2
