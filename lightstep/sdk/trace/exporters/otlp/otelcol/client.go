@@ -24,6 +24,7 @@ import (
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
@@ -37,9 +38,13 @@ import (
 
 type Option func(*Config)
 
+// TODO: Config, Option, and the option impls are duplicated between
+// this package and the metric exporter.  Fix this.
 type Config struct {
-	Batcher  batchprocessor.Config
-	Exporter otlpexporter.Config
+	SelfMetrics bool
+	SelfSpans   bool
+	Batcher     batchprocessor.Config
+	Exporter    otlpexporter.Config
 }
 
 type client struct {
@@ -67,6 +72,8 @@ func (c *client) Shutdown(ctx context.Context) error {
 
 func NewDefaultConfig() Config {
 	return Config{
+		SelfMetrics: true,
+		SelfSpans:   false,
 		Batcher: batchprocessor.Config{
 			Timeout:          0,
 			SendBatchSize:    0,
@@ -143,9 +150,9 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 	c := &client{}
 
 	if !cfg.Exporter.Arrow.Disabled {
-		c.settings.ID = component.NewID("otel/sdk/arrow")
+		c.settings.ID = component.NewID("otel/sdk/trace/arrow")
 	} else {
-		c.settings.ID = component.NewID("otel/sdk/otlp")
+		c.settings.ID = component.NewID("otel/sdk/trace/otlp")
 	}
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -154,8 +161,13 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 
 	c.settings.TelemetrySettings.Logger = logger
 
-	// Note: this may be too much tracing.
-	c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
+	if cfg.SelfSpans {
+		c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
+	}
+	if cfg.SelfMetrics {
+		c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
+		c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
+	}
 
 	exp, err := otlpexporter.NewFactory().CreateTracesExporter(ctx, c.settings, &cfg.Exporter)
 	if err != nil {
