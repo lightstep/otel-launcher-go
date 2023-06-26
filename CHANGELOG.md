@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.18.5](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.4) - 2023-06-26)
+
+- Correct the translation of Span StatusCode. [#495](https://github.com/lightstep/otel-launcher-go/pull/495)
+
 ## [1.18.4](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.4) - 2023-06-26)
 
 - Disable self-tracing, enable self-metrics, and make these optional behaviors.  Bugfix in span event timestamps. [#494](https://github.com/lightstep/otel-launcher-go/pull/494)
