@@ -33,8 +33,8 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/otel"
-	apitrace "go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/metric/noop"
+	apitrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
