@@ -34,6 +34,7 @@ import (
 	"go.opentelemetry.io/collector/receiver"
 	"go.opentelemetry.io/collector/receiver/receivertest"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
@@ -41,6 +42,7 @@ import (
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
+
 	// "google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )
@@ -171,9 +173,10 @@ func (t *clientTestSuite) TestSpan() {
 	ctx := context.Background()
 
 	tracer := t.sdk.Tracer("test-tracer")
-	_, span := tracer.Start(ctx, "ExecuteRequest")
+	_, span := tracer.Start(ctx, "ExecuteRequest", trace.WithSpanKind(trace.SpanKindServer))
 	span.SetAttributes(attribute.String("test-attribute-1", "test-value-1"))
 	span.AddEvent("test event", trace.WithAttributes(attribute.String("test-event-attribute-1", "test-event-value-1")))
+	span.SetStatus(codes.Error, "failed")
 	span.End()
 
 	_ = t.sdk.Shutdown(ctx)
@@ -225,9 +228,12 @@ func (t *clientTestSuite) TestSpan() {
 							&tracev1.Span{
 								SpanId:  []byte(unqSpanID),
 								TraceId: []byte(unqTraceID),
-								Kind:    tracev1.Span_SPAN_KIND_INTERNAL,
+								Kind:    tracev1.Span_SPAN_KIND_SERVER,
 								Name:    "ExecuteRequest",
-								Status:  &tracev1.Status{},
+								Status: &tracev1.Status{
+									Code:    tracev1.Status_STATUS_CODE_ERROR,
+									Message: "failed",
+								},
 								Attributes: []*commonpb.KeyValue{
 									&commonpb.KeyValue{
 										Key: "test-attribute-1",
@@ -279,67 +285,63 @@ func (t *clientTestSuite) TestD2PD() {
 	ctx := context.Background()
 
 	tracer := t.sdk.Tracer("test-tracer")
-	_, span := tracer.Start(ctx, "ExecuteRequest")
+	_, span := tracer.Start(ctx, "ExecuteRequest", trace.WithSpanKind(trace.SpanKindClient))
 	span.SetAttributes(attribute.String("test-attribute-1", "test-value-1"))
 	span.AddEvent("test event", trace.WithAttributes(attribute.String("test-event-attribute-1", "test-event-value-1")))
+	span.SetStatus(codes.Ok, "this is suppressed")
 
-	_, childSpan := tracer.Start(ctx, "child")
-	childSpan.SetAttributes(attribute.String("test-attribute-2", "test-value-2"))
-	childSpan.AddEvent("child test event", trace.WithAttributes(attribute.String("test-child-event-attribute-2", "test-child-event-value-2")))
-	childSpan.End()
+	_, child := tracer.Start(ctx, "child", trace.WithSpanKind(trace.SpanKindInternal))
+	child.SetAttributes(attribute.String("test-attribute-2", "test-value-2"))
+	child.AddEvent("child test event", trace.WithAttributes(attribute.String("test-child-event-attribute-2", "test-child-event-value-2")))
+	child.End()
 
 	span.End()
 
-	_ = t.sdk.Shutdown(ctx)
+	t.NoError(t.sdk.Shutdown(ctx))
 
 	t.Equal(1, len(t.sink.AllTraces()))
 
 	t.assertTimestamps()
 
-	roSpan := span.(sdktrace.ReadOnlySpan)
 	c := client{}
-	roSpanArr := []sdktrace.ReadOnlySpan{roSpan}
-	ptraceObj := c.d2pd(roSpanArr)
+	ptraceObj := c.d2pd([]sdktrace.ReadOnlySpan{
+		span.(sdktrace.ReadOnlySpan),
+		child.(sdktrace.ReadOnlySpan),
+	})
 
-	actualSpan := ptraceObj.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0)
-	t.Equal(uint32(roSpan.DroppedAttributes()), actualSpan.DroppedAttributesCount())
-	t.Equal(uint32(roSpan.DroppedLinks()), actualSpan.DroppedLinksCount())
-	t.Equal(uint32(roSpan.DroppedEvents()), actualSpan.DroppedEventsCount())
-	t.Equal(uint32(roSpan.SpanKind()), uint32(actualSpan.Kind()))
-	t.Equal(roSpan.SpanContext().TraceState().String(), actualSpan.TraceState().AsRaw())
-	t.Equal(ptrace.StatusCode(roSpan.Status().Code), actualSpan.Status().Code())
-	t.Equal(roSpan.Status().Description, actualSpan.Status().Message())
+	parentSpan := ptraceObj.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(0)
+	t.Equal(uint32(0), parentSpan.DroppedAttributesCount())
+	t.Equal(uint32(0), parentSpan.DroppedLinksCount())
+	t.Equal(uint32(0), parentSpan.DroppedEventsCount())
+	t.Equal(ptrace.SpanKindClient, parentSpan.Kind())
+	t.Equal("", parentSpan.TraceState().AsRaw())
+	t.Equal(ptrace.StatusCodeOk, parentSpan.Status().Code())
+	t.Equal("", parentSpan.Status().Message()) // status is suppressed by the SDK
 
-	for _, attr := range roSpan.Attributes() {
-		actualVal, ok := actualSpan.Attributes().Get(string(attr.Key))
+	t.Equal(1, parentSpan.Attributes().Len())
+
+	sattr, _ := parentSpan.Attributes().Get("test-attribute-1")
+	t.Equal("test-value-1", sattr.Str())
+
+	t.Equal(1, parentSpan.Events().Len())
+
+	event := span.(sdktrace.ReadOnlySpan).Events()[0]
+	parentEvent := parentSpan.Events().At(0)
+	t.Equal(event.Time.UnixNano(), parentEvent.Timestamp().AsTime().UnixNano())
+	t.Equal(event.Name, parentEvent.Name())
+	t.Equal(uint32(0), parentEvent.DroppedAttributesCount())
+
+	for _, attr := range event.Attributes {
+		parentEventVal, ok := parentEvent.Attributes().Get(string(attr.Key))
 		t.True(ok)
-		t.Equal(attr.Value.AsString(), actualVal.AsString())
+		t.Equal(attr.Value.AsString(), parentEventVal.AsString())
 	}
 
-	for i, event := range roSpan.Events() {
-		actualEvent := actualSpan.Events().At(i)
-		t.Equal(event.Time.Nanosecond(), actualEvent.Timestamp().AsTime().Nanosecond())
-		t.Equal(event.Name, actualEvent.Name())
-		t.Equal(uint32(event.DroppedAttributeCount), actualEvent.DroppedAttributesCount())
+	childSpan := ptraceObj.ResourceSpans().At(0).ScopeSpans().At(0).Spans().At(1)
+	t.Equal(ptrace.SpanKindInternal, childSpan.Kind())
+	t.Equal(ptrace.StatusCodeUnset, childSpan.Status().Code())
 
-		for _, attr := range event.Attributes {
-			actualEventVal, ok := actualEvent.Attributes().Get(string(attr.Key))
-			t.True(ok)
-			t.Equal(attr.Value.AsString(), actualEventVal.AsString())
-		}
-	}
-
-	for i, link := range roSpan.Links() {
-		actualLink := actualSpan.Links().At(i)
-		t.Equal(link.DroppedAttributeCount, actualLink.DroppedAttributesCount())
-		t.Equal(link.SpanContext.SpanID(), actualLink.SpanID())
-		t.Equal(link.SpanContext.TraceID(), actualLink.TraceID())
-		t.Equal(link.SpanContext.TraceState().String(), actualLink.TraceState().AsRaw())
-
-		for _, attr := range link.Attributes {
-			actualLinkVal, ok := actualLink.Attributes().Get(string(attr.Key))
-			t.True(ok)
-			t.Equal(attr.Value.AsString(), actualLinkVal.AsString())
-		}
-	}
+	t.Equal(1, childSpan.Attributes().Len())
+	sattr, _ = childSpan.Attributes().Get("test-attribute-2")
+	t.Equal("test-value-2", sattr.Str())
 }
