@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/f5/otel-arrow-adapter v0.0.0-20230612212022-445aac7c6ae8
 	github.com/google/go-cmp v0.5.9
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.18.4
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.18.5
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector v0.79.0
 	go.opentelemetry.io/collector/component v0.79.0
