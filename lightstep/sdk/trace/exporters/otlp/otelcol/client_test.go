@@ -35,12 +35,12 @@ import (
 	"go.opentelemetry.io/collector/receiver/receivertest"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
-	"go.opentelemetry.io/otel/trace"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	coltracepb "go.opentelemetry.io/proto/otlp/collector/trace/v1"
-	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
 	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
+	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 	// "google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )
@@ -173,7 +173,7 @@ func (t *clientTestSuite) TestSpan() {
 	tracer := t.sdk.Tracer("test-tracer")
 	_, span := tracer.Start(ctx, "ExecuteRequest")
 	span.SetAttributes(attribute.String("test-attribute-1", "test-value-1"))
-	span.AddEvent("test event", trace.WithAttributes(attribute.String("test-event-attribute-1", "test-event-value-1"))) 
+	span.AddEvent("test event", trace.WithAttributes(attribute.String("test-event-attribute-1", "test-event-value-1")))
 	span.End()
 
 	_ = t.sdk.Shutdown(ctx)
@@ -203,7 +203,7 @@ func (t *clientTestSuite) TestSpan() {
 							Value: &commonpb.AnyValue{
 								Value: &commonpb.AnyValue_StringValue{
 									StringValue: "value",
-								}, 
+								},
 							},
 						},
 						&commonpb.KeyValue{
@@ -211,7 +211,7 @@ func (t *clientTestSuite) TestSpan() {
 							Value: &commonpb.AnyValue{
 								Value: &commonpb.AnyValue_StringValue{
 									StringValue: "tester",
-								}, 
+								},
 							},
 						},
 					},
@@ -223,11 +223,11 @@ func (t *clientTestSuite) TestSpan() {
 						},
 						Spans: []*tracev1.Span{
 							&tracev1.Span{
-								SpanId: []byte(unqSpanID),
+								SpanId:  []byte(unqSpanID),
 								TraceId: []byte(unqTraceID),
-								Kind: tracev1.Span_SPAN_KIND_INTERNAL,
-								Name: "ExecuteRequest",
-								Status: &tracev1.Status{},
+								Kind:    tracev1.Span_SPAN_KIND_INTERNAL,
+								Name:    "ExecuteRequest",
+								Status:  &tracev1.Status{},
 								Attributes: []*commonpb.KeyValue{
 									&commonpb.KeyValue{
 										Key: "test-attribute-1",
@@ -240,8 +240,8 @@ func (t *clientTestSuite) TestSpan() {
 								},
 								Events: []*tracev1.Span_Event{
 									{
-										TimeUnixNano: uint64(roSpan.Events()[0].Time.Nanosecond()),
-										Name: "test event",
+										TimeUnixNano: uint64(roSpan.Events()[0].Time.UnixNano()),
+										Name:         "test event",
 										Attributes: []*commonpb.KeyValue{
 											{
 												Key: "test-event-attribute-1",
@@ -252,7 +252,7 @@ func (t *clientTestSuite) TestSpan() {
 												},
 											},
 										},
-										DroppedAttributesCount: uint32(roSpan.DroppedAttributes()), 
+										DroppedAttributesCount: uint32(roSpan.DroppedAttributes()),
 									},
 								},
 							},
@@ -321,7 +321,7 @@ func (t *clientTestSuite) TestD2PD() {
 		t.Equal(event.Time.Nanosecond(), actualEvent.Timestamp().AsTime().Nanosecond())
 		t.Equal(event.Name, actualEvent.Name())
 		t.Equal(uint32(event.DroppedAttributeCount), actualEvent.DroppedAttributesCount())
-		
+
 		for _, attr := range event.Attributes {
 			actualEventVal, ok := actualEvent.Attributes().Get(string(attr.Key))
 			t.True(ok)

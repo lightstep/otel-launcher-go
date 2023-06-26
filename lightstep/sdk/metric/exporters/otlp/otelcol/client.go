@@ -33,15 +33,21 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/metric/noop"
+	apitrace "go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
 
 type Option func(*Config)
 
+// TODO: Config, Option, and the option impls are duplicated between
+// this package and the metric exporter.  Fix this.
 type Config struct {
-	Batcher  batchprocessor.Config
-	Exporter otlpexporter.Config
+	SelfMetrics bool
+	SelfSpans   bool
+	Batcher     batchprocessor.Config
+	Exporter    otlpexporter.Config
 }
 
 type client struct {
@@ -54,6 +60,8 @@ type client struct {
 
 func NewDefaultConfig() Config {
 	return Config{
+		SelfMetrics: true,
+		SelfSpans:   false,
 		Batcher: batchprocessor.Config{
 			Timeout:          0,
 			SendBatchSize:    0,
@@ -130,9 +138,9 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	c := &client{}
 
 	if !cfg.Exporter.Arrow.Disabled {
-		c.settings.ID = component.NewID("otel/sdk/arrow")
+		c.settings.ID = component.NewID("otel/sdk/metric/arrow")
 	} else {
-		c.settings.ID = component.NewID("otel/sdk/otlp")
+		c.settings.ID = component.NewID("otel/sdk/metric/otlp")
 	}
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -141,14 +149,18 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 
 	c.settings.TelemetrySettings.Logger = logger
 
-	// This is meta and we rely on global dependency injection,
-	// but we're hoping this works.
-	// Note: becomes otel.GetMeterProvider()
-	c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
-	c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
+	if cfg.SelfSpans {
+		c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
+	} else {
+		c.settings.TelemetrySettings.TracerProvider = apitrace.NewNoopTracerProvider()
+	}
 
-	// Note: this may be too much tracing.
-	c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
+	if cfg.SelfMetrics {
+		c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
+		c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
+	} else {
+		c.settings.TelemetrySettings.MeterProvider = noop.NewMeterProvider()
+	}
 
 	exp, err := otlpexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
 	if err != nil {

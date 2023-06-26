@@ -55,7 +55,8 @@ type invocationKey struct {
 // same duration.
 //
 // Example usage:
-// 	end := time.Now().Add(5 * time.Second)
+//
+//	end := time.Now().Add(5 * time.Second)
 //	for end.After(time.Now()) {
 //		doevery.TimePeriod(1*time.Second, func() {
 //			fmt.Println("This will only appear once per second.")

@@ -27,7 +27,7 @@ func copyEvents(dest ptrace.SpanEventSlice, events []trace.Event) {
 		e1 := dest.AppendEmpty()
 		e1.SetDroppedAttributesCount(uint32(event.DroppedAttributeCount))
 		e1.SetName(event.Name)
-		e1.SetTimestamp(pcommon.Timestamp((event.Time.Nanosecond())))
+		e1.SetTimestamp(pcommon.NewTimestampFromTime(event.Time))
 
 		internal.CopyAttributes(e1.Attributes(), attribute.NewSet(event.Attributes...))
 	}

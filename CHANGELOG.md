@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.18.4](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.4) - 2023-06-26)
+
+- Disable self-tracing, enable self-metrics, and make these optional behaviors.  Bugfix in span event timestamps. [#494](https://github.com/lightstep/otel-launcher-go/pull/494)
+
 ## [1.18.3](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.3) - 2023-06-21)
 
 - Re-release. [#492](https://github.com/lightstep/otel-launcher-go/pull/492)

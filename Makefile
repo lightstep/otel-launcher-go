@@ -102,6 +102,14 @@ test:
 	    $(GOTEST) ./...); \
 	done
 
+.PHONY: fmt
+fmt:
+	set -e; for dir in $(ALL_GO_MOD_DIRS); do \
+	  echo "go fmt in $${dir}"; \
+	  (cd "$${dir}" && \
+	    go fmt ./...); \
+	done
+
 .PHONY: test-386
 test-386:
 	if [ $(SKIP_386_TEST) = true ] ; then \
