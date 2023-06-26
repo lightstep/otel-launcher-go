@@ -240,7 +240,7 @@ func (t *clientTestSuite) TestSpan() {
 								},
 								Events: []*tracev1.Span_Event{
 									{
-										TimeUnixNano: uint64(roSpan.Events()[0].Time.Nanosecond()),
+										TimeUnixNano: uint64(roSpan.Events()[0].Time.UnixNano()),
 										Name: "test event",
 										Attributes: []*commonpb.KeyValue{
 											{

@@ -33,6 +33,8 @@ import (
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/otel"
+	apitrace "go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/metric/noop"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
@@ -149,11 +151,15 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 
 	if cfg.SelfSpans {
 		c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
+	} else {
+		c.settings.TelemetrySettings.TracerProvider = apitrace.NewNoopTracerProvider()
 	}
 
 	if cfg.SelfMetrics {
 		c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
 		c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
+	} else {
+		c.settings.TelemetrySettings.MeterProvider = noop.NewMeterProvider()
 	}
 
 	exp, err := otlpexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
