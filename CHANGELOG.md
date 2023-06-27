@@ -8,7 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
-## [1.18.5](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.4) - 2023-06-26)
+## [1.18.6](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.6) - 2023-06-27)
+
+- Support experimental `MeasurementProcessor` in the LS metrics SDK. [#493](https://github.com/lightstep/otel-launcher-go/pull/493)
+
+## [1.18.5](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.5) - 2023-06-26)
 
 - Correct the translation of Span StatusCode. [#495](https://github.com/lightstep/otel-launcher-go/pull/495)
 
