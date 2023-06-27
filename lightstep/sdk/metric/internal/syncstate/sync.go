@@ -327,7 +327,7 @@ func (inst *Observer) ObserveFloat64(ctx context.Context, num float64, cfg OpCon
 }
 
 // Observe performs a generic update for any synchronous instrument.
-func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Observer, num N, cfg OpConfig) {
+func Observe[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *Observer, num N, cfg OpConfig) {
 	if inst == nil {
 		// Instrument was completely disabled by the view.
 		return
@@ -339,14 +339,19 @@ func Observe[N number.Any, Traits number.Traits[N]](_ context.Context, inst *Obs
 		return
 	}
 
-	var rec *recordKV
+	var keyValues []attribute.KeyValue
 	if cfg.KeyValues != nil {
-		rec = acquireUninitializedKV[N](inst, cfg.KeyValues)
+		keyValues = cfg.KeyValues
 	} else {
 		// TODO: This is a new code path for optimization,
 		// for now fall back to the slow path.
-		rec = acquireUninitializedKV[N](inst, cfg.Attributes.ToSlice())
+		keyValues = cfg.Attributes.ToSlice()
 	}
+
+	if inst.performance.MeasurementProcessor != nil {
+		keyValues = inst.performance.MeasurementProcessor.Process(ctx, keyValues)
+	}
+	rec := acquireUninitializedKV[N](inst, keyValues)
 
 	defer rec.refMapped.unref()
 

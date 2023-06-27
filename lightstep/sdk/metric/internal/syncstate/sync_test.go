@@ -53,9 +53,16 @@ var (
 		Now:   endTime,
 	}
 
+	testKeyVal = attribute.String("test", "test-value")
+
 	safePerf = sdkinstrument.Performance{
 		IgnoreCollisions:          false,
 		InactiveCollectionPeriods: 1,
+		MeasurementProcessor: &testMeasurementProcessor{
+			attrs: []attribute.KeyValue{
+				testKeyVal,
+			},
+		},
 	}
 
 	unsafePerf = sdkinstrument.Performance{
@@ -98,6 +105,16 @@ var (
 		view.WithKeys([]attribute.Key{}),
 	)
 )
+
+type testMeasurementProcessor struct {
+	attrs []attribute.KeyValue
+}
+
+func (mp *testMeasurementProcessor) Process(ctx context.Context, inAttrs []attribute.KeyValue) []attribute.KeyValue {
+	outAttrs := make([]attribute.KeyValue, 0, len(mp.attrs)+len(inAttrs))
+	outAttrs = append(outAttrs, inAttrs...)
+	return append(outAttrs, mp.attrs...)
+}
 
 func TestSyncStateDeltaConcurrencyInt(t *testing.T) {
 	testSyncStateConcurrency[int64, number.Int64Traits](t, deltaUpdate[int64], deltaSelector)
@@ -310,6 +327,7 @@ func TestSyncStatePartialNoopInstrument(t *testing.T) {
 			test.Point(startTime, endTime,
 				expectHist,
 				aggregation.CumulativeTemporality,
+				testKeyVal,
 			),
 		),
 	)
@@ -397,6 +415,7 @@ func TestOutOfRangeValues(t *testing.T) {
 				startTime, endTime,
 				negOne,
 				aggregation.CumulativeTemporality,
+				testKeyVal,
 			))
 		}
 

@@ -14,6 +14,12 @@
 
 package sdkinstrument
 
+import (
+	"context"
+
+	"go.opentelemetry.io/otel/attribute"
+)
+
 // DefaultInactiveCollectionPeriods is how many collection periods to
 // delay before removing records from memory.
 const DefaultInactiveCollectionPeriods = 10
@@ -48,6 +54,16 @@ type Performance struct {
 	// AggregatorCardinalityLimit is a hard limit on output
 	// cardinality for all aggregators in the SDK.
 	AggregatorCardinalityLimit uint32
+
+	// MeasurementProcessor supports modifying the attributes
+	// based on context.  Only applies to synchronous instruments.
+	MeasurementProcessor MeasurementProcessor
+}
+
+// MeasurementProcessor allows applications to extend metric events
+// based on context.
+type MeasurementProcessor interface {
+	Process(ctx context.Context, inAttrs []attribute.KeyValue) (outAttrs []attribute.KeyValue)
 }
 
 // Validate returns a Performance object with 0 values replaced by

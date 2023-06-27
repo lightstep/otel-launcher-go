@@ -182,3 +182,14 @@ attribute filters are applied.
 When the aggregator's output grows to `AggregatorCardinalityLimit`,
 new attribute sets will be replaced by the overflow attribute set,
 which is `{ otel.metric.overflow=true }`.
+
+#### MeasurementProcessor
+
+The `MeasurementProcessor` interface that makes it possible to extend
+the set of attributes from synchronous instrument events, which allows
+metric attributes to be generated from the OpenTelemetry request
+context and/or W3C Tracecontext baggage.
+
+This hook also supports removing attributes from metric events based
+on attribute value before they are aggregated, for example to
+dynamically configure allowed cardinality values.
