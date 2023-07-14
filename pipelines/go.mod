@@ -20,7 +20,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v0.39.0
 
 	// gRPC
-	google.golang.org/grpc v1.55.0
+	google.golang.org/grpc v1.56.2
 )
 
 require (
@@ -40,13 +40,13 @@ require (
 	go.opentelemetry.io/otel/exporters/otlp/internal/retry v1.16.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric v0.39.0 // indirect
 	go.opentelemetry.io/otel/trace v1.16.0 // indirect
-	go.opentelemetry.io/proto/otlp v0.20.0
+	go.opentelemetry.io/proto/otlp v1.0.0
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.31.0
 )
 
 require (
