@@ -1446,21 +1446,6 @@ func TestRegexpMatch(t *testing.T) {
 	require.NotNil(t, inst2)
 }
 
-func TestSingleInstrumentWarning(t *testing.T) {
-	views := view.New(
-		"test",
-		safePerf,
-		view.WithClause(
-			view.MatchInstrumentNameRegexp(regexp.MustCompile(".*_rate")),
-			view.WithName("fixed"),
-		),
-	)
-
-	_, err := view.Validate(views)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "multi-instrument view specifies a single name")
-}
-
 func TestDeltaTemporalityMinMaxSumCount(t *testing.T) {
 	views := view.New(
 		"test",

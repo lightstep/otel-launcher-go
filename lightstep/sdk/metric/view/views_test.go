@@ -119,7 +119,7 @@ func TestClauseProperties(t *testing.T) {
 
 	views, err := Validate(views)
 	require.NoError(t, err)
-	require.Equal(t, "longname", views.Clauses[0].Name())
+	require.Equal(t, "longname", views.Clauses[0].Rename(""))
 	require.Equal(t, "very interesting", views.Clauses[1].Description())
 	require.Equal(t, []attribute.Key(nil), views.Clauses[2].Keys())
 	require.Equal(t, []attribute.Key{}, views.Clauses[3].Keys())
@@ -153,17 +153,6 @@ func TestEmptyKeyString(t *testing.T) {
 
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "view has empty string in keys")
-}
-
-func TestSingleNameConflict(t *testing.T) {
-	views := New("test", safePerf, WithClause(
-		WithName("aha"),
-	))
-
-	_, err := Validate(views)
-
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "multi-instrument view specifies a single name")
 }
 
 func TestStandardTemporality(t *testing.T) {

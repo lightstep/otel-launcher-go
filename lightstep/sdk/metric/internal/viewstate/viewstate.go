@@ -694,9 +694,6 @@ func viewDescriptor(instrument sdkinstrument.Descriptor, v view.ClauseConfig) sd
 	name := v.Rename(instrument.Name)
 	description := instrument.Description
 	unit := instrument.Unit
-	if v.HasName() {
-		name = v.Name()
-	}
 	if v.Description() != "" {
 		description = v.Description()
 	}
