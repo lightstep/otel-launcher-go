@@ -38,10 +38,13 @@ type ClauseConfig struct {
 	// Properties of the view
 	keys        []attribute.Key // nil implies all keys, []attribute.Key{} implies none
 	name        string
+	renameFunc  RenameInstrumentFunction
 	description string
 	aggregation aggregation.Kind
 	acfg        aggregator.Config
 }
+
+type RenameInstrumentFunction func(string) string
 
 const (
 	unsetInstrumentKind = sdkinstrument.Kind(-1)
@@ -115,6 +118,15 @@ func WithName(name string) ClauseOption {
 	})
 }
 
+// WithRenameFunction provides a function for renaming chosen instruments. This
+// should not be set with WithName().
+func WithRenameFunction(renameFunc RenameInstrumentFunction) ClauseOption {
+	return clauseOptionFunction(func(clause ClauseConfig) ClauseConfig {
+		clause.renameFunc = renameFunc
+		return clause
+	})
+}
+
 func WithDescription(desc string) ClauseOption {
 	return clauseOptionFunction(func(clause ClauseConfig) ClauseConfig {
 		clause.description = desc
@@ -148,6 +160,13 @@ func (c *ClauseConfig) HasName() bool {
 
 func (c *ClauseConfig) Name() string {
 	return c.name
+}
+
+func (c *ClauseConfig) Rename(name string) string {
+	if c.renameFunc == nil {
+		return name
+	}
+	return c.renameFunc(name)
 }
 
 func (c *ClauseConfig) Keys() []attribute.Key {

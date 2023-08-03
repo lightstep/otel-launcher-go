@@ -120,6 +120,12 @@ func Validate(v *Views) (*Views, error) {
 			clause.instrumentNameRegexp = nil
 		}
 
+		if clause.name != "" && clause.renameFunc != nil {
+			err = multierr.Append(err, fmt.Errorf("view has name and rename function"))
+			// Note: prefer the name over the function.
+			clause.renameFunc = nil
+		}
+
 		for i := range clause.keys {
 			if clause.keys[i] == "" {
 				err = multierr.Append(err, fmt.Errorf("view has empty string in keys"))
