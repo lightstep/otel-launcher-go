@@ -37,11 +37,13 @@ type ClauseConfig struct {
 
 	// Properties of the view
 	keys        []attribute.Key // nil implies all keys, []attribute.Key{} implies none
-	name        string
+	renameFunc  RenameInstrumentFunction
 	description string
 	aggregation aggregation.Kind
 	acfg        aggregator.Config
 }
+
+type RenameInstrumentFunction func(string) string
 
 const (
 	unsetInstrumentKind = sdkinstrument.Kind(-1)
@@ -109,8 +111,16 @@ func WithKeys(keys []attribute.Key) ClauseOption {
 }
 
 func WithName(name string) ClauseOption {
+	return WithRenameFunction(func(_ string) string {
+		return name
+	})
+}
+
+// WithRenameFunction provides a function for renaming chosen instruments. This
+// should not be set with WithName() - whichever is applied last will be used.
+func WithRenameFunction(renameFunc RenameInstrumentFunction) ClauseOption {
 	return clauseOptionFunction(func(clause ClauseConfig) ClauseConfig {
-		clause.name = name
+		clause.renameFunc = renameFunc
 		return clause
 	})
 }
@@ -136,18 +146,13 @@ func WithAggregatorConfig(acfg aggregator.Config) ClauseOption {
 	})
 }
 
-// IsSingleInstrument is a requirement when HasName().
-func (c *ClauseConfig) IsSingleInstrument() bool {
-	return c.instrumentName != ""
-}
-
-// HasName implies IsSingleInstrument SHOULD be required.
-func (c *ClauseConfig) HasName() bool {
-	return c.name != ""
-}
-
-func (c *ClauseConfig) Name() string {
-	return c.name
+// Rename executes the rename function on the name provided. If no rename
+// function was set, the original name is returned.
+func (c *ClauseConfig) Rename(name string) string {
+	if c.renameFunc == nil {
+		return name
+	}
+	return c.renameFunc(name)
 }
 
 func (c *ClauseConfig) Keys() []attribute.Key {

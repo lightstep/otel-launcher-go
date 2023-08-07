@@ -691,12 +691,9 @@ func checkSemanticCompatibility(ik sdkinstrument.Kind, behavior *singleBehavior)
 func viewDescriptor(instrument sdkinstrument.Descriptor, v view.ClauseConfig) sdkinstrument.Descriptor {
 	ikind := instrument.Kind
 	nkind := instrument.NumberKind
-	name := instrument.Name
+	name := v.Rename(instrument.Name)
 	description := instrument.Description
 	unit := instrument.Unit
-	if v.HasName() {
-		name = v.Name()
-	}
 	if v.Description() != "" {
 		description = v.Description()
 	}

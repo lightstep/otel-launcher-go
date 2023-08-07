@@ -106,11 +106,6 @@ func Validate(v *Views) (*Views, error) {
 	for i := range valid.Clauses {
 		clause := &valid.Clauses[i]
 
-		if !clause.IsSingleInstrument() && clause.HasName() {
-			// Note: no correction, this condition creates conflicts.
-			err = multierr.Append(err, fmt.Errorf("multi-instrument view specifies a single name"))
-		}
-
 		err = v.checkAggregation(err, &clause.aggregation, aggregation.UndefinedKind)
 		err = v.checkAggConfig(err, &clause.acfg)
 
