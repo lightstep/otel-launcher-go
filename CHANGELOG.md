@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.18.7](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.7) - 2023-08-14)
+
+- Add WithRenameFunction() to metrics SDK: a more flexible way to rename metrics when multiple instruments are matching on the same regular expression. [#504](https://github.com/lightstep/otel-launcher-go/pull/504)
+
 ## [1.18.6](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.6) - 2023-06-27)
 
 - Support experimental `MeasurementProcessor` in the LS metrics SDK. [#493](https://github.com/lightstep/otel-launcher-go/pull/493)
