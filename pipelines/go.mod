@@ -49,8 +49,8 @@ require (
 )
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.18.7
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.18.7
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.19.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.19.0
 	go.opentelemetry.io/collector/config/configtls v0.83.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.39.0
 )
@@ -128,3 +128,6 @@ replace github.com/lightstep/otel-launcher-go/lightstep/sdk/internal => ../light
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/metric => ../lightstep/sdk/metric
 
 replace github.com/lightstep/otel-launcher-go/lightstep/instrumentation => ../lightstep/instrumentation
+
+// ambiguous import: found package cloud.google.com/go/compute/metadata in multiple modules
+replace cloud.google.com/go => cloud.google.com/go v0.110.2
