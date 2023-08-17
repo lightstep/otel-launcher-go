@@ -18,8 +18,8 @@ import (
 	"context"
 	"time"
 
-	"github.com/f5/otel-arrow-adapter/collector/gen/exporter/otlpexporter"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
+	"github.com/open-telemetry/otel-arrow/collector/exporter/otelarrowexporter"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -46,7 +46,7 @@ type Config struct {
 	SelfMetrics bool
 	SelfSpans   bool
 	Batcher     batchprocessor.Config
-	Exporter    otlpexporter.Config
+	Exporter    otelarrowexporter.Config
 }
 
 type client struct {
@@ -81,7 +81,7 @@ func NewDefaultConfig() Config {
 			SendBatchSize:    0,
 			SendBatchMaxSize: 10000,
 		},
-		Exporter: otlpexporter.Config{
+		Exporter: otelarrowexporter.Config{
 			TimeoutSettings: exporterhelper.TimeoutSettings{
 				Timeout: 10 * time.Second,
 			},
@@ -97,7 +97,7 @@ func NewDefaultConfig() Config {
 				WriteBufferSize: 512 * 1024,
 				WaitForReady:    true,
 			},
-			Arrow: otlpexporter.ArrowSettings{
+			Arrow: otelarrowexporter.ArrowSettings{
 				Disabled:         true,
 				NumStreams:       1,
 				DisableDowngrade: true,
@@ -175,7 +175,7 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 		c.settings.TelemetrySettings.MeterProvider = noop.NewMeterProvider()
 	}
 
-	exp, err := otlpexporter.NewFactory().CreateTracesExporter(ctx, c.settings, &cfg.Exporter)
+	exp, err := otelarrowexporter.NewFactory().CreateTracesExporter(ctx, c.settings, &cfg.Exporter)
 	if err != nil {
 		return nil, err
 	}
