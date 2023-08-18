@@ -18,7 +18,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/lightstep/otel-launcher-go/launcher"
 	"go.opentelemetry.io/otel"
@@ -41,29 +40,25 @@ func main() {
 	defer lsLauncher.Shutdown()
 	tracer := otel.Tracer("ex.com/basic")
 
-	for {
-		time.Sleep(time.Second)
-		func() {
-			fmt.Println("Sending 3 spans...")
-			ctx0 := context.Background()
+	ctx0 := context.Background()
 
-			ctx1, finish1 := tracer.Start(ctx0, "foo")
-			defer finish1.End()
+	ctx1, finish1 := tracer.Start(ctx0, "foo")
+	defer finish1.End()
 
-			ctx2, finish2 := tracer.Start(ctx1, "bar")
-			defer finish2.End()
+	ctx2, finish2 := tracer.Start(ctx1, "bar")
+	defer finish2.End()
 
-			ctx3, finish3 := tracer.Start(setBaggage(ctx2), "baz")
-			defer finish3.End()
+	ctx3, finish3 := tracer.Start(setBaggage(ctx2), "baz")
+	defer finish3.End()
 
-			ctx := ctx3
-			getSpan(ctx)
-			addAttribute(ctx)
-			addEvent(ctx)
-			recordException(ctx)
-			createChild(ctx, tracer)
-		}()
-	}
+	ctx := ctx3
+	getSpan(ctx)
+	addAttribute(ctx)
+	addEvent(ctx)
+	recordException(ctx)
+	createChild(ctx, tracer)
+
+	fmt.Println("OpenTelemetry example")
 }
 
 // example of getting the current span
