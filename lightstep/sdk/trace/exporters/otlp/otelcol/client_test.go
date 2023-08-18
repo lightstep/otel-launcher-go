@@ -22,8 +22,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/f5/otel-arrow-adapter/collector/gen/receiver/otlpreceiver"
 	"github.com/google/go-cmp/cmp"
+	"github.com/open-telemetry/otel-arrow/collector/receiver/otelarrowreceiver"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confignet"
@@ -113,9 +113,9 @@ func (t *clientTestSuite) SetupSuite() {
 
 	t.NoError(listener.Close())
 
-	factory := otlpreceiver.NewFactory()
-	cfg := factory.CreateDefaultConfig().(*otlpreceiver.Config)
-	cfg.Protocols.Arrow = &otlpreceiver.ArrowSettings{}
+	factory := otelarrowreceiver.NewFactory()
+	cfg := factory.CreateDefaultConfig().(*otelarrowreceiver.Config)
+	cfg.Protocols.Arrow = &otelarrowreceiver.ArrowSettings{}
 	cfg.GRPC.NetAddr = confignet.NetAddr{Endpoint: t.addr, Transport: "tcp"}
 	cfg.HTTP = nil
 

@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.19.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.19.0) - 2023-08-17)
+
+- Release based on new [open-telemetry/otel-arrow](https://github.com/open-telemetry/otel-arrow) repository. [#511](https://github.com/lightstep/otel-launcher-go/pull/511)
+
 ## [1.18.7](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.18.7) - 2023-08-14)
 
 - Add WithRenameFunction() to metrics SDK: a more flexible way to rename metrics when multiple instruments are matching on the same regular expression. [#504](https://github.com/lightstep/otel-launcher-go/pull/504)
