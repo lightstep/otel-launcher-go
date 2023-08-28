@@ -30,6 +30,7 @@ import (
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
+	"go.opentelemetry.io/collector/featuregate"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/otel"
@@ -136,6 +137,9 @@ func WithTLSSetting(tlss configtls.TLSClientSetting) Option {
 
 func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	c := &client{}
+
+	reg := featuregate.GlobalRegistry()
+	reg.Set("telemetry.useOtelForInternalMetrics", true)
 
 	if !cfg.Exporter.Arrow.Disabled {
 		c.settings.ID = component.NewID("otel/sdk/metric/arrow")
