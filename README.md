@@ -2,7 +2,12 @@
 [![Docs](https://godoc.org/github.com/lightstep/otel-launcher-go/launcher?status.svg)](https://pkg.go.dev/github.com/lightstep/otel-launcher-go/launcher)
 [![Go Report Card](https://goreportcard.com/badge/github.com/lightstep/otel-launcher-go/launcher)](https://goreportcard.com/report/github.com/lightstep/otel-launcher-go/launcher)
 
-# Launcher, a Lightstep Distro for OpenTelemetry 🚀
+In August 2023, [Lightstep became ServiceNow
+Cloud Observability](https://docs.lightstep.com/docs/banner-faq) To ease the
+transition, all code artifacts will continue to use the Lightstep name. You
+don't need to do anything to keep using this repository.
+
+# Launcher, a Lightstep Distro for OpenTelemetry 🚀 [Deprecated]
 
 ### What is Launcher?
 
