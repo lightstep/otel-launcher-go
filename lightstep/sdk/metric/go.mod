@@ -1,6 +1,6 @@
 module github.com/lightstep/otel-launcher-go/lightstep/sdk/metric
 
-go 1.18
+go 1.20
 
 require (
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13
@@ -100,5 +100,5 @@ require (
 
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/internal => ../internal
 
-// 1.18.2 has a broken lightstep/sdk/internal dependency.
+// 1.20.2 has a broken lightstep/sdk/internal dependency.
 retract v1.18.2

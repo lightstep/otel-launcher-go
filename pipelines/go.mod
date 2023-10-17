@@ -1,6 +1,6 @@
 module github.com/lightstep/otel-launcher-go/pipelines
 
-go 1.18
+go 1.20
 
 require (
 	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.20.0
