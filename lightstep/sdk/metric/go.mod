@@ -58,7 +58,8 @@ require (
 	github.com/klauspost/asmfmt v1.3.2 // indirect
 	github.com/klauspost/compress v1.17.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
-	github.com/knadh/koanf v1.5.0 // indirect
+	github.com/knadh/koanf/maps v0.1.1 // indirect
+	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
 	github.com/knadh/koanf/v2 v2.0.1 // indirect
 	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
 	github.com/minio/c2goasm v0.0.0-20190812172519-36a3d3bbc4f3 // indirect
@@ -101,3 +102,6 @@ replace github.com/lightstep/otel-launcher-go/lightstep/sdk/internal => ../inter
 
 // 1.20.2 has a broken lightstep/sdk/internal dependency.
 retract v1.18.2
+
+// ambiguous import: found package cloud.google.com/go/compute/metadata in multiple modules
+replace cloud.google.com/go => cloud.google.com/go v0.110.2

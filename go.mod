@@ -38,7 +38,8 @@ require (
 	github.com/klauspost/asmfmt v1.3.2 // indirect
 	github.com/klauspost/compress v1.17.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
-	github.com/knadh/koanf v1.5.0 // indirect
+	github.com/knadh/koanf/maps v0.1.1 // indirect
+	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
 	github.com/knadh/koanf/v2 v2.0.1 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.20.0 // indirect
@@ -128,3 +129,6 @@ retract v1.10.0
 
 // 1.18.2 has a broken lightstep/sdk/internal dependency.
 retract v1.18.2
+
+// ambiguous import: found package cloud.google.com/go/compute/metadata in multiple modules
+replace cloud.google.com/go => cloud.google.com/go v0.110.2
