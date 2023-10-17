@@ -1,6 +1,6 @@
 module github.com/lightstep/otel-launcher-go/lightstep/sdk/internal
 
-go 1.18
+go 1.20
 
 require (
 	github.com/stretchr/testify v1.8.4
