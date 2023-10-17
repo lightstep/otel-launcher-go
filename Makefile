@@ -81,6 +81,7 @@ check-clean-work-tree:
 	  echo 'Working tree is not clean, did you forget to run "make precommit"?'; \
 	  echo; \
 	  git status; \
+	  git diff; \
 	  exit 1; \
 	fi
 
