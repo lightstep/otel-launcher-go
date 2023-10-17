@@ -44,8 +44,8 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/mostynb/go-grpc-compression v1.2.1 // indirect
-	github.com/open-telemetry/otel-arrow v0.5.1-0.20231013162502-55cc63ebed1d // indirect
-	github.com/open-telemetry/otel-arrow/collector v0.5.1-0.20231017024738-3068785273d6 // indirect
+	github.com/open-telemetry/otel-arrow v0.6.0 // indirect
+	github.com/open-telemetry/otel-arrow/collector v0.6.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
