@@ -20,8 +20,8 @@ github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk5
 github.com/andybalholm/brotli v1.0.5 h1:8uQZIdzKmjc/iuPu7O2ioW48L81FgatrcpfFmiq/cCs=
 github.com/andybalholm/brotli v1.0.5/go.mod h1:fO7iG3H7G2nSZ7m0zPUDn85XEX2GTukHGRSepvi9Eig=
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
-github.com/apache/arrow/go/v12 v12.0.0-20230404000714-f02d35119ae6 h1:fxTIj+3iGIYO+Er48dwZPt2zTxHkUd/7zpzCFhArUwI=
-github.com/apache/arrow/go/v12 v12.0.0-20230404000714-f02d35119ae6/go.mod h1:d+tV/eHZZ7Dz7RPrFKtPK02tpr+c9/PEd/zm8mDS9Vg=
+github.com/apache/arrow/go/v12 v12.0.1 h1:JsR2+hzYYjgSUkBSaahpqCetqZMr76djX80fF/DiJbg=
+github.com/apache/arrow/go/v12 v12.0.1/go.mod h1:weuTY7JvTG/HDPtMQxEUp7pU73vkLWMLpY67QwZ/WWw=
 github.com/apache/thrift v0.16.0 h1:qEy6UW60iVOlUy+b9ZR0d5WzUWYGOo4HfopoyBaNmoY=
 github.com/apache/thrift v0.16.0/go.mod h1:PHK3hniurgQaNMZYaCLEqXKsYK8upmhPbmdP2FXSqgU=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
@@ -269,10 +269,10 @@ github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f/go.mod h1:qRW
 github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e/go.mod h1:zD1mROLANZcx1PVRCS0qkT7pwLkGfwJo4zjcN/Tysno=
 github.com/npillmayer/nestext v0.1.3/go.mod h1:h2lrijH8jpicr25dFY+oAJLyzlya6jhnuG+zWp9L0Uk=
 github.com/oklog/run v1.0.0/go.mod h1:dlhp/R75TPv97u0XWUtDeV/lRKWPKSdTuV0TZvrmrQA=
-github.com/open-telemetry/otel-arrow v0.5.0 h1:U/scsCReR4/tCjinA3TX6SqNyI4qLa5kGEKQ7x+uVSM=
-github.com/open-telemetry/otel-arrow v0.5.0/go.mod h1:dJbhQXK18qjfk39VBuRJ3LGlVDa1cIAG7leuB7SE46w=
-github.com/open-telemetry/otel-arrow/collector v0.5.0 h1:gdKHDOYNl3RrFccObLnngMZU/RBCJTzN066fTSylSQ8=
-github.com/open-telemetry/otel-arrow/collector v0.5.0/go.mod h1:qHmiyCUvgaBTJC9ptUg5k5JEOTpcEDNzLcoA0RyuTGM=
+github.com/open-telemetry/otel-arrow v0.5.1-0.20231013162502-55cc63ebed1d h1:7otp7+cBEuTTxEq9nnetkBFga9KuFAikTLcbiidGrzM=
+github.com/open-telemetry/otel-arrow v0.5.1-0.20231013162502-55cc63ebed1d/go.mod h1:mlHkoq+u7313sjpOEqBCIiJRqoqZun9G3N0tZDRwchU=
+github.com/open-telemetry/otel-arrow/collector v0.5.1-0.20231017024738-3068785273d6 h1:zX6qvg+ADilj9m+CX7uytjweXnt/h/isy+Chw1k7vhc=
+github.com/open-telemetry/otel-arrow/collector v0.5.1-0.20231017024738-3068785273d6/go.mod h1:H5oBMl3qTsWA+C1FGZpwFXQLT//Dt9NvahVhgD42NAY=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pascaldekloe/goe v0.1.0/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
 github.com/pelletier/go-toml v1.7.0/go.mod h1:vwGMzjaWMwyfHwgIBhI2YUM4fB6nL6lVAvS1LBMMhTE=
@@ -308,7 +308,7 @@ github.com/prometheus/procfs v0.11.1 h1:xRC8Iq1yyca5ypa9n1EZnWZkt7dwcoRPQwX/5gwa
 github.com/prometheus/statsd_exporter v0.22.7 h1:7Pji/i2GuhK6Lu7DHrtTkFmNBCudCPT1pX2CziuyQR0=
 github.com/rhnvrm/simples3 v0.6.1/go.mod h1:Y+3vYm2V7Y4VijFoJHHTrja6OgPrJ2cBti8dPGkC3sA=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=
-github.com/rs/cors v1.9.0 h1:l9HGsTsHJcvW14Nk7J9KFz8bzeAWXn3CG6bgt7LsrAE=
+github.com/rs/cors v1.10.1 h1:L0uuZVXIKlI1SShY2nhFfo44TYvDPQ1w4oFkUJNfhyo=
 github.com/ryanuber/columnize v0.0.0-20160712163229-9b3edd62028f/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/ryanuber/columnize v2.1.0+incompatible/go.mod h1:sm1tb6uqfes/u+d4ooFouqFdy9/2g9QGwK3SQygK0Ts=
 github.com/ryanuber/go-glob v1.0.0/go.mod h1:807d1WSdnB0XRJzKNil9Om6lcp/3a0v4qIHxIXzX/Yc=
@@ -353,7 +353,7 @@ go.opentelemetry.io/collector/config/configcompression v0.87.0 h1:hWRT47RJbjbowD
 go.opentelemetry.io/collector/config/configcompression v0.87.0/go.mod h1:LaavoxZsro5lL7qh1g9DMifG0qixWPEecW18Qr8bpag=
 go.opentelemetry.io/collector/config/configgrpc v0.87.0 h1:5fH+ja4hLGoYww1RG+bpJVVAzdlAvrGiQjy7tEo3YJ0=
 go.opentelemetry.io/collector/config/configgrpc v0.87.0/go.mod h1:0Iv6apeYihw6MKsC6p/rYLxLfO/9ZRmZ1GL0d4LxnII=
-go.opentelemetry.io/collector/config/confighttp v0.83.0 h1:yBra00XanzqXL0kLs3Aaas7RLoL50bM/Za8223vwJik=
+go.opentelemetry.io/collector/config/confighttp v0.87.0 h1:FOC4ArxbvJRiwABXsv/bSrRlD3m9nAEAACEYXmpNC+g=
 go.opentelemetry.io/collector/config/confignet v0.87.0 h1:ULV44732QN0wTCtSIdYG04I+6wjZWzOCme/J4pqKYWg=
 go.opentelemetry.io/collector/config/confignet v0.87.0/go.mod h1:cpO8JYWGONaViOygKVw+Hd2UoBcn2cUiyi0WWeFTwJY=
 go.opentelemetry.io/collector/config/configopaque v0.87.0 h1:+qqJG1oEzX4+/YNbgeaXW9YM0BPWSj5XCi5y2zZLhDY=
@@ -387,7 +387,7 @@ go.opentelemetry.io/collector/receiver v0.87.0/go.mod h1:uApnlS81KGGfQJrzbCdBZWs
 go.opentelemetry.io/collector/service v0.87.0 h1:IFVdchppG9od4SzHgFEUfxUvvJ/F6WqknO1GK90mfVA=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.45.0 h1:RsQi0qJ2imFfCvZabqzM9cNXBG8k6gXMv1A0cXRmH6A=
 go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.45.0/go.mod h1:vsh3ySueQCiKPxFLvjWC4Z135gIa34TQ/NSqkDTZYUM=
-go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.42.0 h1:pginetY7+onl4qN1vl0xW/V/v6OBZ0vVdH+esuJgvmM=
+go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.45.0 h1:x8Z78aZx8cOF0+Kkazoc7lwUNMGy0LrzEMxTm4BbTxg=
 go.opentelemetry.io/otel v1.19.0 h1:MuS/TNf4/j4IXsZuJegVzI1cwut7Qc00344rgH7p8bs=
 go.opentelemetry.io/otel v1.19.0/go.mod h1:i0QyjOq3UPoTzff0PJB2N66fb4S0+rSbSB15/oyH9fY=
 go.opentelemetry.io/otel/exporters/prometheus v0.42.0 h1:jwV9iQdvp38fxXi8ZC+lNpxjK16MRcZlpDYvbuO1FiA=
