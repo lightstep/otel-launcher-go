@@ -3,8 +3,8 @@ module github.com/lightstep/otel-launcher-go/pipelines
 go 1.18
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.19.1
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.19.1
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.20.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.20.0
 	go.opentelemetry.io/collector/config/configtls v0.87.0
 	// Host and runtime instrumentation
 	go.opentelemetry.io/contrib/instrumentation/host v0.45.0
