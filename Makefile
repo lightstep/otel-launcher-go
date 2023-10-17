@@ -146,7 +146,7 @@ lint: $(TOOLS_DIR)/golangci-lint $(TOOLS_DIR)/misspell
 	$(TOOLS_DIR)/misspell -w $(ALL_DOCS)
 
 generate: $(TOOLS_DIR)/stringer
-x	set -e; for dir in $(ALL_GO_MOD_DIRS); do \
+	set -e; for dir in $(ALL_GO_MOD_DIRS); do \
 	  echo "running generators in $${dir}"; \
 	  (cd "$${dir}" && \
 	    PATH="$(TOOLS_DIR):$${PATH}" go generate ./...); \
