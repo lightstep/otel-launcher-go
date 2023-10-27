@@ -387,7 +387,7 @@ func makeTestCaseBuiltin(t *testing.T) (allFunc, readFunc, *builtinDescriptor, t
 
 	for goname, realval := range testMap {
 		mname, munit, descPat, attrs, kind, err := realDesc.findMatch(goname)
-		if err != nil || mname == "" {
+		if err != nil || mname == "" || kind == builtinSkip {
 			continue // e.g., async histogram data, totalized metrics
 		}
 		noprefix := mname[len(namePrefix)+1:]

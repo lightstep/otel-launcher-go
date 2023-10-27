@@ -16,9 +16,11 @@ package runtime
 
 func expectRuntimeMetrics() *builtinDescriptor {
 	bd := newBuiltinDescriptor()
+	bd.ignorePattern("/godebug/non-default-behavior/*:events")
 	bd.classesCounter("/cpu/classes/*:cpu-seconds")
 	bd.classesCounter("/gc/cycles/*:gc-cycles")
 	bd.classesUpDownCounter("/memory/classes/*:bytes")
+	bd.classesUpDownCounter("/gc/scan/*:bytes")
 	bd.ignoreHistogram("/gc/heap/allocs-by-size:bytes")
 	bd.ignoreHistogram("/gc/heap/frees-by-size:bytes")
 	bd.ignoreHistogram("/gc/pauses:seconds")
@@ -28,7 +30,10 @@ func expectRuntimeMetrics() *builtinDescriptor {
 	bd.singleCounter("/cgo/go-to-c-calls:calls")
 	bd.singleCounter("/gc/heap/tiny/allocs:objects")
 	bd.singleCounter("/sync/mutex/wait/total:seconds")
+	bd.singleGauge("/gc/gogc:percent")
+	bd.singleGauge("/gc/gomemlimit:bytes")
 	bd.singleGauge("/gc/heap/goal:bytes")
+	bd.singleGauge("/gc/heap/live:bytes")
 	bd.singleGauge("/gc/limiter/last-enabled:gc-cycle")
 	bd.singleGauge("/gc/stack/starting-size:bytes")
 	bd.singleGauge("/sched/gomaxprocs:threads")

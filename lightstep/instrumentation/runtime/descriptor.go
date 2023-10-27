@@ -118,6 +118,10 @@ func (bd *builtinDescriptor) singleGauge(pattern string) {
 	bd.add(pattern, builtinGauge)
 }
 
+func (bd *builtinDescriptor) ignorePattern(pattern string) {
+	bd.add(pattern, builtinSkip)
+}
+
 func (bd *builtinDescriptor) ignoreHistogram(pattern string) {
 	bd.add(pattern, builtinHistogram)
 }
