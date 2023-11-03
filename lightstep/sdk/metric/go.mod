@@ -1,6 +1,6 @@
 module github.com/lightstep/otel-launcher-go/lightstep/sdk/metric
 
-go 1.20
+go 1.21
 
 require (
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13

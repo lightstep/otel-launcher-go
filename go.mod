@@ -1,6 +1,6 @@
 module github.com/lightstep/otel-launcher-go
 
-go 1.20
+go 1.21
 
 require (
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.21.0

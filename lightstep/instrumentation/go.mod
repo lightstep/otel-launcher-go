@@ -1,6 +1,6 @@
 module github.com/lightstep/otel-launcher-go/lightstep/instrumentation
 
-go 1.20
+go 1.21
 
 require (
 	github.com/shirou/gopsutil/v3 v3.22.9
