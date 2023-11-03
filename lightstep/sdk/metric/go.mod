@@ -1,6 +1,6 @@
 module github.com/lightstep/otel-launcher-go/lightstep/sdk/metric
 
-go 1.20
+go 1.21
 
 require (
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13
@@ -9,7 +9,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.5.9
 	github.com/lightstep/go-expohisto v1.0.0
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.20.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.21.0
 	github.com/open-telemetry/otel-arrow/collector v0.6.0
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/collector/component v0.88.0

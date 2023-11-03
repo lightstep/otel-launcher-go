@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.21.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.21.0) - 2023-11-03)
+
 - Release based on OTel Collector v0.88 dependencies. [#539](https://github.com/lightstep/otel-launcher-go/pull/539)
 - Release based on Go 1.21, including new runtime/metrics. [#537](https://github.com/lightstep/otel-launcher-go/pull/537)
 
