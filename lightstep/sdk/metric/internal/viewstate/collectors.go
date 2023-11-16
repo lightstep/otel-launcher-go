@@ -15,6 +15,7 @@
 package viewstate // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 
 import (
+	"fmt"
 	"sync/atomic"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
@@ -71,7 +72,10 @@ func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 		ptsArr := ioutput.Points
 		point := &ptsArr[len(ptsArr)-1]
 
-		cpy, _ := methods.ToStorage(point.Aggregation)
+		cpy, ok := methods.ToStorage(point.Aggregation)
+		if !ok {
+			panic(fmt.Sprintf("Impossible! %T", point.Aggregation))
+		}
 
 		if methods.HasChange(cpy) {
 			continue

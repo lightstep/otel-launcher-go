@@ -33,6 +33,30 @@ var (
 	ErrInfInput      = fmt.Errorf("±Inf value is an invalid input")
 )
 
+type ExemplarFilterKind int
+
+const (
+	// AlwaysOffKind is the default when aggregator.Config{} is
+	// used with a zero value.  This is a good default because
+	// exemplars require additional synchronization.
+	AlwaysOffKind ExemplarFilterKind = iota
+	AlwaysOnKind
+	TraceBasedKind
+)
+
+// Implementation note: this code supports one kind of
+// exemplar reservoir.  The "simple" specified exemplar
+// reservoir is too simple for this implementation, which
+// always merges on the data path.  (There is no
+// correctly-weighted merge algorithm for simple reservoirs
+// under the circumstances.)  The "aligned" explicit-histogram
+// exemplar reservoir is not supported because this code does
+// not support that kind of histogram.
+//
+// type ExemplarReservoirKind int
+//
+// const WeightedFixedSizeKind ExemplarReservoirKind = 0
+
 // RangeTest is a common routine for testing for valid input values.
 // This rejects NaN and Inf values.  This rejects negative values when the
 // aggregation does not support negative values, including
@@ -68,6 +92,17 @@ func RangeTest[N number.Any, Traits number.Traits[N]](num N, desc sdkinstrument.
 	return true
 }
 
+type ExemplarConfig struct {
+	Filter ExemplarFilterKind
+	Size   uint32
+}
+
+// JSONExemplarConfig configures exemplar reservoirs.
+type JSONExemplarConfig struct {
+	Filter string `json:"filter"`
+	Size   uint32 `json:"size"`
+}
+
 // JSONHistogramConfig configures the exponential histogram.
 type JSONHistogramConfig struct {
 	MaxSize int32 `json:"max_size"`
@@ -77,6 +112,7 @@ type JSONHistogramConfig struct {
 type JSONConfig struct {
 	Histogram        JSONHistogramConfig `json:"histogram"`
 	CardinalityLimit uint32              `json:"cardinality_limit"`
+	Exemplar         JSONExemplarConfig  `json:"exemplar"`
 }
 
 // Config supports the configuration for all aggregators in a single struct.
@@ -87,6 +123,9 @@ type Config struct {
 	// CardinalityLimit limits the number of instances of this
 	// aggregator in a given view.
 	CardinalityLimit uint32
+
+	// ExemplarFilter enables or disables exemplars
+	Exemplar ExemplarConfig
 }
 
 // Valid returns true for valid configurations.

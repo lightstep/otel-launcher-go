@@ -28,6 +28,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/minmaxsumcount"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exemplar"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
@@ -327,7 +328,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 	for _, behavior := range behaviors {
 		// the following checks semantic compatibility
 		// and if necessary fixes the aggregation kind
-		// to the default, via in place update.
+		// to the default, via in-place update.
 		semanticErr := checkSemanticCompatibility(instrument.Kind, &behavior)
 
 		existingInsts := v.names[behavior.desc.Name]
@@ -409,6 +410,25 @@ func buildView[N number.Any, Traits number.Traits[N]](behavior singleBehavior) l
 	return compileAsync[N, Traits](behavior)
 }
 
+func newSyncViewWithEx[
+	N number.Any,
+	Storage any,
+	Methods aggregator.Methods[N, Storage],
+](behavior singleBehavior) leafInstrument {
+	if behavior.acfg.Exemplar.Filter == aggregator.AlwaysOffKind || behavior.acfg.Exemplar.Size == 0 {
+		// Bypass the exemplar reservoir.
+		return newSyncView[N, Storage, Methods](behavior)
+	}
+	if behavior.acfg.Exemplar.Size == 1 {
+		return newSyncView[N,
+			exemplar.LastValueStorage[N, Storage, Methods],
+			exemplar.LastValueMethods[N, Storage, Methods]](behavior)
+	}
+	return newSyncView[N,
+		exemplar.WeightedStorage[N, Storage, Methods],
+		exemplar.WeightedMethods[N, Storage, Methods]](behavior)
+}
+
 // newSyncView returns a compiled synchronous instrument.  If the view
 // calls for delta temporality, a stateless instrument is returned,
 // otherwise for cumulative temporality a stateful instrument will be
@@ -445,31 +465,31 @@ func newSyncView[
 	}
 }
 
-// compileSync calls newSyncView to compile a synchronous
+// compileSync calls newSyncViewWithEx to compile a synchronous
 // instrument with specific aggregator storage and methods.
 func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior) leafInstrument {
 	switch behavior.kind {
 	case aggregation.HistogramKind:
-		return newSyncView[
+		return newSyncViewWithEx[
 			N,
 			histogram.Histogram[N, Traits],
 			histogram.Methods[N, Traits],
 		](behavior)
 	case aggregation.MinMaxSumCountKind:
-		return newSyncView[
+		return newSyncViewWithEx[
 			N,
 			minmaxsumcount.State[N, Traits],
 			minmaxsumcount.Methods[N, Traits],
 		](behavior)
 	case aggregation.NonMonotonicSumKind:
-		return newSyncView[
+		return newSyncViewWithEx[
 			N,
 			sum.State[N, Traits, sum.NonMonotonic],
 			sum.Methods[N, Traits, sum.NonMonotonic],
 		](behavior)
 	case aggregation.GaugeKind:
 		// Note: off-spec synchronous gauge support
-		return newSyncView[
+		return newSyncViewWithEx[
 			N,
 			gauge.State[N, Traits],
 			gauge.Methods[N, Traits],
@@ -477,7 +497,7 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 	default:
 		fallthrough
 	case aggregation.MonotonicSumKind:
-		return newSyncView[
+		return newSyncViewWithEx[
 			N,
 			sum.State[N, Traits, sum.Monotonic],
 			sum.Methods[N, Traits, sum.Monotonic],
