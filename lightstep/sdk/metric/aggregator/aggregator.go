@@ -16,6 +16,7 @@ package aggregator // import "github.com/lightstep/otel-launcher-go/lightstep/sd
 
 import (
 	"fmt"
+	"math/rand"
 	"time"
 
 	histostruct "github.com/lightstep/go-expohisto/structure"
@@ -126,6 +127,9 @@ type Config struct {
 
 	// ExemplarFilter enables or disables exemplars
 	Exemplar ExemplarConfig
+
+	// Rnd used with exemplars.
+	Rnd *rand.Rand
 }
 
 // Valid returns true for valid configurations.

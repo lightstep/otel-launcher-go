@@ -40,7 +40,7 @@ func (s WeightedStorage[N, Storage, Methods]) Kind() aggregation.Kind {
 func (m WeightedMethods[N, Storage, Methods]) Init(ptr *WeightedStorage[N, Storage, Methods], cfg aggregator.Config) {
 	var am Methods
 	am.Init(&ptr.aggregate, cfg)
-	varopt.Init(&ptr.samples, cfg.Exemplar.Size)
+	ptr.samples.Init(int(cfg.Exemplar.Size), cfg.Rnd)
 }
 
 func (m WeightedMethods[N, Storage, Methods]) Update(ptr *WeightedStorage[N, Storage, Methods], number N) {
@@ -52,7 +52,7 @@ func (m WeightedMethods[N, Storage, Methods]) Update(ptr *WeightedStorage[N, Sto
 	var am Methods
 	am.Update(&ptr.aggregate, number)
 
-	ptr.samples.Add(XXX_NEED_CONTEXT, number)
+	ptr.samples.Add(ctx, number)
 }
 
 func (m WeightedMethods[N, Storage, Methods]) Move(input, output *WeightedStorage[N, Storage, Methods]) {
