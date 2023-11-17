@@ -333,8 +333,6 @@ func Observe[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *O
 		return
 	}
 
-	// Note: Here, this is the place to use context, e.g., extract baggage.
-
 	if !aggregator.RangeTest[N, Traits](num, inst.descriptor) {
 		return
 	}
@@ -349,6 +347,7 @@ func Observe[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *O
 	}
 
 	if inst.performance.MeasurementProcessor != nil {
+		// This is the last time context can be used.
 		keyValues = inst.performance.MeasurementProcessor.Process(ctx, keyValues)
 	}
 	rec := acquireUninitializedKV[N](inst, keyValues)

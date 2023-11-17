@@ -412,21 +412,22 @@ func buildView[N number.Any, Traits number.Traits[N]](behavior singleBehavior) l
 
 func newSyncViewWithEx[
 	N number.Any,
+	Traits number.Traits[N],
 	Storage any,
 	Methods aggregator.Methods[N, Storage],
 ](behavior singleBehavior) leafInstrument {
 	if behavior.acfg.Exemplar.Filter == aggregator.AlwaysOffKind || behavior.acfg.Exemplar.Size == 0 {
 		// Bypass the exemplar reservoir.
-		return newSyncView[N, Storage, Methods](behavior)
+		return newSyncView[N, Traits, Storage, Methods](behavior)
 	}
-	if behavior.acfg.Exemplar.Size == 1 {
+	if behavior.acfg.Exemplar.Size <= 1 {
 		return newSyncView[N,
-			exemplar.LastValueStorage[N, Storage, Methods],
-			exemplar.LastValueMethods[N, Storage, Methods]](behavior)
+			exemplar.LastStorage[N, Traits, Storage, Methods],
+			exemplar.LastMethods[N, Traits, Storage, Methods]](behavior)
 	}
 	return newSyncView[N,
-		exemplar.WeightedStorage[N, Storage, Methods],
-		exemplar.WeightedMethods[N, Storage, Methods]](behavior)
+		exemplar.WeightedStorage[N, Traits, Storage, Methods],
+		exemplar.WeightedMethods[N, Traits, Storage, Methods]](behavior)
 }
 
 // newSyncView returns a compiled synchronous instrument.  If the view
@@ -472,18 +473,21 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 	case aggregation.HistogramKind:
 		return newSyncViewWithEx[
 			N,
+			Traits,
 			histogram.Histogram[N, Traits],
 			histogram.Methods[N, Traits],
 		](behavior)
 	case aggregation.MinMaxSumCountKind:
 		return newSyncViewWithEx[
 			N,
+			Traits,
 			minmaxsumcount.State[N, Traits],
 			minmaxsumcount.Methods[N, Traits],
 		](behavior)
 	case aggregation.NonMonotonicSumKind:
 		return newSyncViewWithEx[
 			N,
+			Traits,
 			sum.State[N, Traits, sum.NonMonotonic],
 			sum.Methods[N, Traits, sum.NonMonotonic],
 		](behavior)
@@ -491,6 +495,7 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 		// Note: off-spec synchronous gauge support
 		return newSyncViewWithEx[
 			N,
+			Traits,
 			gauge.State[N, Traits],
 			gauge.Methods[N, Traits],
 		](behavior)
@@ -499,6 +504,7 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 	case aggregation.MonotonicSumKind:
 		return newSyncViewWithEx[
 			N,
+			Traits,
 			sum.State[N, Traits, sum.Monotonic],
 			sum.Methods[N, Traits, sum.Monotonic],
 		](behavior)

@@ -96,6 +96,7 @@ func RangeTest[N number.Any, Traits number.Traits[N]](num N, desc sdkinstrument.
 type ExemplarConfig struct {
 	Filter ExemplarFilterKind
 	Size   uint32
+	Rnd    *rand.Rand
 }
 
 // JSONExemplarConfig configures exemplar reservoirs.
@@ -127,9 +128,6 @@ type Config struct {
 
 	// ExemplarFilter enables or disables exemplars
 	Exemplar ExemplarConfig
-
-	// Rnd used with exemplars.
-	Rnd *rand.Rand
 }
 
 // Valid returns true for valid configurations.
