@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.21.0
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.21.0
-	go.opentelemetry.io/collector/config/configtls v0.88.0
+	go.opentelemetry.io/collector/config/configtls v0.89.0
 	// Host and runtime instrumentation
 	go.opentelemetry.io/contrib/instrumentation/host v0.45.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.45.0
@@ -37,7 +37,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/dgryski/go-metro v0.0.0-20180109044635-280f6062b5bc // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -85,7 +85,7 @@ require (
 	go.opentelemetry.io/collector/config/configcompression v0.88.0 // indirect
 	go.opentelemetry.io/collector/config/configgrpc v0.88.0 // indirect
 	go.opentelemetry.io/collector/config/confignet v0.89.0 // indirect
-	go.opentelemetry.io/collector/config/configopaque v0.88.0 // indirect
+	go.opentelemetry.io/collector/config/configopaque v0.89.0 // indirect
 	go.opentelemetry.io/collector/config/configtelemetry v0.89.0 // indirect
 	go.opentelemetry.io/collector/config/internal v0.88.0 // indirect
 	go.opentelemetry.io/collector/confmap v0.89.0 // indirect
