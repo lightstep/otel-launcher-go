@@ -85,7 +85,7 @@ func GenericAggregatorTest[N number.Any, Storage any, Methods aggregator.Methods
 				defer updaters.Done()
 
 				for j := 0; j < ops/workers; j++ {
-					methods.Update(&input, 1)
+					methods.Update(&input, 1, aggregator.ExemplarBits{})
 				}
 			}()
 		}

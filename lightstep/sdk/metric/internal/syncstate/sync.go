@@ -354,7 +354,9 @@ func Observe[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *O
 
 	defer rec.refMapped.unref()
 
-	rec.readAccumulator().(viewstate.Updater[N]).Update(num)
+	rec.readAccumulator().(viewstate.Updater[N]).Update(num, aggregator.ExemplarBits{
+		// @@@ HERE YOU ARE
+	})
 
 	// Record was modified.
 	atomic.AddUint32(&rec.updateCount, 1)

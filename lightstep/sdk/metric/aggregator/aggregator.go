@@ -15,6 +15,7 @@
 package aggregator // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"time"
@@ -25,6 +26,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // Sentinel errors for Aggregator interface.
@@ -181,7 +183,7 @@ type Methods[N number.Any, Storage any] interface {
 
 	// Update modifies Storage concurrently with respect to
 	// concurrent Move(), Copy(), and Update() operations.
-	Update(ptr *Storage, number N)
+	Update(ptr *Storage, number N, ex ExemplarBits)
 
 	// Move atomically copies `input` to `output` and resets
 	// `input` to the zero state.  The change to `input` is
@@ -226,3 +228,10 @@ type Methods[N number.Any, Storage any] interface {
 
 // ConfigSelector is a per-instrument-kind, per-number-kind Config choice.
 type ConfigSelector func(sdkinstrument.Kind) (int64Config, float64Config Config)
+
+// ExemplarBits conducts extra information into the aggregation pipeline.
+type ExemplarBits struct {
+	Time       time.Time
+	Context    context.Context
+	Attributes []attribute.KeyValue
+}

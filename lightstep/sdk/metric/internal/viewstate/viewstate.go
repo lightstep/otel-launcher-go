@@ -100,7 +100,7 @@ type Updater[N number.Any] interface {
 	// instruments, this passes directly through to the
 	// aggregator.  For asynchronous instruments, the last value
 	// is captured by the accumulator snapshot.
-	Update(value N)
+	Update(value N, ex aggregator.ExemplarBits)
 }
 
 // Accumulator is an intermediate interface used for short-term
@@ -418,7 +418,7 @@ func newSyncViewWithEx[
 ](behavior singleBehavior) leafInstrument {
 	if behavior.acfg.Exemplar.Filter == aggregator.AlwaysOffKind || behavior.acfg.Exemplar.Size == 0 {
 		// Bypass the exemplar reservoir.
-		return newSyncView[N, Traits, Storage, Methods](behavior)
+		return newSyncView[N, Storage, Methods](behavior)
 	}
 	if behavior.acfg.Exemplar.Size <= 1 {
 		return newSyncView[N,

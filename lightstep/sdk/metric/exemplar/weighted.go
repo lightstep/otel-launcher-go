@@ -27,12 +27,12 @@ type WeightedStorage[N number.Any, Traits number.Traits[N], Storage any, Methods
 	aggregate Storage
 
 	lock    sync.Mutex
-	samples varopt.Varopt
+	samples varopt.Varopt[*int]
 }
 
 type WeightedMethods[N number.Any, Traits number.Traits[N], Storage any, Methods aggregator.Methods[N, Storage]] struct{}
 
-func (s WeightedStorage[N, Traits, Storage, Methods]) Kind() aggregation.Kind {
+func (s *WeightedStorage[N, Traits, Storage, Methods]) Kind() aggregation.Kind {
 	var am Methods
 	return am.Kind()
 }
@@ -43,30 +43,41 @@ func (m WeightedMethods[N, Traits, Storage, Methods]) Init(ptr *WeightedStorage[
 	ptr.samples.Init(int(cfg.Exemplar.Size), cfg.Exemplar.Rnd)
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) Update(ptr *WeightedStorage[N, Traits, Storage, Methods], value N) {
-	// Note: should the lock protect the Update() call as well to
-	// ensure the aggregate and samples are consistent?
+func (m WeightedMethods[N, Traits, Storage, Methods]) Update(ptr *WeightedStorage[N, Traits, Storage, Methods], value N, ex aggregator.ExemplarBits) {
+	// Note: The lock protects the Update() call to ensure the
+	// aggregate and samples are consistent.
+
+	// TODO: Find a way to avoid the lock when the filter rejects.  With no allocs?
 	ptr.lock.Lock()
 	defer ptr.lock.Unlock()
 
 	var am Methods
 	var tr Traits
-	am.Update(&ptr.aggregate, value)
+	am.Update(&ptr.aggregate, value, ex)
 
-	var samp varopt.Sample // @@@ update library to be generic.
-	ptr.samples.Add(samp, number.ToFloat64(tr.ToNumber(value)))
+	// @@@ nil here is bogus
+	ptr.samples.Add(nil, number.ToFloat64(tr.ToNumber(value)))
 }
 
 func (m WeightedMethods[N, Traits, Storage, Methods]) Move(input, output *WeightedStorage[N, Traits, Storage, Methods]) {
-	// @@@ see histogram, output lock is correct?
-	output.lock.Lock()
-	defer output.lock.Unlock()
+	input.lock.Lock()
+	defer input.lock.Unlock()
 
 	var am Methods
 	am.Move(&input.aggregate, &output.aggregate)
 
 	output.samples, input.samples = input.samples, output.samples
 	input.samples.Reset()
+}
+
+func (m WeightedMethods[N, Traits, Storage, Methods]) Copy(input, output *WeightedStorage[N, Traits, Storage, Methods]) {
+	input.lock.Lock()
+	defer input.lock.Unlock()
+
+	var am Methods
+	am.Copy(&input.aggregate, &output.aggregate)
+
+	output.samples.CopyFrom(&input.samples)
 }
 
 func (m WeightedMethods[N, Traits, Storage, Methods]) Merge(input, output *WeightedStorage[N, Traits, Storage, Methods]) {
@@ -76,21 +87,9 @@ func (m WeightedMethods[N, Traits, Storage, Methods]) Merge(input, output *Weigh
 	var am Methods
 	am.Merge(&input.aggregate, &output.aggregate)
 
-	for input.Size() {
-		output.Add(input.Value())
-	}
-}
-
-func (m WeightedMethods[N, Traits, Storage, Methods]) Copy(input, output *WeightedStorage[N, Traits, Storage, Methods]) {
-	// @@@ see histogram, output lock is correct?
-	output.lock.Lock()
-	defer output.lock.Unlock()
-
-	var am Methods
-	am.Copy(&input.aggregate, &output.aggregate)
-
-	for {
-		// @@@ Copy each item?
+	for i := 0; i < input.samples.Size(); i++ {
+		samp, weight := input.samples.Get(i)
+		output.samples.Add(samp, weight)
 	}
 }
 

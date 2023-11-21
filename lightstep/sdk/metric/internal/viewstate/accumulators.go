@@ -87,9 +87,9 @@ func (a multiAccumulator[N]) SnapshotAndProcess(release bool) {
 	}
 }
 
-func (a multiAccumulator[N]) Update(value N) {
+func (a multiAccumulator[N]) Update(value N, ex aggregator.ExemplarBits) {
 	for _, coll := range a {
-		coll.(Updater[N]).Update(value)
+		coll.(Updater[N]).Update(value, ex)
 	}
 }
 
@@ -103,9 +103,9 @@ type syncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, St
 	holder   *storageHolder[Storage, int64]
 }
 
-func (a *syncAccumulator[N, Storage, Methods]) Update(number N) {
+func (a *syncAccumulator[N, Storage, Methods]) Update(number N, ex aggregator.ExemplarBits) {
 	var methods Methods
-	methods.Update(&a.current, number)
+	methods.Update(&a.current, number, ex)
 }
 
 func (a *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess(release bool) {
@@ -127,7 +127,7 @@ type asyncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, S
 	holder    *storageHolder[Storage, notUsed]
 }
 
-func (a *asyncAccumulator[N, Storage, Methods]) Update(number N) {
+func (a *asyncAccumulator[N, Storage, Methods]) Update(number N, ex aggregator.ExemplarBits) {
 	a.asyncLock.Lock()
 	defer a.asyncLock.Unlock()
 	a.current = number
@@ -138,5 +138,5 @@ func (a *asyncAccumulator[N, Storage, Methods]) SnapshotAndProcess(_ bool) {
 	defer a.asyncLock.Unlock()
 
 	var methods Methods
-	methods.Update(&a.holder.storage, a.current)
+	methods.Update(&a.holder.storage, a.current, aggregator.ExemplarBits{})
 }

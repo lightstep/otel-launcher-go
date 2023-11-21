@@ -20,61 +20,62 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 )
 
-type LastStorage[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
+type LastStorage[N number.Any, Traits number.Traits[N], Storage any, Methods aggregator.Methods[N, Storage]] struct {
 	Aggregate Storage
 }
 
-type LastMethods[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct{}
+type LastMethods[N number.Any, Traits number.Traits[N], Storage any, Methods aggregator.Methods[N, Storage]] struct{}
 
-func (s LastStorage[N, Storage, Methods]) Kind() aggregation.Kind {
+func (s LastStorage[N, Traits, Storage, Methods]) Kind() aggregation.Kind {
 	var am Methods
 	return am.Kind()
 }
 
-func (m LastMethods[N, Storage, Methods]) Init(ptr *LastStorage[N, Storage, Methods], cfg aggregator.Config) {
+func (m LastMethods[N, Traits, Storage, Methods]) Init(ptr *LastStorage[N, Traits, Storage, Methods], cfg aggregator.Config) {
 	var am Methods
 	am.Init(&ptr.Aggregate, cfg)
 }
 
-func (m LastMethods[N, Storage, Methods]) Update(ptr *LastStorage[N, Storage, Methods], number N) {
+func (m LastMethods[N, Traits, Storage, Methods]) Update(ptr *LastStorage[N, Traits, Storage, Methods], number N, ex aggregator.ExemplarBits) {
 	var am Methods
-	am.Update(&ptr.Aggregate, number)
+	// TODO: ex
+	am.Update(&ptr.Aggregate, number, ex)
 }
 
-func (m LastMethods[N, Storage, Methods]) Move(input, output *LastStorage[N, Storage, Methods]) {
+func (m LastMethods[N, Traits, Storage, Methods]) Move(input, output *LastStorage[N, Traits, Storage, Methods]) {
 	var am Methods
 	am.Move(&input.Aggregate, &output.Aggregate)
 }
 
-func (m LastMethods[N, Storage, Methods]) Merge(input, output *LastStorage[N, Storage, Methods]) {
+func (m LastMethods[N, Traits, Storage, Methods]) Merge(input, output *LastStorage[N, Traits, Storage, Methods]) {
 	var am Methods
 	am.Merge(&input.Aggregate, &output.Aggregate)
 }
 
-func (m LastMethods[N, Storage, Methods]) Copy(input, output *LastStorage[N, Storage, Methods]) {
+func (m LastMethods[N, Traits, Storage, Methods]) Copy(input, output *LastStorage[N, Traits, Storage, Methods]) {
 	var am Methods
 	am.Copy(&input.Aggregate, &output.Aggregate)
 }
 
-func (m LastMethods[N, Storage, Methods]) SubtractSwap(operand, argument *LastStorage[N, Storage, Methods]) {
+func (m LastMethods[N, Traits, Storage, Methods]) SubtractSwap(operand, argument *LastStorage[N, Traits, Storage, Methods]) {
 	panic("impossible use")
 }
 
-func (m LastMethods[N, Storage, Methods]) ToAggregation(ptr *LastStorage[N, Storage, Methods]) aggregation.Aggregation {
+func (m LastMethods[N, Traits, Storage, Methods]) ToAggregation(ptr *LastStorage[N, Traits, Storage, Methods]) aggregation.Aggregation {
 	return ptr
 }
 
-func (m LastMethods[N, Storage, Methods]) ToStorage(agg aggregation.Aggregation) (*LastStorage[N, Storage, Methods], bool) {
-	r, ok := agg.(*LastStorage[N, Storage, Methods])
+func (m LastMethods[N, Traits, Storage, Methods]) ToStorage(agg aggregation.Aggregation) (*LastStorage[N, Traits, Storage, Methods], bool) {
+	r, ok := agg.(*LastStorage[N, Traits, Storage, Methods])
 	return r, ok
 }
 
-func (m LastMethods[N, Storage, Methods]) Kind() aggregation.Kind {
+func (m LastMethods[N, Traits, Storage, Methods]) Kind() aggregation.Kind {
 	var am Methods
 	return am.Kind()
 }
 
-func (m LastMethods[N, Storage, Methods]) HasChange(ptr *LastStorage[N, Storage, Methods]) bool {
+func (m LastMethods[N, Traits, Storage, Methods]) HasChange(ptr *LastStorage[N, Traits, Storage, Methods]) bool {
 	var am Methods
 	return am.HasChange(&ptr.Aggregate)
 }

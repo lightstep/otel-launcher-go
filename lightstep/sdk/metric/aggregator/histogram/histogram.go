@@ -129,7 +129,7 @@ func (Methods[N, Traits]) HasChange(ptr *Histogram[N, Traits]) bool {
 	return ptr.Count() != 0
 }
 
-func (Methods[N, Traits]) Update(agg *Histogram[N, Traits], number N) {
+func (Methods[N, Traits]) Update(agg *Histogram[N, Traits], number N, _ aggregator.ExemplarBits) {
 	agg.lock.Lock()
 	defer agg.lock.Unlock()
 	agg.Histogram.Update(number)

@@ -137,7 +137,7 @@ func (Methods[N, Traits]) Copy(from, to *State[N, Traits]) {
 	to.seq = from.seq
 }
 
-func (Methods[N, Traits]) Update(state *State[N, Traits], number N) {
+func (Methods[N, Traits]) Update(state *State[N, Traits], number N, _ aggregator.ExemplarBits) {
 	newSeq := atomic.AddUint64(&sequenceVar, 1)
 
 	state.lock.Lock()

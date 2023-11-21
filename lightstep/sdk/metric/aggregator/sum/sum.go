@@ -116,7 +116,7 @@ func (Methods[N, Traits, M]) HasChange(ptr *State[N, Traits, M]) bool {
 	return ptr.value != 0
 }
 
-func (Methods[N, Traits, M]) Update(state *State[N, Traits, M], value N) {
+func (Methods[N, Traits, M]) Update(state *State[N, Traits, M], value N, _ aggregator.ExemplarBits) {
 	var t Traits
 	t.AddAtomic(&state.value, value)
 }
