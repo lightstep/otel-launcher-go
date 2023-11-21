@@ -177,7 +177,7 @@ endif
 .PHONY: gotidy
 gotidy:
 	@set -e; for dir in $(ALLINCLUSIVE_MODULES); do \
-	  (echo Tidying "$${dir}" && cd $${dir} && go mod tidy ); \
+	  (echo Tidying "$${dir}" && cd $${dir} && GOWORK=off go mod tidy ); \
 	done
 
 .PHONY: add-tag
