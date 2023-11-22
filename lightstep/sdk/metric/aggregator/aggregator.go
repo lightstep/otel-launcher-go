@@ -247,6 +247,9 @@ type ExemplarBits struct {
 	// bytes of ID.  We keep a span reference here because it is
 	// slightly smaller.
 	Span trace.Span
+
+	// Number is the input value.
+	Number number.Number
 }
 
 // WeightedExemplarBits are the exemplar and its calculated sample weight.

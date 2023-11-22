@@ -356,6 +356,7 @@ func Observe[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *O
 
 	defer rec.refMapped.unref()
 
+	var tr Traits
 	var exBits aggregator.ExemplarBits
 	updater := rec.readAccumulator().(viewstate.Updater[N])
 
@@ -373,6 +374,7 @@ func Observe[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *O
 		exBits.Time = time.Now()
 		exBits.Attributes = keyValues
 		exBits.Span = span
+		exBits.Number = tr.ToNumber(num)
 	}
 
 	updater.Update(num, exBits)

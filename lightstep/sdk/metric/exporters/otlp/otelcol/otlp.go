@@ -16,6 +16,7 @@ package otelcol
 
 import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
@@ -25,6 +26,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 func toTemporality(t aggregation.Temporality) pmetric.AggregationTemporality {
@@ -62,6 +64,8 @@ func copySumPoints(m pmetric.Metric, inM data.Instrument, mono bool) {
 		default:
 			panic("unhandled case")
 		}
+
+		copyExemplars(dp.Exemplars(), inP.Attributes, inM, inP.Exemplars)
 	}
 }
 
@@ -218,4 +222,63 @@ func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
 	}
 
 	return out
+}
+
+func copyExemplars(dest pmetric.ExemplarSlice, attrs attribute.Set, inM data.Instrument, src []aggregator.WeightedExemplarBits) {
+	for _, wex := range src {
+		ex := dest.AppendEmpty()
+		ex.SetTimestamp(pcommon.NewTimestampFromTime(wex.Time))
+		if inM.Descriptor.NumberKind == number.Int64Kind {
+			ex.SetIntValue(number.ToInt64(wex.Number))
+		} else {
+			ex.SetDoubleValue(number.ToFloat64(wex.Number))
+		}
+		if wex.Span != nil {
+			ex.SetTraceID(pcommon.TraceID(wex.Span.SpanContext().TraceID()))
+			ex.SetSpanID(pcommon.SpanID(wex.Span.SpanContext().SpanID()))
+		}
+		// The following calculation appears to be optimizable
+		// -- except it's not clear how.  We've computed an
+		// attribute set by a filter somewhere, and at that
+		// moment we know the filtered attributes.  However
+		// connecting these code points feels difficult, so
+		// for now we re-sort the original attributes, then
+		// iterate.
+		aset := attribute.NewSet(wex.Attributes...)
+
+		// attrs is a subset of aset
+		oiter := attrs.Iter()
+		fiter := aset.Iter()
+
+		o := oiter.Len()
+		f := fiter.Len()
+
+		oiter.Next()
+		fiter.Next()
+
+		// TL;DR wishing we could start from scratch with a
+		// redesigned attribute.Set.
+		for o > 0 {
+			okv := oiter.Attribute()
+			fkv := fiter.Attribute()
+
+			if fkv.Key == okv.Key {
+				o--
+				f--
+				oiter.Next()
+				fiter.Next()
+			} else {
+				internal.CopyAttribute(ex.FilteredAttributes(), fkv)
+				f--
+				fiter.Next()
+			}
+		}
+
+		for f > 0 {
+			fkv := fiter.Attribute()
+			internal.CopyAttribute(ex.FilteredAttributes(), fkv)
+			f--
+			fiter.Next()
+		}
+	}
 }
