@@ -27,7 +27,7 @@ type WeightedStorage[N number.Any, Traits number.Traits[N], Storage any, Methods
 	aggregate Storage
 
 	lock    sync.Mutex
-	samples varopt.Varopt[*int]
+	samples varopt.Varopt[*aggregator.ExemplarBits]
 }
 
 type WeightedMethods[N number.Any, Traits number.Traits[N], Storage any, Methods aggregator.Methods[N, Storage]] struct{}
@@ -44,19 +44,22 @@ func (m WeightedMethods[N, Traits, Storage, Methods]) Init(ptr *WeightedStorage[
 }
 
 func (m WeightedMethods[N, Traits, Storage, Methods]) Update(ptr *WeightedStorage[N, Traits, Storage, Methods], value N, ex aggregator.ExemplarBits) {
+	var am Methods
+	var tr Traits
+	if ex.Span == nil {
+		// Avoid locking when the filter rejects sampling.
+		am.Update(&ptr.aggregate, value, ex)
+		return
+	}
+
 	// Note: The lock protects the Update() call to ensure the
 	// aggregate and samples are consistent.
-
-	// TODO: Find a way to avoid the lock when the filter rejects.  With no allocs?
 	ptr.lock.Lock()
 	defer ptr.lock.Unlock()
 
-	var am Methods
-	var tr Traits
 	am.Update(&ptr.aggregate, value, ex)
 
-	// @@@ nil here is bogus
-	ptr.samples.Add(nil, number.ToFloat64(tr.ToNumber(value)))
+	ptr.samples.Add(&ex, number.ToFloat64(tr.ToNumber(value)))
 }
 
 func (m WeightedMethods[N, Traits, Storage, Methods]) Move(input, output *WeightedStorage[N, Traits, Storage, Methods]) {

@@ -18,6 +18,7 @@ import (
 	"context"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/pipeline"
@@ -25,6 +26,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var overflowAttributesFingerprint = fingerprintAttributes(pipeline.OverflowAttributes)
@@ -354,9 +356,26 @@ func Observe[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *O
 
 	defer rec.refMapped.unref()
 
-	rec.readAccumulator().(viewstate.Updater[N]).Update(num, aggregator.ExemplarBits{
-		// @@@ HERE YOU ARE
-	})
+	var exBits aggregator.ExemplarBits
+	updater := rec.readAccumulator().(viewstate.Updater[N])
+
+	// TODO: Note the isTraced() calculation here is difficult to
+	// place.  It can be deferred until the filter is known, but
+	// there could be more than one filter, in which case it will
+	// be evaluated multiple times.  Additionally, when
+	// MeasurementProcessor is non-nil, the context has already
+	// been probed.  Assuming the context has already been probed
+	// once, we should know by now whether the context is sampled.
+	span := trace.SpanFromContext(ctx)
+	isTraced := span.SpanContext().IsSampled()
+
+	if updater.MaySample(isTraced) {
+		exBits.Time = time.Now()
+		exBits.Attributes = keyValues
+		exBits.Span = span
+	}
+
+	updater.Update(num, exBits)
 
 	// Record was modified.
 	atomic.AddUint32(&rec.updateCount, 1)

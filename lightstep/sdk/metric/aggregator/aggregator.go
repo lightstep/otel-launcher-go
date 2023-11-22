@@ -15,7 +15,6 @@
 package aggregator // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 
 import (
-	"context"
 	"fmt"
 	"math/rand"
 	"time"
@@ -27,6 +26,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Sentinel errors for Aggregator interface.
@@ -232,6 +232,6 @@ type ConfigSelector func(sdkinstrument.Kind) (int64Config, float64Config Config)
 // ExemplarBits conducts extra information into the aggregation pipeline.
 type ExemplarBits struct {
 	Time       time.Time
-	Context    context.Context
 	Attributes []attribute.KeyValue
+	Span       trace.Span
 }
