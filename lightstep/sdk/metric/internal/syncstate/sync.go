@@ -363,7 +363,7 @@ func Observe[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *O
 	// TODO: Note the isTraced() calculation here is difficult to
 	// place.  It can be deferred until the filter is known, but
 	// there could be more than one filter, in which case it will
-	// be evaluated multiple times.  Additionally, when
+
 	// MeasurementProcessor is non-nil, the context has already
 	// been probed.  Assuming the context has already been probed
 	// once, we should know by now whether the context is sampled.

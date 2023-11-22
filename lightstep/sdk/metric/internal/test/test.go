@@ -31,6 +31,8 @@ import (
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 func Descriptor(name string, ik sdkinstrument.Kind, nk number.Kind) sdkinstrument.Descriptor {
@@ -110,6 +112,10 @@ func CollectScopeReuse(t *testing.T, collectors []data.Collector, seq data.Seque
 	return output.Instruments
 }
 
+type exemplarUnwrapper interface {
+	Unwrap() aggregation.Aggregation
+}
+
 func RequireEqualPoints(t *testing.T, output []data.Point, expected ...data.Point) {
 	t.Helper()
 
@@ -133,6 +139,14 @@ func RequireEqualPoints(t *testing.T, output []data.Point, expected ...data.Poin
 			out.End = exp.End
 		}
 
+		// Special case for testing exemplars: the exemplar aggregator is full of
+		// intermediate state, so we replace the aggregation with the
+		// underlying aggregation for the purposes of testing its correct
+		// value w/o testing sampler state.
+		if unwr, ok := out.Aggregation.(exemplarUnwrapper); ok {
+			out.Aggregation = unwr.Unwrap()
+		}
+
 		if outig, ok := out.Aggregation.(*gauge.Int64); ok {
 			outig.SetSequenceForTesting()
 		}
@@ -141,7 +155,33 @@ func RequireEqualPoints(t *testing.T, output []data.Point, expected ...data.Poin
 		}
 	}
 
+	var cpyEx [][]aggregator.WeightedExemplarBits
+	var outEx [][]aggregator.WeightedExemplarBits
+
+	for i := range cpy {
+		cpyEx = append(cpyEx, cpy[i].Exemplars)
+		cpy[i].Exemplars = nil
+	}
+	for i := range output {
+		outEx = append(outEx, output[i].Exemplars)
+		output[i].Exemplars = nil
+	}
+
 	require.ElementsMatch(t, cpy, output)
+
+	for i := range cpy {
+		if len(cpyEx[i]) != len(outEx[i]) {
+			require.ElementsMatch(t, cpyEx, outEx)
+			continue
+		}
+
+		for j := range cpyEx[i] {
+			if cpyEx[i][j].Time.IsZero() {
+				outEx[i][j].Time = time.Time{}
+			}
+		}
+		require.ElementsMatch(t, cpyEx, outEx)
+	}
 }
 
 // RequireEqualMetrics checks that an output equals the expected
@@ -184,4 +224,24 @@ func OTelErrors() *[]error {
 		*errors = append(*errors, err)
 	}))
 	return errors
+}
+
+type FakeSpanData struct {
+	t, s byte
+	noop.Span
+}
+
+func FakeSpan(t, s byte) trace.Span {
+	return &FakeSpanData{
+		t: t,
+		s: s,
+	}
+}
+
+func (f *FakeSpanData) SpanContext() trace.SpanContext {
+	return trace.NewSpanContext(trace.SpanContextConfig{
+		TraceID:    [16]byte{f.t, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+		SpanID:     [8]byte{f.s, 0, 0, 0, 0, 0, 0, 0},
+		TraceFlags: 0x1,
+	})
 }

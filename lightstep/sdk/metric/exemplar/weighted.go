@@ -39,6 +39,11 @@ func (s *WeightedStorage[N, Storage, Methods]) Kind() aggregation.Kind {
 	return am.Kind()
 }
 
+func (s *WeightedStorage[N, Storage, Methods]) Unwrap() aggregation.Aggregation {
+	var am Methods
+	return am.ToAggregation(&s.aggregate)
+}
+
 func (m WeightedMethods[N, Storage, Methods]) Init(ptr *WeightedStorage[N, Storage, Methods], cfg aggregator.Config) {
 	var am Methods
 	am.Init(&ptr.aggregate, cfg)
@@ -51,6 +56,7 @@ func (m WeightedMethods[N, Storage, Methods]) Init(ptr *WeightedStorage[N, Stora
 
 func (m WeightedMethods[N, Storage, Methods]) Update(ptr *WeightedStorage[N, Storage, Methods], value N, ex aggregator.ExemplarBits) {
 	var am Methods
+
 	if ex.Span == nil {
 		// Avoid locking when the filter rejects sampling.
 		am.Update(&ptr.aggregate, value, ex)

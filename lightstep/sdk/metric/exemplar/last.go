@@ -36,6 +36,11 @@ func (s *LastStorage[N, Storage, Methods]) Kind() aggregation.Kind {
 	return am.Kind()
 }
 
+func (s *LastStorage[N, Storage, Methods]) Unwrap() aggregation.Aggregation {
+	var am Methods
+	return am.ToAggregation(&s.aggregate)
+}
+
 func (m LastMethods[N, Storage, Methods]) Init(ptr *LastStorage[N, Storage, Methods], cfg aggregator.Config) {
 	var am Methods
 	am.Init(&ptr.aggregate, cfg)

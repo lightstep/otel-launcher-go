@@ -39,8 +39,6 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
-	"go.opentelemetry.io/otel/trace"
-	"go.opentelemetry.io/otel/trace/noop"
 )
 
 var (
@@ -2166,6 +2164,9 @@ func TestInstrumentOverflowCombined(t *testing.T) {
 	}
 }
 
+// TestExemplars is the most-basic test for exemplars there could be.
+// It creates three series, distinguished by b=1,2,3 then filters b
+// leaving three points.
 func TestExemplars(t *testing.T) {
 	views := view.New(
 		"test",
@@ -2201,69 +2202,58 @@ func TestExemplars(t *testing.T) {
 		attribute.Int("a", 1),
 	}
 	acc1 := inst.NewAccumulator(attribute.NewSet(all1...))
-	acc1.(Updater[float64]).Update(1, aggregator.ExemplarBits{
+	eb1 := aggregator.ExemplarBits{
 		Time:       middleTime,
 		Number:     number.FromInt64(1),
 		Attributes: all1,
-		Span:       fakeSpan(1),
-	})
+		Span:       test.FakeSpan(1, 1),
+	}
+	acc1.(Updater[float64]).Update(1, eb1)
 	acc1.SnapshotAndProcess(false)
 
 	acc2 := inst.NewAccumulator(attribute.NewSet(all2...))
-	acc2.(Updater[float64]).Update(2, aggregator.ExemplarBits{
+	eb2 := aggregator.ExemplarBits{
 		Time:       middleTime,
 		Number:     number.FromInt64(2),
 		Attributes: all2,
-		Span:       fakeSpan(2),
-	})
+		Span:       test.FakeSpan(2, 2),
+	}
+	acc2.(Updater[float64]).Update(2, eb2)
 	acc2.SnapshotAndProcess(false)
 
 	acc3 := inst.NewAccumulator(attribute.NewSet(all3...))
-	acc3.(Updater[float64]).Update(3, aggregator.ExemplarBits{
+	eb3 := aggregator.ExemplarBits{
 		Time:       middleTime,
 		Number:     number.FromInt64(3),
 		Attributes: all3,
-		Span:       fakeSpan(3),
-	})
+		Span:       test.FakeSpan(3, 3),
+	}
+	acc3.(Updater[float64]).Update(3, eb3)
 	acc3.SnapshotAndProcess(false)
 
 	output := testCollect(t, vc)
 
 	// In this test, the number of examples equals the reservoir size.
 	// Weight == point value.
-
 	test.RequireEqualMetrics(t, output,
 		test.Instrument(
 			test.Descriptor("foo", sdkinstrument.SyncCounter, number.Float64Kind),
 			test.PointEx(
-				startTime, endTime, sum.NewMonotonicFloat64(2), cumulative,
+				startTime, endTime, sum.NewMonotonicFloat64(1+2+3), cumulative,
 				[]attribute.KeyValue{attribute.Int("a", 1)},
 				aggregator.WeightedExemplarBits{
-					ExemplarBits: aggregator.ExemplarBits{
-						Number: number.FromInt64(1),
-					},
-					Weight: 1,
+					ExemplarBits: eb1,
+					Weight:       1,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: eb2,
+					Weight:       2,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: eb3,
+					Weight:       3,
 				},
 			),
 		),
 	)
-}
-
-type fakeSpanData struct {
-	n byte
-	noop.Span
-}
-
-func fakeSpan(n byte) trace.Span {
-	return &fakeSpanData{
-		n: n,
-	}
-}
-
-func (f *fakeSpanData) SpanContext() trace.SpanContext {
-	return trace.NewSpanContext(trace.SpanContextConfig{
-		TraceID:    [16]byte{f.n, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-		SpanID:     [8]byte{f.n, 0, 0, 0, 0, 0, 0, 0},
-		TraceFlags: 0x1,
-	})
 }

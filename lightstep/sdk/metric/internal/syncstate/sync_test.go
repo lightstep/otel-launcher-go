@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	histostruct "github.com/lightstep/go-expohisto/structure"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
@@ -40,6 +41,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -63,6 +65,10 @@ var (
 				testKeyVal,
 			},
 		},
+	}
+	noPerf = sdkinstrument.Performance{
+		IgnoreCollisions:          false,
+		InactiveCollectionPeriods: 1,
 	}
 
 	unsafePerf = sdkinstrument.Performance{
@@ -1449,4 +1455,125 @@ func TestInputAttributeSliceRaceCondition(t *testing.T) {
 	}()
 
 	wg.Wait()
+}
+
+func TestSyncExemplars(t *testing.T) {
+	lib := instrumentation.Library{
+		Name: "testlib",
+	}
+	vcs := viewstate.New(lib, view.New(
+		"test",
+		noPerf,
+		deltaSelector,
+		view.WithClause(
+			view.WithKeys([]attribute.Key{"a"}),
+		),
+	))
+
+	indesc := test.Descriptor(
+		"histo",
+		sdkinstrument.SyncHistogram,
+		number.Float64Kind)
+	indesc.Description = `{
+  "config": {
+    "exemplar": {
+      "filter": "trace_based",
+      "size": 5
+    },
+    "histogram": {
+      "max_size": 100
+    }
+  },
+  "description": "incredible"
+}`
+
+	outdesc := test.Descriptor(
+		"histo",
+		sdkinstrument.SyncHistogram,
+		number.Float64Kind)
+	outdesc.Description = "incredible"
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 1)
+	pipes[0], _ = vcs.Compile(indesc)
+
+	require.NotNil(t, pipes[0])
+	inst := New(indesc, noPerf, nil, pipes)
+	require.NotNil(t, inst)
+
+	untracedCtx := context.Background()
+	attrs1 := []attribute.KeyValue{attribute.String("a", "1"), attribute.String("b", "1")}
+	attrs2 := []attribute.KeyValue{attribute.String("a", "1"), attribute.String("b", "2")}
+	attrs3 := []attribute.KeyValue{attribute.String("a", "1"), attribute.String("b", "3")}
+
+	for i := 0.0; i < 5; i++ {
+		inst.ObserveFloat64(
+			trace.ContextWithSpan(context.Background(), test.FakeSpan(1, byte(i+1))),
+			1+i,
+			attrsConfig(attrs1...),
+		)
+		inst.ObserveFloat64(untracedCtx, 1+i, attrsConfig(attrs2...))
+		inst.ObserveFloat64(untracedCtx, 1+i, attrsConfig(attrs3...))
+	}
+
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs.Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			outdesc,
+			test.PointEx(
+				middleTime, endTime,
+				histogram.NewFloat64(histostruct.NewConfig(histostruct.WithMaxSize(100)),
+					1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5,
+				),
+				aggregation.DeltaTemporality,
+				[]attribute.KeyValue{attribute.String("a", "1")},
+				// Note: do not set timestamp below
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: aggregator.ExemplarBits{
+						Number:     number.FromFloat64(1),
+						Attributes: attrs1,
+						Span:       test.FakeSpan(1, 1),
+					},
+					Weight: 1,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: aggregator.ExemplarBits{
+						Number:     number.FromFloat64(2),
+						Attributes: attrs1,
+						Span:       test.FakeSpan(1, 2),
+					},
+					Weight: 1,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: aggregator.ExemplarBits{
+						Number:     number.FromFloat64(3),
+						Attributes: attrs1,
+						Span:       test.FakeSpan(1, 3),
+					},
+					Weight: 1,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: aggregator.ExemplarBits{
+						Number:     number.FromFloat64(4),
+						Attributes: attrs1,
+						Span:       test.FakeSpan(1, 4),
+					},
+					Weight: 1,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: aggregator.ExemplarBits{
+						Number:     number.FromFloat64(5),
+						Attributes: attrs1,
+						Span:       test.FakeSpan(1, 5),
+					},
+					Weight: 1,
+				},
+			),
+		),
+	)
 }
