@@ -280,5 +280,9 @@ func copyExemplars(dest pmetric.ExemplarSlice, attrs attribute.Set, inM data.Ins
 			f--
 			fiter.Next()
 		}
+
+		if wex.Weight != 0 {
+			ex.FilteredAttributes().PutDouble("sample.weight", wex.Weight)
+		}
 	}
 }

@@ -265,7 +265,21 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 	if hint.Config.CardinalityLimit != 0 {
 		acfg.CardinalityLimit = hint.Config.CardinalityLimit
 	}
-
+	if hint.Config.Exemplar.Filter != "" {
+		switch strings.ToLower(hint.Config.Exemplar.Filter) {
+		case "always_on":
+			acfg.Exemplar.Filter = aggregator.AlwaysOnKind
+		case "always_off":
+			acfg.Exemplar.Filter = aggregator.AlwaysOffKind
+		case "trace_based", "when_traced":
+			acfg.Exemplar.Filter = aggregator.WhenTracedKind
+		default:
+			otel.Handle(fmt.Errorf("unrecognized exemplar filter: %s", hint.Config.Exemplar.Filter))
+		}
+	}
+	if hint.Config.Exemplar.Size != 0 {
+		acfg.Exemplar.Size = hint.Config.Exemplar.Size
+	}
 	return instrument, akind, tempo, acfg, defCfg, hinted
 }
 
@@ -440,19 +454,18 @@ func newSyncViewWithEx[
 	Storage any,
 	Methods aggregator.Methods[N, Storage],
 ](behavior singleBehavior) leafInstrument {
-	if behavior.acfg.Exemplar.Filter == aggregator.AlwaysOffKind || behavior.acfg.Exemplar.Size == 0 {
-		// Bypass the exemplar reservoir.
+	if behavior.acfg.Exemplar.Filter == aggregator.AlwaysOffKind {
 		return newSyncView[N, Storage, Methods, alwaysOffSampleFilter](behavior)
 	}
-	if behavior.acfg.Exemplar.Size <= 1 {
+	if behavior.acfg.Exemplar.Size == 1 {
 		return newSyncViewWithF[N,
-			exemplar.LastStorage[N, Traits, Storage, Methods],
-			exemplar.LastMethods[N, Traits, Storage, Methods],
+			exemplar.LastStorage[N, Storage, Methods],
+			exemplar.LastMethods[N, Storage, Methods],
 		](behavior)
 	}
 	return newSyncViewWithF[N,
-		exemplar.WeightedStorage[N, Traits, Storage, Methods],
-		exemplar.WeightedMethods[N, Traits, Storage, Methods],
+		exemplar.WeightedStorage[N, Storage, Methods],
+		exemplar.WeightedMethods[N, Storage, Methods],
 	](behavior)
 }
 

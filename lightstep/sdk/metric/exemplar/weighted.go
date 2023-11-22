@@ -23,29 +23,34 @@ import (
 	"github.com/lightstep/varopt"
 )
 
-type WeightedStorage[N number.Any, Traits number.Traits[N], Storage any, Methods aggregator.Methods[N, Storage]] struct {
+const defaultReservoirSize = 10
+
+type WeightedStorage[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
 	aggregate Storage
 
 	lock    sync.Mutex
 	samples varopt.Varopt[*aggregator.ExemplarBits]
 }
 
-type WeightedMethods[N number.Any, Traits number.Traits[N], Storage any, Methods aggregator.Methods[N, Storage]] struct{}
+type WeightedMethods[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct{}
 
-func (s *WeightedStorage[N, Traits, Storage, Methods]) Kind() aggregation.Kind {
+func (s *WeightedStorage[N, Storage, Methods]) Kind() aggregation.Kind {
 	var am Methods
 	return am.Kind()
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) Init(ptr *WeightedStorage[N, Traits, Storage, Methods], cfg aggregator.Config) {
+func (m WeightedMethods[N, Storage, Methods]) Init(ptr *WeightedStorage[N, Storage, Methods], cfg aggregator.Config) {
 	var am Methods
 	am.Init(&ptr.aggregate, cfg)
-	ptr.samples.Init(int(cfg.Exemplar.Size), cfg.Exemplar.Rnd)
+	sz := int(cfg.Exemplar.Size)
+	if sz == 0 {
+		sz = defaultReservoirSize
+	}
+	ptr.samples.Init(sz, cfg.Exemplar.Rnd)
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) Update(ptr *WeightedStorage[N, Traits, Storage, Methods], value N, ex aggregator.ExemplarBits) {
+func (m WeightedMethods[N, Storage, Methods]) Update(ptr *WeightedStorage[N, Storage, Methods], value N, ex aggregator.ExemplarBits) {
 	var am Methods
-	var tr Traits
 	if ex.Span == nil {
 		// Avoid locking when the filter rejects sampling.
 		am.Update(&ptr.aggregate, value, ex)
@@ -59,10 +64,11 @@ func (m WeightedMethods[N, Traits, Storage, Methods]) Update(ptr *WeightedStorag
 
 	am.Update(&ptr.aggregate, value, ex)
 
-	ptr.samples.Add(&ex, number.ToFloat64(tr.ToNumber(value)))
+	// The weight is... 1 for Histograms & Gauges, value for Sums.
+	ptr.samples.Add(&ex, am.Weight(value))
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) Move(input, output *WeightedStorage[N, Traits, Storage, Methods]) {
+func (m WeightedMethods[N, Storage, Methods]) Move(input, output *WeightedStorage[N, Storage, Methods]) {
 	input.lock.Lock()
 	defer input.lock.Unlock()
 
@@ -73,7 +79,7 @@ func (m WeightedMethods[N, Traits, Storage, Methods]) Move(input, output *Weight
 	input.samples.Reset()
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) Copy(input, output *WeightedStorage[N, Traits, Storage, Methods]) {
+func (m WeightedMethods[N, Storage, Methods]) Copy(input, output *WeightedStorage[N, Storage, Methods]) {
 	input.lock.Lock()
 	defer input.lock.Unlock()
 
@@ -83,7 +89,7 @@ func (m WeightedMethods[N, Traits, Storage, Methods]) Copy(input, output *Weight
 	output.samples.CopyFrom(&input.samples)
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) Merge(input, output *WeightedStorage[N, Traits, Storage, Methods]) {
+func (m WeightedMethods[N, Storage, Methods]) Merge(input, output *WeightedStorage[N, Storage, Methods]) {
 	output.lock.Lock()
 	defer output.lock.Unlock()
 
@@ -96,28 +102,28 @@ func (m WeightedMethods[N, Traits, Storage, Methods]) Merge(input, output *Weigh
 	}
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) SubtractSwap(operand, argument *WeightedStorage[N, Traits, Storage, Methods]) {
+func (m WeightedMethods[N, Storage, Methods]) SubtractSwap(operand, argument *WeightedStorage[N, Storage, Methods]) {
 	// impossible because exemplars are for synchronous
 	// instruments and subtract is only used with async
 	// instruments.
 	panic("impossible")
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) ToAggregation(ptr *WeightedStorage[N, Traits, Storage, Methods]) aggregation.Aggregation {
+func (m WeightedMethods[N, Storage, Methods]) ToAggregation(ptr *WeightedStorage[N, Storage, Methods]) aggregation.Aggregation {
 	return ptr
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) ToStorage(agg aggregation.Aggregation) (*WeightedStorage[N, Traits, Storage, Methods], bool) {
-	r, ok := agg.(*WeightedStorage[N, Traits, Storage, Methods])
+func (m WeightedMethods[N, Storage, Methods]) ToStorage(agg aggregation.Aggregation) (*WeightedStorage[N, Storage, Methods], bool) {
+	r, ok := agg.(*WeightedStorage[N, Storage, Methods])
 	return r, ok
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) Kind() aggregation.Kind {
+func (m WeightedMethods[N, Storage, Methods]) Kind() aggregation.Kind {
 	var am Methods
 	return am.Kind()
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) HasChange(ptr *WeightedStorage[N, Traits, Storage, Methods]) bool {
+func (m WeightedMethods[N, Storage, Methods]) HasChange(ptr *WeightedStorage[N, Storage, Methods]) bool {
 	ptr.lock.Lock()
 	defer ptr.lock.Unlock()
 
@@ -125,7 +131,7 @@ func (m WeightedMethods[N, Traits, Storage, Methods]) HasChange(ptr *WeightedSto
 	return am.HasChange(&ptr.aggregate)
 }
 
-func (m WeightedMethods[N, Traits, Storage, Methods]) Exemplars(ptr *WeightedStorage[N, Traits, Storage, Methods], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
+func (m WeightedMethods[N, Storage, Methods]) Exemplars(ptr *WeightedStorage[N, Storage, Methods], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
 	// By the time exemplars are read, the object does not require locking.
 	for i := 0; i < ptr.samples.Size(); i++ {
 		ex, weight := ptr.samples.Get(i)
@@ -136,4 +142,9 @@ func (m WeightedMethods[N, Traits, Storage, Methods]) Exemplars(ptr *WeightedSto
 	}
 
 	return in
+}
+
+func (m WeightedMethods[N, Storage, Methods]) Weight(n N) float64 {
+	var am Methods
+	return am.Weight(n)
 }

@@ -20,6 +20,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
@@ -48,6 +49,18 @@ func Point(start, end time.Time, agg aggregation.Aggregation, tempo aggregation.
 		Attributes:  attrs,
 		Aggregation: agg,
 		Temporality: tempo,
+	}
+}
+
+func PointEx(start, end time.Time, agg aggregation.Aggregation, tempo aggregation.Temporality, kvs []attribute.KeyValue, exs ...aggregator.WeightedExemplarBits) data.Point {
+	attrs := attribute.NewSet(kvs...)
+	return data.Point{
+		Start:       start,
+		End:         end,
+		Attributes:  attrs,
+		Aggregation: agg,
+		Temporality: tempo,
+		Exemplars:   exs,
 	}
 }
 

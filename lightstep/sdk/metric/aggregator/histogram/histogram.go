@@ -173,3 +173,7 @@ func (Methods[N, Traits]) SubtractSwap(operand, argument *Histogram[N, Traits]) 
 func (Methods[N, Traits]) Exemplars(ptr *Histogram[N, Traits], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
 	return in
 }
+
+func (Methods[N, Traits]) Weight(_ N) float64 {
+	return 1
+}

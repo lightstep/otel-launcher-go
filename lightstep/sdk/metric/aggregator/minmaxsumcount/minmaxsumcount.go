@@ -185,3 +185,7 @@ func (Methods[N, Traits]) SubtractSwap(operand, argument *State[N, Traits]) {
 func (Methods[N, Traits]) Exemplars(ptr *State[N, Traits], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
 	return in
 }
+
+func (Methods[N, Traits]) Weight(n N) float64 {
+	return 1
+}

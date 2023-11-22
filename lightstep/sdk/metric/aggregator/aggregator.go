@@ -36,6 +36,8 @@ var (
 	ErrInfInput      = fmt.Errorf("±Inf value is an invalid input")
 )
 
+// ExemplarFilterKind determines which events are eligible for
+// becoming exemplars.
 type ExemplarFilterKind int
 
 const (
@@ -43,22 +45,14 @@ const (
 	// used with a zero value.  This is a good default because
 	// exemplars require additional synchronization.
 	AlwaysOffKind ExemplarFilterKind = iota
+
+	// AlwaysOnKind considers all events for exemplar sampling.
 	AlwaysOnKind
+
+	// WhenTracedKind considers events only in sampled trace
+	// contexts for exemplar sampling.
 	WhenTracedKind
 )
-
-// Implementation note: this code supports one kind of
-// exemplar reservoir.  The "simple" specified exemplar
-// reservoir is too simple for this implementation, which
-// always merges on the data path.  (There is no
-// correctly-weighted merge algorithm for simple reservoirs
-// under the circumstances.)  The "aligned" explicit-histogram
-// exemplar reservoir is not supported because this code does
-// not support that kind of histogram.
-//
-// type ExemplarReservoirKind int
-//
-// const WeightedFixedSizeKind ExemplarReservoirKind = 0
 
 // RangeTest is a common routine for testing for valid input values.
 // This rejects NaN and Inf values.  This rejects negative values when the
@@ -95,13 +89,14 @@ func RangeTest[N number.Any, Traits number.Traits[N]](num N, desc sdkinstrument.
 	return true
 }
 
+// ExemplarConfig configures exemplar selection.
 type ExemplarConfig struct {
 	Filter ExemplarFilterKind
 	Size   uint32
 	Rnd    *rand.Rand
 }
 
-// JSONExemplarConfig configures exemplar reservoirs.
+// JSONExemplarConfig configures exemplar selection.
 type JSONExemplarConfig struct {
 	Filter string `json:"filter"`
 	Size   uint32 `json:"size"`
@@ -227,6 +222,11 @@ type Methods[N number.Any, Storage any] interface {
 
 	// Exemplars returns sample points included in this aggregation.
 	Exemplars(ptr *Storage, in []WeightedExemplarBits) []WeightedExemplarBits
+
+	// Weight is the sample weight.  It is 1 for histogram and
+	// gauge aggregations, and it is the value for sum data
+	// aggregations.
+	Weight(number N) float64
 }
 
 // ConfigSelector is a per-instrument-kind, per-number-kind Config choice.

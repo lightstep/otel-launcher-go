@@ -22,26 +22,26 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 )
 
-type LastStorage[N number.Any, Traits number.Traits[N], Storage any, Methods aggregator.Methods[N, Storage]] struct {
+type LastStorage[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
 	aggregate Storage
 
 	lock     sync.Mutex
 	exemplar aggregator.ExemplarBits
 }
 
-type LastMethods[N number.Any, Traits number.Traits[N], Storage any, Methods aggregator.Methods[N, Storage]] struct{}
+type LastMethods[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct{}
 
-func (s *LastStorage[N, Traits, Storage, Methods]) Kind() aggregation.Kind {
+func (s *LastStorage[N, Storage, Methods]) Kind() aggregation.Kind {
 	var am Methods
 	return am.Kind()
 }
 
-func (m LastMethods[N, Traits, Storage, Methods]) Init(ptr *LastStorage[N, Traits, Storage, Methods], cfg aggregator.Config) {
+func (m LastMethods[N, Storage, Methods]) Init(ptr *LastStorage[N, Storage, Methods], cfg aggregator.Config) {
 	var am Methods
 	am.Init(&ptr.aggregate, cfg)
 }
 
-func (m LastMethods[N, Traits, Storage, Methods]) Update(ptr *LastStorage[N, Traits, Storage, Methods], number N, ex aggregator.ExemplarBits) {
+func (m LastMethods[N, Storage, Methods]) Update(ptr *LastStorage[N, Storage, Methods], number N, ex aggregator.ExemplarBits) {
 	var am Methods
 	if ex.Span == nil {
 		am.Update(&ptr.aggregate, number, ex)
@@ -54,53 +54,58 @@ func (m LastMethods[N, Traits, Storage, Methods]) Update(ptr *LastStorage[N, Tra
 	am.Update(&ptr.aggregate, number, ex)
 }
 
-func (m LastMethods[N, Traits, Storage, Methods]) Move(input, output *LastStorage[N, Traits, Storage, Methods]) {
+func (m LastMethods[N, Storage, Methods]) Move(input, output *LastStorage[N, Storage, Methods]) {
 	var am Methods
 	input.lock.Lock()
 	defer input.lock.Unlock()
 	am.Move(&input.aggregate, &output.aggregate)
 }
 
-func (m LastMethods[N, Traits, Storage, Methods]) Copy(input, output *LastStorage[N, Traits, Storage, Methods]) {
+func (m LastMethods[N, Storage, Methods]) Copy(input, output *LastStorage[N, Storage, Methods]) {
 	var am Methods
 	input.lock.Lock()
 	defer input.lock.Unlock()
 	am.Copy(&input.aggregate, &output.aggregate)
 }
 
-func (m LastMethods[N, Traits, Storage, Methods]) Merge(input, output *LastStorage[N, Traits, Storage, Methods]) {
+func (m LastMethods[N, Storage, Methods]) Merge(input, output *LastStorage[N, Storage, Methods]) {
 	var am Methods
 	output.lock.Lock()
 	defer output.lock.Unlock()
 	am.Merge(&input.aggregate, &output.aggregate)
 }
 
-func (m LastMethods[N, Traits, Storage, Methods]) SubtractSwap(operand, argument *LastStorage[N, Traits, Storage, Methods]) {
+func (m LastMethods[N, Storage, Methods]) SubtractSwap(operand, argument *LastStorage[N, Storage, Methods]) {
 	panic("impossible use")
 }
 
-func (m LastMethods[N, Traits, Storage, Methods]) ToAggregation(ptr *LastStorage[N, Traits, Storage, Methods]) aggregation.Aggregation {
+func (m LastMethods[N, Storage, Methods]) ToAggregation(ptr *LastStorage[N, Storage, Methods]) aggregation.Aggregation {
 	return ptr
 }
 
-func (m LastMethods[N, Traits, Storage, Methods]) ToStorage(agg aggregation.Aggregation) (*LastStorage[N, Traits, Storage, Methods], bool) {
-	r, ok := agg.(*LastStorage[N, Traits, Storage, Methods])
+func (m LastMethods[N, Storage, Methods]) ToStorage(agg aggregation.Aggregation) (*LastStorage[N, Storage, Methods], bool) {
+	r, ok := agg.(*LastStorage[N, Storage, Methods])
 	return r, ok
 }
 
-func (m LastMethods[N, Traits, Storage, Methods]) Kind() aggregation.Kind {
+func (m LastMethods[N, Storage, Methods]) Kind() aggregation.Kind {
 	var am Methods
 	return am.Kind()
 }
 
-func (m LastMethods[N, Traits, Storage, Methods]) HasChange(ptr *LastStorage[N, Traits, Storage, Methods]) bool {
+func (m LastMethods[N, Storage, Methods]) HasChange(ptr *LastStorage[N, Storage, Methods]) bool {
 	var am Methods
 	return am.HasChange(&ptr.aggregate)
 }
 
-func (m LastMethods[N, Traits, Storage, Methods]) Exemplars(ptr *LastStorage[N, Traits, Storage, Methods], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
+func (m LastMethods[N, Storage, Methods]) Exemplars(ptr *LastStorage[N, Storage, Methods], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
 	// By the time exemplars are read, the object does not require locking.
 	return append(in, aggregator.WeightedExemplarBits{
 		ExemplarBits: ptr.exemplar,
 	})
+}
+
+func (m LastMethods[N, Storage, Methods]) Weight(n N) float64 {
+	var am Methods
+	return am.Weight(n)
 }
