@@ -181,3 +181,7 @@ func (Methods[N, Traits]) SubtractSwap(operand, argument *State[N, Traits]) {
 	// which start as delta temporality and thus never subtract.
 	panic("impossible call")
 }
+
+func (Methods[N, Traits]) Exemplars(ptr *State[N, Traits], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
+	return in
+}

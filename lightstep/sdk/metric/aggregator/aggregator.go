@@ -224,14 +224,36 @@ type Methods[N number.Any, Storage any] interface {
 	// aggregation.  If the instrument is asynchronous, this will
 	// be called after subtraction.  Not synchronized.
 	HasChange(ptr *Storage) bool
+
+	// Exemplars returns sample points included in this aggregation.
+	Exemplars(ptr *Storage, in []WeightedExemplarBits) []WeightedExemplarBits
 }
 
 // ConfigSelector is a per-instrument-kind, per-number-kind Config choice.
 type ConfigSelector func(sdkinstrument.Kind) (int64Config, float64Config Config)
 
 // ExemplarBits conducts extra information into the aggregation pipeline.
+//
+// Note: we could opt for an allocation instead of copying this struct
+// by value through the pipeline.
 type ExemplarBits struct {
-	Time       time.Time
+	// Time of the event.
+	Time time.Time
+
+	// Attributes are the complete original set of attributes.
 	Attributes []attribute.KeyValue
-	Span       trace.Span
+
+	// Span has a reference to the span context, which has the 24
+	// bytes of ID.  We keep a span reference here because it is
+	// slightly smaller.
+	Span trace.Span
+}
+
+// WeightedExemplarBits are the exemplar and its calculated sample weight.
+type WeightedExemplarBits struct {
+	// ExemplarBits calculated at the event.
+	ExemplarBits
+
+	// Weight calculated by aggregation pipeline.
+	Weight float64
 }

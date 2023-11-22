@@ -169,3 +169,7 @@ func (Methods[N, Traits]) ToStorage(aggr aggregation.Aggregation) (*State[N, Tra
 func (Methods[N, Traits]) SubtractSwap(operand, argument *State[N, Traits]) {
 	panic("not used for non-temporal metrics")
 }
+
+func (Methods[N, Traits]) Exemplars(ptr *State[N, Traits], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
+	return in
+}

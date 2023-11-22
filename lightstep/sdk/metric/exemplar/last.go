@@ -56,17 +56,23 @@ func (m LastMethods[N, Traits, Storage, Methods]) Update(ptr *LastStorage[N, Tra
 
 func (m LastMethods[N, Traits, Storage, Methods]) Move(input, output *LastStorage[N, Traits, Storage, Methods]) {
 	var am Methods
+	input.lock.Lock()
+	defer input.lock.Unlock()
 	am.Move(&input.aggregate, &output.aggregate)
-}
-
-func (m LastMethods[N, Traits, Storage, Methods]) Merge(input, output *LastStorage[N, Traits, Storage, Methods]) {
-	var am Methods
-	am.Merge(&input.aggregate, &output.aggregate)
 }
 
 func (m LastMethods[N, Traits, Storage, Methods]) Copy(input, output *LastStorage[N, Traits, Storage, Methods]) {
 	var am Methods
+	input.lock.Lock()
+	defer input.lock.Unlock()
 	am.Copy(&input.aggregate, &output.aggregate)
+}
+
+func (m LastMethods[N, Traits, Storage, Methods]) Merge(input, output *LastStorage[N, Traits, Storage, Methods]) {
+	var am Methods
+	output.lock.Lock()
+	defer output.lock.Unlock()
+	am.Merge(&input.aggregate, &output.aggregate)
 }
 
 func (m LastMethods[N, Traits, Storage, Methods]) SubtractSwap(operand, argument *LastStorage[N, Traits, Storage, Methods]) {
@@ -90,4 +96,11 @@ func (m LastMethods[N, Traits, Storage, Methods]) Kind() aggregation.Kind {
 func (m LastMethods[N, Traits, Storage, Methods]) HasChange(ptr *LastStorage[N, Traits, Storage, Methods]) bool {
 	var am Methods
 	return am.HasChange(&ptr.aggregate)
+}
+
+func (m LastMethods[N, Traits, Storage, Methods]) Exemplars(ptr *LastStorage[N, Traits, Storage, Methods], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
+	// By the time exemplars are read, the object does not require locking.
+	return append(in, aggregator.WeightedExemplarBits{
+		ExemplarBits: ptr.exemplar,
+	})
 }

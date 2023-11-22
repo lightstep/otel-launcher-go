@@ -15,7 +15,6 @@
 package viewstate // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/viewstate"
 
 import (
-	"fmt"
 	"sync/atomic"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
@@ -72,19 +71,16 @@ func (p *statelessSyncInstrument[N, Storage, Methods, Samp]) Collect(seq data.Se
 		ptsArr := ioutput.Points
 		point := &ptsArr[len(ptsArr)-1]
 
-		cpy, ok := methods.ToStorage(point.Aggregation)
-		if !ok {
-			panic(fmt.Sprintf("Impossible! %T", point.Aggregation))
-		}
+		cpy, _ := methods.ToStorage(point.Aggregation)
 
 		if methods.HasChange(cpy) {
 			continue
 		}
 
-		// We allowed the array to grow before this
+		// We allowed the array to grow before the above
 		// test speculatively, since when it succeeds
 		// we are able to re-use the underlying
-		// aggregator.
+		// aggregator.  Here, undo the new element.
 		ioutput.Points = ptsArr[0 : len(ptsArr)-1 : cap(ptsArr)]
 
 		// If there are no more accumulator references to the

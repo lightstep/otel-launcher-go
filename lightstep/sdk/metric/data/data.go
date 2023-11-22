@@ -17,6 +17,7 @@ package data // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metr
 import (
 	"time"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel/attribute"
@@ -87,6 +88,9 @@ type (
 		// End indicates the moment at which the collection
 		// was performed.
 		End time.Time
+
+		// Exemplars @@@
+		Exemplars []aggregator.ExemplarBits
 	}
 )
 

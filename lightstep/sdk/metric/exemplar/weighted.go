@@ -124,3 +124,16 @@ func (m WeightedMethods[N, Traits, Storage, Methods]) HasChange(ptr *WeightedSto
 	var am Methods
 	return am.HasChange(&ptr.aggregate)
 }
+
+func (m WeightedMethods[N, Traits, Storage, Methods]) Exemplars(ptr *WeightedStorage[N, Traits, Storage, Methods], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
+	// By the time exemplars are read, the object does not require locking.
+	for i := 0; i < ptr.samples.Size(); i++ {
+		ex, weight := ptr.samples.Get(i)
+		in = append(in, aggregator.WeightedExemplarBits{
+			ExemplarBits: *ex,
+			Weight:       weight,
+		})
+	}
+
+	return in
+}

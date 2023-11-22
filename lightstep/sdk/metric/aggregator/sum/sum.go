@@ -143,3 +143,7 @@ func (Methods[N, Traits, M]) ToStorage(aggr aggregation.Aggregation) (*State[N, 
 func (Methods[N, Traits, M]) SubtractSwap(operand, argument *State[N, Traits, M]) {
 	operand.value = argument.value - operand.value
 }
+
+func (Methods[N, Traits, M]) Exemplars(ptr *State[N, Traits, M], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
+	return in
+}
