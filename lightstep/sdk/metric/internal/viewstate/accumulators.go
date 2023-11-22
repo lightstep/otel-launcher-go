@@ -24,13 +24,13 @@ import (
 )
 
 // compiledSyncBase is any synchronous instrument view.
-type compiledSyncBase[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
+type compiledSyncBase[N number.Any, Storage any, Methods aggregator.Methods[N, Storage], Samp SampleFilter] struct {
 	instrumentBase[N, Storage, int64, Methods]
 }
 
 // NewAccumulator returns a Accumulator for a synchronous instrument view.
-func (c *compiledSyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set) Accumulator {
-	sc := &syncAccumulator[N, Storage, Methods]{}
+func (c *compiledSyncBase[N, Storage, Methods, Samp]) NewAccumulator(kvs attribute.Set) Accumulator {
+	sc := &syncAccumulator[N, Storage, Methods, Samp]{}
 	c.initStorage(&sc.current)
 	c.initStorage(&sc.snapshot)
 
@@ -40,7 +40,7 @@ func (c *compiledSyncBase[N, Storage, Methods]) NewAccumulator(kvs attribute.Set
 
 // findStorage locates the output Storage and adds to the auxiliary
 // reference count for synchronous instruments.
-func (c *compiledSyncBase[N, Storage, Methods]) findStorage(
+func (c *compiledSyncBase[N, Storage, Methods, Samp]) findStorage(
 	kvs attribute.Set,
 ) *storageHolder[Storage, int64] {
 	kvs = c.applyKeysFilter(kvs)
@@ -93,8 +93,17 @@ func (a multiAccumulator[N]) Update(value N, ex aggregator.ExemplarBits) {
 	}
 }
 
+func (a multiAccumulator[N]) MaySample(isTraced bool) bool {
+	for _, coll := range a {
+		if coll.(Updater[N]).MaySample(isTraced) {
+			return true
+		}
+	}
+	return false
+}
+
 // syncAccumulator
-type syncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
+type syncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, Storage], Samp SampleFilter] struct {
 	// syncLock prevents two readers from calling
 	// SnapshotAndProcess at the same moment.
 	syncLock sync.Mutex
@@ -103,12 +112,17 @@ type syncAccumulator[N number.Any, Storage any, Methods aggregator.Methods[N, St
 	holder   *storageHolder[Storage, int64]
 }
 
-func (a *syncAccumulator[N, Storage, Methods]) Update(number N, ex aggregator.ExemplarBits) {
+func (a *syncAccumulator[N, Storage, Methods, Samp]) Update(number N, ex aggregator.ExemplarBits) {
 	var methods Methods
 	methods.Update(&a.current, number, ex)
 }
 
-func (a *syncAccumulator[N, Storage, Methods]) SnapshotAndProcess(release bool) {
+func (a *syncAccumulator[N, Storage, Methods, Samp]) MaySample(isTraced bool) bool {
+	var samp Samp
+	return samp.MaySample(isTraced)
+}
+
+func (a *syncAccumulator[N, Storage, Methods, Samp]) SnapshotAndProcess(release bool) {
 	var methods Methods
 	a.syncLock.Lock()
 	defer a.syncLock.Unlock()
@@ -131,6 +145,10 @@ func (a *asyncAccumulator[N, Storage, Methods]) Update(number N, ex aggregator.E
 	a.asyncLock.Lock()
 	defer a.asyncLock.Unlock()
 	a.current = number
+}
+
+func (a *asyncAccumulator[N, Storage, Methods]) MaySample(isTraced bool) bool {
+	return false
 }
 
 func (a *asyncAccumulator[N, Storage, Methods]) SnapshotAndProcess(_ bool) {

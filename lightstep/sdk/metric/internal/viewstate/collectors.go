@@ -27,12 +27,12 @@ import (
 )
 
 // statefulSyncInstrument is a synchronous instrument that maintains cumulative state.
-type statefulSyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
-	compiledSyncBase[N, Storage, Methods]
+type statefulSyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage], Samp SampleFilter] struct {
+	compiledSyncBase[N, Storage, Methods, Samp]
 }
 
 // Collect for synchronous cumulative temporality.
-func (p *statefulSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
+func (p *statefulSyncInstrument[N, Storage, Methods, Samp]) Collect(seq data.Sequence, output *[]data.Instrument) {
 	p.instLock.Lock()
 	defer p.instLock.Unlock()
 
@@ -44,12 +44,12 @@ func (p *statefulSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence,
 }
 
 // statelessSyncInstrument is a synchronous instrument that maintains no state.
-type statelessSyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
-	compiledSyncBase[N, Storage, Methods]
+type statelessSyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage], Samp SampleFilter] struct {
+	compiledSyncBase[N, Storage, Methods, Samp]
 }
 
 // Collect for synchronous delta temporality.
-func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
+func (p *statelessSyncInstrument[N, Storage, Methods, Samp]) Collect(seq data.Sequence, output *[]data.Instrument) {
 	var methods Methods
 
 	p.instLock.Lock()

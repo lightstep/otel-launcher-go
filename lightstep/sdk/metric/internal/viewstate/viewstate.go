@@ -94,6 +94,15 @@ type Instrument interface {
 	NewAccumulator(kvs attribute.Set) Accumulator
 }
 
+// SampleFilter's indicates when exemplars may be sampled.
+type SampleFilter interface {
+	// MaySample indicates the possibility of sampling
+	// exemplars. the isTraced is calculated by the caller since
+	// it already has evaluated the context for additional
+	// attributes.
+	MaySample(isTraced bool) bool
+}
+
 // Updater captures single measurements, for N an int64 or float64.
 type Updater[N number.Any] interface {
 	// Update captures a single measurement.  For synchronous
@@ -101,6 +110,8 @@ type Updater[N number.Any] interface {
 	// aggregator.  For asynchronous instruments, the last value
 	// is captured by the accumulator snapshot.
 	Update(value N, ex aggregator.ExemplarBits)
+
+	SampleFilter
 }
 
 // Accumulator is an intermediate interface used for short-term
@@ -410,6 +421,19 @@ func buildView[N number.Any, Traits number.Traits[N]](behavior singleBehavior) l
 	return compileAsync[N, Traits](behavior)
 }
 
+func newSyncViewWithF[
+	N number.Any,
+	Storage any,
+	Methods aggregator.Methods[N, Storage],
+](behavior singleBehavior) leafInstrument {
+	switch behavior.acfg.Exemplar.Filter {
+	case aggregator.AlwaysOnKind:
+		return newSyncView[N, Storage, Methods, alwaysOnSampleFilter](behavior)
+	default:
+		return newSyncView[N, Storage, Methods, whenTracedSampleFilter](behavior)
+	}
+}
+
 func newSyncViewWithEx[
 	N number.Any,
 	Traits number.Traits[N],
@@ -418,16 +442,18 @@ func newSyncViewWithEx[
 ](behavior singleBehavior) leafInstrument {
 	if behavior.acfg.Exemplar.Filter == aggregator.AlwaysOffKind || behavior.acfg.Exemplar.Size == 0 {
 		// Bypass the exemplar reservoir.
-		return newSyncView[N, Storage, Methods](behavior)
+		return newSyncView[N, Storage, Methods, alwaysOffSampleFilter](behavior)
 	}
 	if behavior.acfg.Exemplar.Size <= 1 {
-		return newSyncView[N,
+		return newSyncViewWithF[N,
 			exemplar.LastStorage[N, Traits, Storage, Methods],
-			exemplar.LastMethods[N, Traits, Storage, Methods]](behavior)
+			exemplar.LastMethods[N, Traits, Storage, Methods],
+		](behavior)
 	}
-	return newSyncView[N,
+	return newSyncViewWithF[N,
 		exemplar.WeightedStorage[N, Traits, Storage, Methods],
-		exemplar.WeightedMethods[N, Traits, Storage, Methods]](behavior)
+		exemplar.WeightedMethods[N, Traits, Storage, Methods],
+	](behavior)
 }
 
 // newSyncView returns a compiled synchronous instrument.  If the view
@@ -438,6 +464,7 @@ func newSyncView[
 	N number.Any,
 	Storage any,
 	Methods aggregator.Methods[N, Storage],
+	Samp SampleFilter,
 ](behavior singleBehavior) leafInstrument {
 	// Note: nolint:govet below is to avoid copylocks.  The lock
 	// is being copied before the new object is returned to the
@@ -452,16 +479,16 @@ func newSyncView[
 		keysSet:    behavior.keysSet,
 		keysFilter: behavior.keysFilter,
 	}
-	instrument := compiledSyncBase[N, Storage, Methods]{
+	instrument := compiledSyncBase[N, Storage, Methods, Samp]{
 		instrumentBase: metric, //nolint:govet
 	}
 	if behavior.tempo == aggregation.DeltaTemporality {
-		return &statelessSyncInstrument[N, Storage, Methods]{
+		return &statelessSyncInstrument[N, Storage, Methods, Samp]{
 			compiledSyncBase: instrument, //nolint:govet
 		}
 	}
 
-	return &statefulSyncInstrument[N, Storage, Methods]{
+	return &statefulSyncInstrument[N, Storage, Methods, Samp]{
 		compiledSyncBase: instrument, //nolint:govet
 	}
 }
@@ -724,4 +751,20 @@ func viewDescriptor(instrument sdkinstrument.Descriptor, v view.ClauseConfig) sd
 		description = v.Description()
 	}
 	return sdkinstrument.NewDescriptor(name, ikind, nkind, description, unit)
+}
+
+type alwaysOffSampleFilter struct{}
+type alwaysOnSampleFilter struct{}
+type whenTracedSampleFilter struct{}
+
+func (alwaysOffSampleFilter) MaySample(isTraced bool) bool {
+	return false
+}
+
+func (alwaysOnSampleFilter) MaySample(isTraced bool) bool {
+	return true
+}
+
+func (whenTracedSampleFilter) MaySample(isTraced bool) bool {
+	return isTraced
 }

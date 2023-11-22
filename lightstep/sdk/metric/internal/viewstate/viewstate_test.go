@@ -118,7 +118,7 @@ var (
 
 	// Both accumulators pass for updaters, in at least one case.
 	_ Updater[float64] = &asyncAccumulator[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]{}
-	_ Updater[float64] = &syncAccumulator[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]{}
+	_ Updater[float64] = &syncAccumulator[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods, alwaysOffSampleFilter]{}
 )
 
 const (
@@ -1399,7 +1399,7 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 	acc2.(Updater[float64]).Update(1, nobits)
 
 	// There are two references to one entry in the map.
-	require.Equal(t, 1, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+	require.Equal(t, 1, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods, alwaysOffSampleFilter]).data))
 
 	acc1.SnapshotAndProcess(false)
 	acc2.SnapshotAndProcess(true)
@@ -1414,7 +1414,7 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 		),
 	)
 
-	require.Equal(t, 1, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+	require.Equal(t, 1, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods, alwaysOffSampleFilter]).data))
 
 	acc1.SnapshotAndProcess(true)
 
@@ -1425,7 +1425,7 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 		),
 	)
 
-	require.Equal(t, 0, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+	require.Equal(t, 0, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods, alwaysOffSampleFilter]).data))
 }
 
 func TestRegexpMatch(t *testing.T) {

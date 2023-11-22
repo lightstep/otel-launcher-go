@@ -44,7 +44,7 @@ const (
 	// exemplars require additional synchronization.
 	AlwaysOffKind ExemplarFilterKind = iota
 	AlwaysOnKind
-	TraceBasedKind
+	WhenTracedKind
 )
 
 // Implementation note: this code supports one kind of
