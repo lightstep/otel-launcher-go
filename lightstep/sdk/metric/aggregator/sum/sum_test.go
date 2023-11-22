@@ -23,6 +23,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var nobits aggregator.ExemplarBits
+
 func TestMonotonicity(t *testing.T) {
 	require.True(t, NewMonotonicInt64(1).IsMonotonic())
 	require.True(t, NewMonotonicFloat64(2).IsMonotonic())
@@ -56,9 +58,9 @@ func genericSubtractTest[N number.Any, Storage any, Methods aggregator.Methods[N
 	methods.Init(&argument, aggregator.Config{})
 	methods.Init(&expect, aggregator.Config{})
 
-	methods.Update(&operand, 3)
-	methods.Update(&argument, 10)
-	methods.Update(&expect, 7)
+	methods.Update(&operand, 3, nobits)
+	methods.Update(&argument, 10, nobits)
+	methods.Update(&expect, 7, nobits)
 
 	methods.SubtractSwap(&operand, &argument) // operand(7) = argument(10) - operand(3)
 

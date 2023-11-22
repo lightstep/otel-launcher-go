@@ -720,7 +720,6 @@ func TestAnySumAggregation(t *testing.T) {
 		}
 
 		acc := inst.NewAccumulator(attribute.NewSet())
-		fmt.Printf("WHAT %T\n", acc)
 		acc.(Updater[float64]).Update(1, nobits)
 		acc.SnapshotAndProcess(false)
 	}

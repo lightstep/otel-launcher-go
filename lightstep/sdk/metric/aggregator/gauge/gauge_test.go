@@ -25,6 +25,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var nobits = aggregator.ExemplarBits{}
+
 func TestInt64Gauge(t *testing.T) {
 	test.GenericAggregatorTest[int64, Int64, Int64Methods](t, number.ToInt64)
 }
@@ -61,7 +63,7 @@ func genericLastValueTest[N number.Any, Storage any, Methods aggregator.Methods[
 				defer updaters.Done()
 
 				for j := 0; j < ops/workers; j++ {
-					methods.Update(input, N(i+1))
+					methods.Update(input, N(i+1), nobits)
 				}
 			}(i)
 		}
@@ -82,7 +84,7 @@ func genericLastValueTest[N number.Any, Storage any, Methods aggregator.Methods[
 	t.Run("copy2", func(t *testing.T) {
 		in := init()
 		out := init()
-		methods.Update(in, 17)
+		methods.Update(in, 17, nobits)
 		methods.Copy(in, out)
 
 		require.Equal(t, in, out)
@@ -91,8 +93,8 @@ func genericLastValueTest[N number.Any, Storage any, Methods aggregator.Methods[
 	t.Run("merge1", func(t *testing.T) {
 		first := init()
 		second := init()
-		methods.Update(first, 17)
-		methods.Update(second, 23)
+		methods.Update(first, 17, nobits)
+		methods.Update(second, 23, nobits)
 
 		methods.Merge(first, second)
 
@@ -105,8 +107,8 @@ func genericLastValueTest[N number.Any, Storage any, Methods aggregator.Methods[
 	t.Run("merge2", func(t *testing.T) {
 		first := init()
 		second := init()
-		methods.Update(second, 23)
-		methods.Update(first, 17)
+		methods.Update(second, 23, nobits)
+		methods.Update(first, 17, nobits)
 
 		methods.Merge(first, second)
 
