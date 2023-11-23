@@ -196,10 +196,20 @@ dynamically configure allowed cardinality values.
 
 #### Exemplars
 
-Collection of metric exemplars are off by default.
+**Status**: Experimental
 
-Exemplars can be configured using the `aggregator.Config` structure, or
-with a hint like:
+Exemplars are sample measurements associated with synchronous metric
+instruments.  When OpenTelemetry tracing is used in conjunction with
+this Metrics SDK, exemplars will be annotated with the TraceID and
+SpanID of the traced context.
+
+Collection of metric exemplars are off by default.  Exemplars are
+recommended for use with Histograms, especially, and also with
+monotonic counters.  Exemplars are recommended for use with Counter,
+Histogram, and (synchronous) Gauge instruments.
+
+Exemplars can be configured using the `aggregator.Config.Exemplar`
+structure, or with a hint like:
 
 ```
 {
@@ -222,7 +232,46 @@ implementations:
   method is automatically selected when the size is 1.
 - "Weighted": uses a weighted sampling technique.
 
-With eighted sampling, an unbiased sampler is used such that the
+With weighted sampling, an unbiased sampler is used such that the
 distribution of values can be estimated from the exemplars.  Each
-exemplar includes a `sample.weight` attribute indicating it's
+exemplar includes a `sample.weight` attribute indicating its
 contribution to the aggregate value.
+
+Note that this weighted sampling property does not apply to
+UpDownCounter instruments, because they allow negative measurements.
+however these instruments can still generate exemplars.
+
+As a simple example, consider a counter instrument with two input
+attribute values counting blue and yellow items, i.e.,
+
+```
+counter := meter.Int64Counter("...")
+
+for _ := range BLUE {
+  ctx, span := tracer.Start(...)
+  counter.Add(ctx, 1, attribute.String("color", "yellow")
+  span.End()
+}
+
+for _ := range YELLOW {
+  ctx, span := tracer.Start(...)
+  counter.Add(ctx, 1, attribute.String("color", "blue")
+  span.End()
+}
+```
+
+Suppose the attribute is filtered, so that a single timeseries is
+generated.  The aggregate sum equals `len(YELLOW) + len(BLUE)`.
+
+Each exemplar will have one of the filtered attributes, `color=yellow`
+or `color=blue`, Each exemplar will have a value of 1, in this case
+(i.e., the original measurement).  The ratio of exemplars with
+`color=yellow` or `color=blue` will match the ratio of counts
+associated with each.
+
+If the number of BLUE items is 3000, and the number of YELLOW items is
+7000, and the number of exemplars is 1000, then:
+
+- We expect 300 BLUE examplars
+- We expect 700 YELLOW examplars
+- Each exemplar has a `sample.weight` of 10, the ratio of total count to exemplar count.

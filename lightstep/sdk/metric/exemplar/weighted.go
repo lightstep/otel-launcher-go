@@ -15,6 +15,7 @@
 package exemplar
 
 import (
+	"math"
 	"sync"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
@@ -71,7 +72,16 @@ func (m WeightedMethods[N, Storage, Methods]) Update(ptr *WeightedStorage[N, Sto
 	am.Update(&ptr.aggregate, value, ex)
 
 	// The weight is... 1 for Histograms & Gauges, value for Sums.
-	ptr.samples.Add(&ex, am.Weight(value))
+	// The math.Abs() is a safety mechanism.  UpDownCounters would
+	// otherwise cause a panic in varopt.  This is a documented
+	// caveat-- for the weighted sampling logic to apply (and be
+	// unbiased) for UpDownCounter measurements, we would have to
+	// treat it as two monotonic instruments, one for positive and
+	// one for negative measurements, and collect two samples, for
+	// this process to work.  Use of absolute value can introduce
+	// bias if the aim is to estimate the original data, but it
+	// still yields useful exemplars.
+	ptr.samples.Add(&ex, math.Abs(am.Weight(value)))
 }
 
 func (m WeightedMethods[N, Storage, Methods]) Move(input, output *WeightedStorage[N, Storage, Methods]) {
