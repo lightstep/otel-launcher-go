@@ -57,9 +57,16 @@ var (
 	}
 
 	testStmtAttrs = []attribute.KeyValue{
-		attribute.String("A", "1"),
-		attribute.Int("B", 2),
+		filteredAttr,
+		unfilteredAttr,
 	}
+
+	filteredAttr   = attribute.String("A", "1")
+	unfilteredAttr = attribute.Int("B", 2)
+)
+
+const (
+	exemplarTimestamp uint64 = 12345
 )
 
 func attrs2otlp(kvs ...attribute.KeyValue) []*commonpb.KeyValue {
@@ -149,7 +156,11 @@ func (t *clientTestSuite) SetupTest() {
 	t.NoError(err)
 
 	t.sdk = sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp, math.MaxInt64), view.WithDefaultAggregationTemporalitySelector(aggregation.LowMemoryTemporality)),
+		sdkmetric.WithReader(
+			sdkmetric.NewPeriodicReader(exp, math.MaxInt64),
+			view.WithDefaultAggregationTemporalitySelector(aggregation.LowMemoryTemporality),
+			view.WithClause(view.WithKeys([]attribute.Key{"B"})),
+		),
 		sdkmetric.WithResource(
 			resource.NewSchemaless(testResourceAttrs...),
 		),
@@ -290,7 +301,7 @@ func (t *clientTestSuite) TestCounterAndGauge() {
 										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_DELTA,
 										DataPoints: []*metricspb.NumberDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Value: &metricspb.NumberDataPoint_AsInt{
 													AsInt: 1,
 												},
@@ -305,7 +316,7 @@ func (t *clientTestSuite) TestCounterAndGauge() {
 									Gauge: &metricspb.Gauge{
 										DataPoints: []*metricspb.NumberDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Value: &metricspb.NumberDataPoint_AsInt{
 													AsInt: 2,
 												},
@@ -371,7 +382,7 @@ func (t *clientTestSuite) TestUpDownCounters() {
 										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_DELTA,
 										DataPoints: []*metricspb.NumberDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Value: &metricspb.NumberDataPoint_AsDouble{
 													AsDouble: 1,
 												},
@@ -387,7 +398,7 @@ func (t *clientTestSuite) TestUpDownCounters() {
 										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_CUMULATIVE,
 										DataPoints: []*metricspb.NumberDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Value: &metricspb.NumberDataPoint_AsDouble{
 													AsDouble: 2,
 												},
@@ -457,7 +468,7 @@ func (t *clientTestSuite) TestHistograms() {
 										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_DELTA,
 										DataPoints: []*metricspb.ExponentialHistogramDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Count:      3,
 												Min:        newFloat64(1),
 												Max:        newFloat64(4),
@@ -481,7 +492,7 @@ func (t *clientTestSuite) TestHistograms() {
 										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_CUMULATIVE,
 										DataPoints: []*metricspb.HistogramDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Count:      3,
 												Min:        newFloat64(1),
 												Max:        newFloat64(4),
@@ -528,7 +539,9 @@ func (t *clientTestSuite) TestExemplar() {
 	)
 	t.NoError(err)
 
-	counter.Add(ctx, 1, metric.WithAttributes(testStmtAttrs...))
+	before := time.Now()
+	counter.Add(ctx, 17, metric.WithAttributes(testStmtAttrs...))
+	after := time.Now()
 
 	_ = t.sdk.Shutdown(ctx)
 
@@ -538,6 +551,14 @@ func (t *clientTestSuite) TestExemplar() {
 
 	data, err := pmetricotlp.NewExportRequestFromMetrics(t.sink.AllMetrics()[0]).MarshalProto()
 	t.NoError(err)
+
+	exemplars := []*metricspb.Exemplar{
+		{
+			TimeUnixNano:       exemplarTimestamp,
+			Value:              &metricspb.Exemplar_AsInt{AsInt: 17},
+			FilteredAttributes: attrs2otlp(filteredAttr),
+		},
+	}
 
 	expect := colmetricspb.ExportMetricsServiceRequest{
 		ResourceMetrics: []*metricspb.ResourceMetrics{
@@ -560,16 +581,11 @@ func (t *clientTestSuite) TestExemplar() {
 										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_DELTA,
 										DataPoints: []*metricspb.NumberDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Value: &metricspb.NumberDataPoint_AsInt{
-													AsInt: 1,
+													AsInt: 17,
 												},
-												Exemplars: []*metricspb.Exemplar{
-													&metricspb.Exemplar{
-														TimeUnixNano: 1,
-														Value:        &metricspb.Exemplar_AsInt{1},
-													},
-												},
+												Exemplars: exemplars,
 											},
 										},
 									},
@@ -584,6 +600,14 @@ func (t *clientTestSuite) TestExemplar() {
 
 	var export colmetricspb.ExportMetricsServiceRequest
 	t.NoError(proto.Unmarshal(data, &export))
+
+	// The following is similar to assertTimestamps, but for the
+	// exemplar timestamp.  The timestamp should be in-range.
+	// Reset it to exemplarTimestamp for the cmp.Diff to succeed.
+	ts := pcommon.Timestamp(export.ResourceMetrics[0].ScopeMetrics[0].Metrics[0].Data.(*metricspb.Metric_Sum).Sum.DataPoints[0].Exemplars[0].TimeUnixNano)
+	t.True(before.Before(ts.AsTime()))
+	t.True(after.After(ts.AsTime()))
+	export.ResourceMetrics[0].ScopeMetrics[0].Metrics[0].Data.(*metricspb.Metric_Sum).Sum.DataPoints[0].Exemplars[0].TimeUnixNano = exemplarTimestamp
 
 	t.Empty(cmp.Diff(prototext.Format(&expect), prototext.Format(&export)))
 }

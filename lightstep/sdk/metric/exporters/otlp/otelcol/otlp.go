@@ -69,7 +69,7 @@ func copySumPoints(m pmetric.Metric, inM data.Instrument, mono bool) {
 			panic("unhandled case")
 		}
 
-		copyExemplars(dp.Exemplars(), inP.Attributes, inM, inP.Exemplars)
+		copyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
 }
 
@@ -92,6 +92,8 @@ func copyGaugePoints(m pmetric.Metric, inM data.Instrument) {
 		default:
 			panic("unhandled case")
 		}
+
+		copyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
 }
 
@@ -141,6 +143,8 @@ func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 		default:
 			panic("unhandled case")
 		}
+
+		copyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
 }
 
@@ -185,6 +189,8 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 		default:
 			panic("unhandled case")
 		}
+
+		copyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
 }
 
@@ -239,11 +245,11 @@ func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
 	return out
 }
 
-func copyExemplars(dest pmetric.ExemplarSlice, attrs attribute.Set, inM data.Instrument, src []aggregator.WeightedExemplarBits) {
+func copyExemplars(dest pmetric.ExemplarSlice, attrs attribute.Set, nk number.Kind, src []aggregator.WeightedExemplarBits) {
 	for _, wex := range src {
 		ex := dest.AppendEmpty()
 		ex.SetTimestamp(pcommon.NewTimestampFromTime(wex.Time))
-		if inM.Descriptor.NumberKind == number.Int64Kind {
+		if nk == number.Int64Kind {
 			ex.SetIntValue(number.ToInt64(wex.Number))
 		} else {
 			ex.SetDoubleValue(number.ToFloat64(wex.Number))

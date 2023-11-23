@@ -48,7 +48,7 @@ func (m LastMethods[N, Storage, Methods]) Init(ptr *LastStorage[N, Storage, Meth
 
 func (m LastMethods[N, Storage, Methods]) Update(ptr *LastStorage[N, Storage, Methods], number N, ex aggregator.ExemplarBits) {
 	var am Methods
-	if ex.Span == nil {
+	if ex.Attributes == nil {
 		am.Update(&ptr.aggregate, number, ex)
 		return
 	}
@@ -63,6 +63,7 @@ func (m LastMethods[N, Storage, Methods]) Move(input, output *LastStorage[N, Sto
 	var am Methods
 	input.lock.Lock()
 	defer input.lock.Unlock()
+	output.exemplar, input.exemplar = input.exemplar, output.exemplar
 	am.Move(&input.aggregate, &output.aggregate)
 }
 
@@ -70,6 +71,7 @@ func (m LastMethods[N, Storage, Methods]) Copy(input, output *LastStorage[N, Sto
 	var am Methods
 	input.lock.Lock()
 	defer input.lock.Unlock()
+	output.exemplar = input.exemplar
 	am.Copy(&input.aggregate, &output.aggregate)
 }
 
@@ -77,6 +79,9 @@ func (m LastMethods[N, Storage, Methods]) Merge(input, output *LastStorage[N, St
 	var am Methods
 	output.lock.Lock()
 	defer output.lock.Unlock()
+	if input.exemplar.Attributes != nil {
+		output.exemplar = input.exemplar
+	}
 	am.Merge(&input.aggregate, &output.aggregate)
 }
 
