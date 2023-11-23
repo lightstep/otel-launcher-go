@@ -565,7 +565,10 @@ func (t *clientTestSuite) TestExemplar() {
 													AsInt: 1,
 												},
 												Exemplars: []*metricspb.Exemplar{
-													&metricspb.Exemplar{},
+													&metricspb.Exemplar{
+														TimeUnixNano: 1,
+														Value:        &metricspb.Exemplar_AsInt{1},
+													},
 												},
 											},
 										},
