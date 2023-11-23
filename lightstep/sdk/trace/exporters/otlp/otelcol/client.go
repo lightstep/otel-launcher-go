@@ -20,6 +20,7 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/open-telemetry/otel-arrow/collector/exporter/otelarrowexporter"
+	"github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -29,11 +30,10 @@ import (
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/processor"
-	"go.opentelemetry.io/collector/processor/batchprocessor"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/metric/noop"
+	noopmetric "go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/trace"
-	apitrace "go.opentelemetry.io/otel/trace"
+	nooptrace "go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
@@ -45,7 +45,7 @@ type Option func(*Config)
 type Config struct {
 	SelfMetrics bool
 	SelfSpans   bool
-	Batcher     batchprocessor.Config
+	Batcher     concurrentbatchprocessor.Config
 	Exporter    otelarrowexporter.Config
 }
 
@@ -76,14 +76,15 @@ func NewDefaultConfig() Config {
 	return Config{
 		SelfMetrics: true,
 		SelfSpans:   false,
-		Batcher: batchprocessor.Config{
-			Timeout:          0,
-			SendBatchSize:    0,
-			SendBatchMaxSize: 10000,
+		Batcher: concurrentbatchprocessor.Config{
+			Timeout:          time.Second,
+			SendBatchSize:    1000,
+			SendBatchMaxSize: 1500,
+			MaxInFlightBytes: 32 * 1024 * 1024,
 		},
 		Exporter: otelarrowexporter.Config{
 			TimeoutSettings: exporterhelper.TimeoutSettings{
-				Timeout: 10 * time.Second,
+				Timeout: 15 * time.Second,
 			},
 			RetrySettings: exporterhelper.RetrySettings{
 				Enabled: false,
@@ -166,13 +167,13 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 	if cfg.SelfSpans {
 		c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
 	} else {
-		c.settings.TelemetrySettings.TracerProvider = apitrace.NewNoopTracerProvider()
+		c.settings.TelemetrySettings.TracerProvider = nooptrace.NewTracerProvider()
 	}
 	if cfg.SelfMetrics {
 		c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
 		c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
 	} else {
-		c.settings.TelemetrySettings.MeterProvider = noop.NewMeterProvider()
+		c.settings.TelemetrySettings.MeterProvider = noopmetric.NewMeterProvider()
 	}
 
 	exp, err := otelarrowexporter.NewFactory().CreateTracesExporter(ctx, c.settings, &cfg.Exporter)
@@ -186,7 +187,7 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 		BuildInfo:         c.settings.BuildInfo,
 	}
 
-	bat, err := batchprocessor.NewFactory().CreateTracesProcessor(ctx, bset, &cfg.Batcher, exp)
+	bat, err := concurrentbatchprocessor.NewFactory().CreateTracesProcessor(ctx, bset, &cfg.Batcher, exp)
 	if err != nil {
 		return nil, err
 	}
