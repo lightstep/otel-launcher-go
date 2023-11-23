@@ -15,6 +15,8 @@
 package otelcol
 
 import (
+	"fmt"
+
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
@@ -23,9 +25,11 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/minmaxsumcount"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exemplar"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 )
 
@@ -52,7 +56,7 @@ func copySumPoints(m pmetric.Metric, inM data.Instrument, mono bool) {
 
 		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
-		switch t := inP.Aggregation.(type) {
+		switch t := unwrapExemplars(inP.Aggregation).(type) {
 		case *sum.MonotonicInt64:
 			dp.SetIntValue(number.ToInt64(t.Sum()))
 		case *sum.NonMonotonicInt64:
@@ -80,7 +84,7 @@ func copyGaugePoints(m pmetric.Metric, inM data.Instrument) {
 
 		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
-		switch t := inP.Aggregation.(type) {
+		switch t := unwrapExemplars(inP.Aggregation).(type) {
 		case *gauge.Int64:
 			dp.SetIntValue(number.ToInt64(t.Gauge()))
 		case *gauge.Float64:
@@ -103,7 +107,7 @@ func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 
 		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
-		switch t := inP.Aggregation.(type) {
+		switch t := unwrapExemplars(inP.Aggregation).(type) {
 		case *histogram.Int64:
 			dp.SetSum(t.Sum().CoerceToFloat64(number.Int64Kind))
 			dp.SetCount(t.Count())
@@ -163,7 +167,7 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 
 		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
-		switch t := inP.Aggregation.(type) {
+		switch t := unwrapExemplars(inP.Aggregation).(type) {
 		case *minmaxsumcount.Int64:
 			dp.SetSum(t.Sum().CoerceToFloat64(number.Int64Kind))
 			dp.SetCount(t.Count())
@@ -182,6 +186,13 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 			panic("unhandled case")
 		}
 	}
+}
+
+func unwrapExemplars(agg aggregation.Aggregation) aggregation.Aggregation {
+	if unwr, ok := agg.(exemplar.Unwrapper); ok {
+		agg = unwr.Unwrap()
+	}
+	return agg
 }
 
 func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
@@ -206,7 +217,9 @@ func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
 			m.SetUnit(string(inM.Descriptor.Unit))
 			m.SetDescription(inM.Descriptor.Description)
 
-			switch inM.Points[0].Aggregation.(type) {
+			agg := unwrapExemplars(inM.Points[0].Aggregation)
+
+			switch agg.(type) {
 			case *sum.MonotonicInt64, *sum.MonotonicFloat64:
 				copySumPoints(m, inM, true)
 			case *sum.NonMonotonicInt64, *sum.NonMonotonicFloat64:
@@ -217,6 +230,8 @@ func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
 				copyHistogramPoints(m, inM)
 			case *minmaxsumcount.Int64, *minmaxsumcount.Float64:
 				copyMMSCPoints(m, inM)
+			default:
+				otel.Handle(fmt.Errorf("unknown concrete aggregator type: %T", agg))
 			}
 		}
 	}
@@ -258,7 +273,7 @@ func copyExemplars(dest pmetric.ExemplarSlice, attrs attribute.Set, inM data.Ins
 
 		// TL;DR wishing we could start from scratch with a
 		// redesigned attribute.Set.
-		for o > 0 {
+		for o > 0 && f > 0 {
 			okv := oiter.Attribute()
 			fkv := fiter.Attribute()
 

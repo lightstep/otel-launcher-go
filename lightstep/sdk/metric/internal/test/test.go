@@ -24,6 +24,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exemplar"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
@@ -112,10 +113,6 @@ func CollectScopeReuse(t *testing.T, collectors []data.Collector, seq data.Seque
 	return output.Instruments
 }
 
-type exemplarUnwrapper interface {
-	Unwrap() aggregation.Aggregation
-}
-
 func RequireEqualPoints(t *testing.T, output []data.Point, expected ...data.Point) {
 	t.Helper()
 
@@ -143,7 +140,7 @@ func RequireEqualPoints(t *testing.T, output []data.Point, expected ...data.Poin
 		// intermediate state, so we replace the aggregation with the
 		// underlying aggregation for the purposes of testing its correct
 		// value w/o testing sampler state.
-		if unwr, ok := out.Aggregation.(exemplarUnwrapper); ok {
+		if unwr, ok := out.Aggregation.(exemplar.Unwrapper); ok {
 			out.Aggregation = unwr.Unwrap()
 		}
 

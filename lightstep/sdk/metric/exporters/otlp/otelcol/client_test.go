@@ -564,6 +564,9 @@ func (t *clientTestSuite) TestExemplar() {
 												Value: &metricspb.NumberDataPoint_AsInt{
 													AsInt: 1,
 												},
+												Exemplars: []*metricspb.Exemplar{
+													&metricspb.Exemplar{},
+												},
 											},
 										},
 									},

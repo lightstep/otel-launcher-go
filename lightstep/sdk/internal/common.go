@@ -15,6 +15,7 @@
 package internal
 
 import (
+	"fmt"
 	"sync"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
@@ -101,6 +102,6 @@ func CopyAttribute(dest pcommon.Map, inA attribute.KeyValue) {
 			sl.AppendEmpty().SetStr(v)
 		}
 	default:
-		panic("unhandled case")
+		panic(fmt.Errorf("unhandled case: %v", inA.Value.Type()))
 	}
 }
