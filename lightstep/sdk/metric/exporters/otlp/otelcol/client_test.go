@@ -17,13 +17,17 @@ package otelcol
 import (
 	"context"
 	"math"
+	"math/rand"
 	"net"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	sdkmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"github.com/open-telemetry/otel-arrow/collector/receiver/otelarrowreceiver"
 	"github.com/stretchr/testify/suite"
@@ -66,7 +70,7 @@ var (
 )
 
 const (
-	exemplarTimestamp uint64 = 12345
+	exemplarTimestamp pcommon.Timestamp = 12345
 )
 
 func attrs2otlp(kvs ...attribute.KeyValue) []*commonpb.KeyValue {
@@ -521,7 +525,9 @@ func (t *clientTestSuite) TestHistograms() {
 	t.Empty(cmp.Diff(prototext.Format(&expect), prototext.Format(&export)))
 }
 
-func (t *clientTestSuite) TestExemplar() {
+func (t *clientTestSuite) TestSumExemplars() {
+	// Note: only sum exemplars are tested.  TODO: the other data
+	// points' code is nearly identical, but could be more tested.
 	ctx := context.Background()
 
 	meter := t.sdk.Meter("test-meter")
@@ -554,7 +560,7 @@ func (t *clientTestSuite) TestExemplar() {
 
 	exemplars := []*metricspb.Exemplar{
 		{
-			TimeUnixNano:       exemplarTimestamp,
+			TimeUnixNano:       uint64(exemplarTimestamp),
 			Value:              &metricspb.Exemplar_AsInt{AsInt: 17},
 			FilteredAttributes: attrs2otlp(filteredAttr),
 		},
@@ -605,9 +611,78 @@ func (t *clientTestSuite) TestExemplar() {
 	// exemplar timestamp.  The timestamp should be in-range.
 	// Reset it to exemplarTimestamp for the cmp.Diff to succeed.
 	ts := pcommon.Timestamp(export.ResourceMetrics[0].ScopeMetrics[0].Metrics[0].Data.(*metricspb.Metric_Sum).Sum.DataPoints[0].Exemplars[0].TimeUnixNano)
-	t.True(before.Before(ts.AsTime()))
-	t.True(after.After(ts.AsTime()))
-	export.ResourceMetrics[0].ScopeMetrics[0].Metrics[0].Data.(*metricspb.Metric_Sum).Sum.DataPoints[0].Exemplars[0].TimeUnixNano = exemplarTimestamp
+	t.True(!before.After(ts.AsTime()))
+	t.True(!after.Before(ts.AsTime()))
+	export.ResourceMetrics[0].ScopeMetrics[0].Metrics[0].Data.(*metricspb.Metric_Sum).Sum.DataPoints[0].Exemplars[0].TimeUnixNano = uint64(exemplarTimestamp)
 
 	t.Empty(cmp.Diff(prototext.Format(&expect), prototext.Format(&export)))
+}
+
+func (t *clientTestSuite) TestFilteredAttributes() {
+	allAttrs := []attribute.KeyValue{attribute.String("A", "1"),
+		attribute.String("B", "2"),
+		attribute.String("C", "3"),
+	}
+
+	// exhaustively
+	for nk := number.Int64Kind; nk <= number.Float64Kind; nk++ {
+		for perm := 0; perm < 1<<len(allAttrs); perm++ {
+			for shuf := 0; shuf < 8; shuf++ {
+				rand.Shuffle(len(allAttrs), func(i, j int) {
+					allAttrs[i], allAttrs[j] = allAttrs[j], allAttrs[i]
+				})
+
+				var useAttrs []attribute.KeyValue
+				var filtAttrs []attribute.KeyValue
+
+				for bit := 0; bit < len(allAttrs); bit++ {
+					if (1<<bit)&perm != 0 {
+						useAttrs = append(useAttrs, allAttrs[bit])
+					} else {
+						filtAttrs = append(filtAttrs, allAttrs[bit])
+					}
+				}
+				var num number.Number
+				if nk == number.Int64Kind {
+					num = number.FromInt64(1000)
+				} else {
+					num = number.FromFloat64(1000)
+				}
+
+				attrs := attribute.NewSet(useAttrs...)
+
+				dest := pmetric.NewExemplarSlice()
+				copyExemplars(
+					dest, attrs, nk,
+					[]aggregator.WeightedExemplarBits{
+						{
+							ExemplarBits: aggregator.ExemplarBits{
+								Time:       exemplarTimestamp.AsTime(),
+								Attributes: allAttrs,
+								Number:     num,
+							},
+							Weight: 0, // w/ reservoir size == 1, weight == 0
+						},
+					})
+
+				expect := pmetric.NewExemplarSlice()
+				exex := expect.AppendEmpty()
+				exex.SetTimestamp(exemplarTimestamp)
+				if nk == number.Int64Kind {
+					exex.SetIntValue(1000)
+				} else {
+					exex.SetDoubleValue(1000)
+				}
+				// Sort the expected filtered attributes so they match
+				sort.Slice(filtAttrs, func(i, j int) bool {
+					return filtAttrs[i].Key < filtAttrs[j].Key
+				})
+
+				for _, oattr := range attrs2otlp(filtAttrs...) {
+					exex.FilteredAttributes().PutStr(oattr.Key, oattr.Value.Value.(*commonpb.AnyValue_StringValue).StringValue)
+				}
+				t.Equal(expect, dest)
+			}
+		}
+	}
 }
