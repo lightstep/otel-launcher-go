@@ -509,3 +509,75 @@ func (t *clientTestSuite) TestHistograms() {
 
 	t.Empty(cmp.Diff(prototext.Format(&expect), prototext.Format(&export)))
 }
+
+func (t *clientTestSuite) TestExemplar() {
+	ctx := context.Background()
+
+	meter := t.sdk.Meter("test-meter")
+
+	counter, err := meter.Int64Counter("how-many",
+		metric.WithDescription(`{
+	  "config": {
+	    "exemplar": {
+	      "filter": "always_on",
+	      "size": 1
+	    }
+	  },
+	  "description": "incredible"
+	}`),
+	)
+	t.NoError(err)
+
+	counter.Add(ctx, 1, metric.WithAttributes(testStmtAttrs...))
+
+	_ = t.sdk.Shutdown(ctx)
+
+	t.Equal(1, len(t.sink.AllMetrics()))
+
+	t.assertTimestamps()
+
+	data, err := pmetricotlp.NewExportRequestFromMetrics(t.sink.AllMetrics()[0]).MarshalProto()
+	t.NoError(err)
+
+	expect := colmetricspb.ExportMetricsServiceRequest{
+		ResourceMetrics: []*metricspb.ResourceMetrics{
+			{
+				Resource: &resourcepb.Resource{
+					Attributes: attrs2otlp(testResourceAttrs...),
+				},
+				ScopeMetrics: []*metricspb.ScopeMetrics{
+					{
+						Scope: &commonpb.InstrumentationScope{
+							Name: "test-meter",
+						},
+						Metrics: []*metricspb.Metric{
+							{
+								Name:        "how-many",
+								Description: "incredible",
+								Data: &metricspb.Metric_Sum{
+									Sum: &metricspb.Sum{
+										IsMonotonic:            true,
+										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_DELTA,
+										DataPoints: []*metricspb.NumberDataPoint{
+											{
+												Attributes: attrs2otlp(testStmtAttrs...),
+												Value: &metricspb.NumberDataPoint_AsInt{
+													AsInt: 1,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var export colmetricspb.ExportMetricsServiceRequest
+	t.NoError(proto.Unmarshal(data, &export))
+
+	t.Empty(cmp.Diff(prototext.Format(&expect), prototext.Format(&export)))
+}

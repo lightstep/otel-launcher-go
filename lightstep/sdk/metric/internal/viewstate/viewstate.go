@@ -280,6 +280,7 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 	if hint.Config.Exemplar.Size != 0 {
 		acfg.Exemplar.Size = hint.Config.Exemplar.Size
 	}
+	fmt.Println("HINT", hint, acfg)
 	return instrument, akind, tempo, acfg, defCfg, hinted
 }
 

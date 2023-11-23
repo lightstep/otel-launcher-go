@@ -193,3 +193,36 @@ context and/or W3C Tracecontext baggage.
 This hook also supports removing attributes from metric events based
 on attribute value before they are aggregated, for example to
 dynamically configure allowed cardinality values.
+
+#### Exemplars
+
+Collection of metric exemplars are off by default.
+
+Exemplars can be configured using the `aggregator.Config` structure, or
+with a hint like:
+
+```
+{
+  "description": "measurement of ...",
+  "config": {
+    "exemplar": {
+      "size": 10,
+	  "filter": "trace_based",
+    }
+  }
+}
+```
+
+Like the OpenTelemetry specification, the supported filters are
+"always_off", "always_on", and "trace_based".  Unlike the
+OpenTelemetry specification, this SDK has two reservoir
+implementations:
+
+- "Last": always chooses the last metric event as the exemplar.  This
+  method is automatically selected when the size is 1.
+- "Weighted": uses a weighted sampling technique.
+
+With eighted sampling, an unbiased sampler is used such that the
+distribution of values can be estimated from the exemplars.  Each
+exemplar includes a `sample.weight` attribute indicating it's
+contribution to the aggregate value.

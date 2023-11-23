@@ -15,6 +15,7 @@
 package exemplar
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
@@ -100,6 +101,7 @@ func (m LastMethods[N, Storage, Methods]) Kind() aggregation.Kind {
 
 func (m LastMethods[N, Storage, Methods]) HasChange(ptr *LastStorage[N, Storage, Methods]) bool {
 	var am Methods
+	fmt.Println("WHAT")
 	return am.HasChange(&ptr.aggregate)
 }
 

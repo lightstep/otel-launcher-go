@@ -175,6 +175,8 @@ func RequireEqualPoints(t *testing.T, output []data.Point, expected ...data.Poin
 			continue
 		}
 
+		// As with the above, we zero timestamps if the expectation
+		// is zero, to skip the timestamp test.
 		for j := range cpyEx[i] {
 			if cpyEx[i][j].Time.IsZero() {
 				outEx[i][j].Time = time.Time{}
