@@ -58,6 +58,10 @@ type Performance struct {
 	// MeasurementProcessor supports modifying the attributes
 	// based on context.  Only applies to synchronous instruments.
 	MeasurementProcessor MeasurementProcessor
+
+	// ExemplarsEnabled is the number of exemplars that will be
+	// collected per timeseries, in the standard configuration.
+	ExemplarsEnabled uint32
 }
 
 // MeasurementProcessor allows applications to extend metric events
@@ -81,6 +85,5 @@ func (p Performance) Validate() Performance {
 	if p.AggregatorCardinalityLimit == 0 {
 		p.AggregatorCardinalityLimit = DefaultAggregatorCardinalityLimit
 	}
-
 	return p
 }

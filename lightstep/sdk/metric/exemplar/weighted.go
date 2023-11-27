@@ -16,6 +16,7 @@ package exemplar
 
 import (
 	"math"
+	"math/rand"
 	"sync"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
@@ -50,7 +51,7 @@ func (m WeightedMethods[N, Storage, Methods]) Init(ptr *WeightedStorage[N, Stora
 	if sz == 0 {
 		sz = aggregator.DefaultExemplarReservoirSize
 	}
-	ptr.samples.Init(sz, cfg.Exemplar.Rnd)
+	ptr.samples.Init(sz, rand.New(rand.NewSource(rand.Int63())))
 }
 
 func (m WeightedMethods[N, Storage, Methods]) Update(ptr *WeightedStorage[N, Storage, Methods], value N, ex aggregator.ExemplarBits) {

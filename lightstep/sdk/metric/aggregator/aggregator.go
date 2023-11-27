@@ -16,7 +16,6 @@ package aggregator // import "github.com/lightstep/otel-launcher-go/lightstep/sd
 
 import (
 	"fmt"
-	"math/rand"
 	"time"
 
 	histostruct "github.com/lightstep/go-expohisto/structure"
@@ -95,9 +94,10 @@ func RangeTest[N number.Any, Traits number.Traits[N]](num N, desc sdkinstrument.
 
 // ExemplarConfig configures exemplar selection.
 type ExemplarConfig struct {
+	// Filter determines which contexts are selected.
 	Filter ExemplarFilterKind
-	Size   uint32
-	Rnd    *rand.Rand
+	// Size determines limits how many exemplars per timeseries.
+	Size uint32
 }
 
 // JSONExemplarConfig configures exemplar selection.

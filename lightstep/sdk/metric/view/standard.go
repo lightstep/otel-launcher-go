@@ -60,26 +60,27 @@ func DeltaPreferredTemporality(ik sdkinstrument.Kind) aggregation.Temporality {
 func StandardConfigForPerformance(perf sdkinstrument.Performance) func(ik sdkinstrument.Kind) (ints, floats aggregator.Config) {
 	perf = perf.Validate()
 
-	// Histogram settings are defaulted.  Exemplar settings depends on
-	// instrument kind.
-	intsWithExs := aggregator.Config{
+	// Histogram settings are defaulted.
+	noExs := aggregator.Config{
 		CardinalityLimit: perf.AggregatorCardinalityLimit,
 		Exemplar: aggregator.ExemplarConfig{
-			Filter: aggregator.WhenTracedKind,
-			Size:   aggregator.DefaultExemplarReservoirSize,
-			Rnd:    nil,
+			Filter: aggregator.AlwaysOffKind,
 		},
 	}
-	floatsWithExs := aggregator.Config{
-		CardinalityLimit: perf.AggregatorCardinalityLimit,
+	// Exemplar settings are restricted by instrument kind.
+	withExs := noExs
+	if perf.ExemplarsEnabled > 0 {
+		withExs.Exemplar = aggregator.ExemplarConfig{
+			Filter: aggregator.WhenTracedKind,
+			Size:   perf.ExemplarsEnabled,
+		}
 	}
 	return func(ik sdkinstrument.Kind) (ints, floats aggregator.Config) {
 		switch ik {
-		case sdkinstrument.SyncCounter:
-		case sdkinstrument.SyncHistogram:
-			return intsWithExs, floatsWithExs
+		case sdkinstrument.SyncCounter, sdkinstrument.SyncHistogram:
+			return withExs, withExs
 		default:
-			return intsNoExs, floatsNoExs
+			return noExs, noExs
 		}
 	}
 }

@@ -156,17 +156,23 @@ func RequireEqualPoints(t *testing.T, output []data.Point, expected ...data.Poin
 	var outEx [][]aggregator.WeightedExemplarBits
 
 	for i := range cpy {
-		cpyEx = append(cpyEx, cpy[i].Exemplars)
-		cpy[i].Exemplars = nil
+		if len(cpy[i].Exemplars) != 0 {
+			cpyEx = append(cpyEx, cpy[i].Exemplars)
+			cpy[i].Exemplars = nil
+		}
 	}
 	for i := range output {
-		outEx = append(outEx, output[i].Exemplars)
-		output[i].Exemplars = nil
+		if len(output[i].Exemplars) != 0 {
+			outEx = append(outEx, output[i].Exemplars)
+			output[i].Exemplars = nil
+		}
 	}
 
 	require.ElementsMatch(t, cpy, output)
 
-	for i := range cpy {
+	require.Equal(t, len(cpyEx), len(outEx))
+
+	for i := range cpyEx {
 		if len(cpyEx[i]) != len(outEx[i]) {
 			require.ElementsMatch(t, cpyEx, outEx)
 			continue
@@ -179,6 +185,7 @@ func RequireEqualPoints(t *testing.T, output []data.Point, expected ...data.Poin
 				outEx[i][j].Time = time.Time{}
 			}
 		}
+
 		require.ElementsMatch(t, cpyEx, outEx)
 	}
 }

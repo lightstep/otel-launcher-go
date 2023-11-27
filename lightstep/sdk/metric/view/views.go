@@ -63,9 +63,17 @@ func (v *Views) checkTemporality(err error, tempo *aggregation.Temporality, def 
 
 func (v *Views) checkAggConfig(err error, acfg *aggregator.Config) error {
 	var newErr error
-	// Use performance-specific defaults.
+	// Use performance-specific cardinality defaults.
 	if acfg.CardinalityLimit == 0 {
 		acfg.CardinalityLimit = v.AggregatorCardinalityLimit
+	}
+	// Use performance-specific exemplar defaults.
+	var zex aggregator.ExemplarConfig
+	if acfg.Exemplar == zex && v.ExemplarsEnabled > 0 {
+		acfg.Exemplar = aggregator.ExemplarConfig{
+			Filter: aggregator.WhenTracedKind,
+			Size:   v.ExemplarsEnabled,
+		}
 	}
 	// TODO: Use a Performance setting for default histogram size.
 	// the call to Validate below fills in the hard-coded default.

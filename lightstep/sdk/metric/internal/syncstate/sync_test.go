@@ -1461,43 +1461,27 @@ func TestSyncExemplars(t *testing.T) {
 	lib := instrumentation.Library{
 		Name: "testlib",
 	}
+	perf := sdkinstrument.Performance{
+		ExemplarsEnabled: 5,
+	}
 	vcs := viewstate.New(lib, view.New(
 		"test",
-		noPerf,
+		perf,
 		deltaSelector,
 		view.WithClause(
 			view.WithKeys([]attribute.Key{"a"}),
 		),
 	))
-
-	indesc := test.Descriptor(
+	desc := test.Descriptor(
 		"histo",
 		sdkinstrument.SyncHistogram,
-		number.Float64Kind)
-	indesc.Description = `{
-  "config": {
-    "exemplar": {
-      "filter": "trace_based",
-      "size": 5
-    },
-    "histogram": {
-      "max_size": 100
-    }
-  },
-  "description": "incredible"
-}`
-
-	outdesc := test.Descriptor(
-		"histo",
-		sdkinstrument.SyncHistogram,
-		number.Float64Kind)
-	outdesc.Description = "incredible"
+		number.Int64Kind)
 
 	pipes := make(pipeline.Register[viewstate.Instrument], 1)
-	pipes[0], _ = vcs.Compile(indesc)
+	pipes[0], _ = vcs.Compile(desc)
 
 	require.NotNil(t, pipes[0])
-	inst := New(indesc, noPerf, nil, pipes)
+	inst := New(desc, perf, nil, pipes)
 	require.NotNil(t, inst)
 
 	untracedCtx := context.Background()
@@ -1505,14 +1489,14 @@ func TestSyncExemplars(t *testing.T) {
 	attrs2 := []attribute.KeyValue{attribute.String("a", "1"), attribute.String("b", "2")}
 	attrs3 := []attribute.KeyValue{attribute.String("a", "1"), attribute.String("b", "3")}
 
-	for i := 0.0; i < 5; i++ {
-		inst.ObserveFloat64(
+	for i := int64(0); i < 5; i++ {
+		inst.ObserveInt64(
 			trace.ContextWithSpan(context.Background(), test.FakeSpan(1, byte(i+1))),
 			1+i,
 			attrsConfig(attrs1...),
 		)
-		inst.ObserveFloat64(untracedCtx, 1+i, attrsConfig(attrs2...))
-		inst.ObserveFloat64(untracedCtx, 1+i, attrsConfig(attrs3...))
+		inst.ObserveInt64(untracedCtx, 1+i, attrsConfig(attrs2...))
+		inst.ObserveInt64(untracedCtx, 1+i, attrsConfig(attrs3...))
 	}
 
 	inst.SnapshotAndProcess()
@@ -1524,10 +1508,10 @@ func TestSyncExemplars(t *testing.T) {
 			testSequence,
 		),
 		test.Instrument(
-			outdesc,
+			desc,
 			test.PointEx(
 				middleTime, endTime,
-				histogram.NewFloat64(histostruct.NewConfig(histostruct.WithMaxSize(100)),
+				histogram.NewInt64(histostruct.NewConfig(),
 					1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5,
 				),
 				aggregation.DeltaTemporality,
@@ -1535,7 +1519,7 @@ func TestSyncExemplars(t *testing.T) {
 				// Note: do not set timestamp below
 				aggregator.WeightedExemplarBits{
 					ExemplarBits: aggregator.ExemplarBits{
-						Number:     number.FromFloat64(1),
+						Number:     number.FromInt64(1),
 						Attributes: attrs1,
 						Span:       test.FakeSpan(1, 1),
 					},
@@ -1543,7 +1527,7 @@ func TestSyncExemplars(t *testing.T) {
 				},
 				aggregator.WeightedExemplarBits{
 					ExemplarBits: aggregator.ExemplarBits{
-						Number:     number.FromFloat64(2),
+						Number:     number.FromInt64(2),
 						Attributes: attrs1,
 						Span:       test.FakeSpan(1, 2),
 					},
@@ -1551,7 +1535,7 @@ func TestSyncExemplars(t *testing.T) {
 				},
 				aggregator.WeightedExemplarBits{
 					ExemplarBits: aggregator.ExemplarBits{
-						Number:     number.FromFloat64(3),
+						Number:     number.FromInt64(3),
 						Attributes: attrs1,
 						Span:       test.FakeSpan(1, 3),
 					},
@@ -1559,7 +1543,7 @@ func TestSyncExemplars(t *testing.T) {
 				},
 				aggregator.WeightedExemplarBits{
 					ExemplarBits: aggregator.ExemplarBits{
-						Number:     number.FromFloat64(4),
+						Number:     number.FromInt64(4),
 						Attributes: attrs1,
 						Span:       test.FakeSpan(1, 4),
 					},
@@ -1567,7 +1551,7 @@ func TestSyncExemplars(t *testing.T) {
 				},
 				aggregator.WeightedExemplarBits{
 					ExemplarBits: aggregator.ExemplarBits{
-						Number:     number.FromFloat64(5),
+						Number:     number.FromInt64(5),
 						Attributes: attrs1,
 						Span:       test.FakeSpan(1, 5),
 					},
