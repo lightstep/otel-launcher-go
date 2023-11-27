@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.22.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.22.0) - 2023-11-27)
+
+- Use the OTel-Arrow concurrent batch processor in SDK exporters based on the OTel collector. [#569](https://github.com/lightstep/otel-launcher-go/pull/569)
+
 ## [1.21.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.21.0) - 2023-11-03)
 
 - Release based on OTel Collector v0.88 dependencies. [#539](https://github.com/lightstep/otel-launcher-go/pull/539)
