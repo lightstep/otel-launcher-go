@@ -8,8 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+- Add Exemplar support in the Lightstep Metrics SDK. [#576](https://github.com/lightstep/otel-launcher-go/pull/576)
+
+## [1.22.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.22.0) - 2023-11-27)
+
 - Use the OTel-Arrow concurrent batch processor in SDK exporters based on the OTel collector. [#569](https://github.com/lightstep/otel-launcher-go/pull/569)
-  - Add Exemplar support in the Lightstep Metrics SDK. [#576](https://github.com/lightstep/otel-launcher-go/pull/576)
 
 ## [1.21.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.21.0) - 2023-11-03)
 

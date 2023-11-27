@@ -9,8 +9,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.6.0
 	github.com/lightstep/go-expohisto v1.0.0
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.21.0
-	github.com/lightstep/varopt v0.0.0-20231127170257-a0a62cb6787c
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.22.0
 	github.com/open-telemetry/otel-arrow/collector v0.6.0
 	github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor v0.10.0
 	github.com/stretchr/testify v1.8.4
