@@ -66,10 +66,6 @@ var (
 			},
 		},
 	}
-	noPerf = sdkinstrument.Performance{
-		IgnoreCollisions:          false,
-		InactiveCollectionPeriods: 1,
-	}
 
 	unsafePerf = sdkinstrument.Performance{
 		IgnoreCollisions:          true,
