@@ -203,12 +203,13 @@ instruments.  When OpenTelemetry tracing is used in conjunction with
 this Metrics SDK, exemplars will be annotated with the TraceID and
 SpanID of the traced context.
 
-Collection of metric exemplars are off by default.  Exemplars are
-recommended for use with Histograms, especially, and also with
-monotonic counters.  Exemplars are recommended for use with Counter,
-Histogram, and (synchronous) Gauge instruments.
+Collection of metric exemplars are off by default.  The
+`sdkinstrument.Performance.ExemplarsEnabled` field can be used to
+enable exemplars by default.  This field may be set to a number of
+exemplars to collect by default for all Counter and Histogram
+instruments.
 
-Exemplars can be configured using the `aggregator.Config.Exemplar`
+Exemplars can also be configured using the `aggregator.Config.Exemplar`
 structure, or with a hint like:
 
 ```
@@ -275,3 +276,6 @@ If the number of BLUE items is 3000, and the number of YELLOW items is
 - We expect 300 BLUE examplars
 - We expect 700 YELLOW examplars
 - Each exemplar has a `sample.weight` of 10, the ratio of total count to exemplar count.
+
+Note that we expect the sum of `sample.weight` for the exemplars to
+equal the total number of input events (i.e., 3000 BLUE, 7000 YELLOW).
