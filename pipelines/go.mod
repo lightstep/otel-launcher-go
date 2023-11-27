@@ -117,7 +117,7 @@ require (
 require (
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
-	github.com/lightstep/varopt v1.3.0 // indirect
+	github.com/lightstep/varopt v0.0.0-20231127170257-a0a62cb6787c // indirect
 	github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor v0.10.0 // indirect
 	golang.org/x/sync v0.3.0 // indirect
 )

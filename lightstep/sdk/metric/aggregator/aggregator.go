@@ -54,6 +54,10 @@ const (
 	WhenTracedKind
 )
 
+// DefaultExemplarReservoirSize determines how many exemplars will be
+// selected per instrument.
+const DefaultExemplarReservoirSize = 10
+
 // RangeTest is a common routine for testing for valid input values.
 // This rejects NaN and Inf values.  This rejects negative values when the
 // aggregation does not support negative values, including

@@ -24,8 +24,6 @@ import (
 	"github.com/lightstep/varopt"
 )
 
-const defaultReservoirSize = 10
-
 type WeightedStorage[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
 	aggregate Storage
 
@@ -50,7 +48,7 @@ func (m WeightedMethods[N, Storage, Methods]) Init(ptr *WeightedStorage[N, Stora
 	am.Init(&ptr.aggregate, cfg)
 	sz := int(cfg.Exemplar.Size)
 	if sz == 0 {
-		sz = defaultReservoirSize
+		sz = aggregator.DefaultExemplarReservoirSize
 	}
 	ptr.samples.Init(sz, cfg.Exemplar.Rnd)
 }
@@ -71,7 +69,9 @@ func (m WeightedMethods[N, Storage, Methods]) Update(ptr *WeightedStorage[N, Sto
 
 	am.Update(&ptr.aggregate, value, ex)
 
-	// The weight is... 1 for Histograms & Gauges, value for Sums.
+	// am.Weight() is 1 for Histograms & (synchronous) Gauges,
+	// value for (synchronous) Counters.
+	//
 	// The math.Abs() is a safety mechanism.  UpDownCounters would
 	// otherwise cause a panic in varopt.  This is a documented
 	// caveat-- for the weighted sampling logic to apply (and be
