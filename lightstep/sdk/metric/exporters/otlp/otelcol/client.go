@@ -169,7 +169,7 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	}
 
 	bset := processor.CreateSettings{
-		ID:                component.NewID("otel/sdk/batch"),
+		ID:                component.NewID("otel/sdk/metric/batch"),
 		TelemetrySettings: c.settings.TelemetrySettings,
 		BuildInfo:         c.settings.BuildInfo,
 	}
