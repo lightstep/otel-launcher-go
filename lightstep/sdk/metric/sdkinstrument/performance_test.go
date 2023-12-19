@@ -71,6 +71,21 @@ func TestTruncateAttrs(t *testing.T) {
 				}),
 			),
 		},
+		{
+			Name: "mixed",
+			Attrs: mkAttrs(
+				attribute.Int("int", 1),
+				attribute.Float64("float", 1),
+				attribute.Bool("bool", true),
+				attribute.String("str", strings.Repeat("Y", 1024)),
+			),
+			Expect: mkAttrs(
+				attribute.Int("int", 1),
+				attribute.Float64("float", 1),
+				attribute.Bool("bool", true),
+				attribute.String("str", strings.Repeat("Y", Limit)),
+			),
+		},
 	} {
 		t.Run(test.Name, func(t *testing.T) {
 			perf := Performance{}.Validate()
