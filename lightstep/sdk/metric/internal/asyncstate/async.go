@@ -65,6 +65,10 @@ type (
 		// semantics, should the range test be based on the
 		// aggregation, not the original instrument?
 		descriptor sdkinstrument.Descriptor
+
+		// performance has performance settings for the
+		// instrument.
+		performance sdkinstrument.Performance
 	}
 
 	implementation interface {
@@ -81,7 +85,7 @@ func NewState(pipe int) *State {
 
 // New returns a new Observer; this compiles individual
 // instruments for each reader.
-func New(desc sdkinstrument.Descriptor, _ sdkinstrument.Performance, opaque interface{}, compiled pipeline.Register[viewstate.Instrument]) *Observer {
+func New(desc sdkinstrument.Descriptor, perf sdkinstrument.Performance, opaque interface{}, compiled pipeline.Register[viewstate.Instrument]) *Observer {
 	// Note: we return a non-nil instrument even when all readers
 	// disabled the instrument. This ensures that certain error
 	// checks still work (wrong meter, wrong callback, etc).
@@ -91,9 +95,10 @@ func New(desc sdkinstrument.Descriptor, _ sdkinstrument.Performance, opaque inte
 	// 2. InstrumentCardinalityLimit is not enforceable, because of duplicate
 	//    suppression -- better left to the aggregator.
 	return &Observer{
-		opaque:     opaque,
-		descriptor: desc,
-		compiled:   compiled,
+		opaque:      opaque,
+		descriptor:  desc,
+		compiled:    compiled,
+		performance: perf,
 	}
 }
 
@@ -135,6 +140,8 @@ func (obs *Observer) getOrCreate(cs *callbackState, options []metric.ObserveOpti
 
 	ocfg := metric.NewObserveConfig(options)
 	aset := ocfg.Attributes()
+	aset = attribute.NewSet(obs.performance.TruncateAttributes(aset.ToSlice())...)
+
 	se, has := imap[aset]
 	if !has {
 		se = comp.NewAccumulator(aset)
