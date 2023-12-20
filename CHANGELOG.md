@@ -8,6 +8,7 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+- LS metrics SDK: Record a span and a metric about the outcome of export. [#590](https://github.com/lightstep/otel-launcher-go/pull/590)
 - LS Metrics SDK add an `AttributeSizeLimit` [#588](https://github.com/lightstep/otel-launcher-go/pull/588)
 - Change the name of the otelcol batch processor to indicate whether traces or metrics. [#587](https://github.com/lightstep/otel-launcher-go/pull/587)
 
