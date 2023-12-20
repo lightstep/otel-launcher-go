@@ -17,7 +17,6 @@ package otelcol
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
@@ -147,7 +146,6 @@ func WithTLSSetting(tlss configtls.TLSClientSetting) Option {
 
 func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	c := &client{}
-	fmt.Println("STARTING EMTRICS", cfg.Exporter.GRPCClientSettings.Endpoint)
 
 	if !cfg.Exporter.Arrow.Disabled {
 		c.settings.ID = component.NewID("otel/sdk/metric/arrow")
