@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+- LS metrics SDK: Record a span and a metric about the outcome of export. [#590](https://github.com/lightstep/otel-launcher-go/pull/590)
+
 ## [1.22.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.22.0) - 2023-11-27)
 
 - Use the OTel-Arrow concurrent batch processor in SDK exporters based on the OTel collector. [#569](https://github.com/lightstep/otel-launcher-go/pull/569)
