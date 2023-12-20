@@ -193,3 +193,9 @@ context and/or W3C Tracecontext baggage.
 This hook also supports removing attributes from metric events based
 on attribute value before they are aggregated, for example to
 dynamically configure allowed cardinality values.
+
+#### AttributeSizeLimit
+
+This limit is used to truncate attribute key and string values to a
+reasonable size.  The default limit is 8kB.  Zero is not a valid
+limit.

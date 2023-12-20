@@ -33,6 +33,10 @@ const DefaultAggregatorCardinalityLimit = 2000
 // to the instrument.
 const DefaultInstrumentCardinalityLimit = 3000
 
+// DefaultAttributeSizeLimit is the default limit for attribute value
+// sizes that will be admitted without truncation.
+const DefaultAttributeSizeLimit = 8192
+
 // Performace configures features that allow the user to control
 // performance.
 type Performance struct {
@@ -58,6 +62,10 @@ type Performance struct {
 	// MeasurementProcessor supports modifying the attributes
 	// based on context.  Only applies to synchronous instruments.
 	MeasurementProcessor MeasurementProcessor
+
+	// AttributeSizeLimit is a byte-size limit on attribute keys,
+	// string values, and each element of string-slice values.
+	AttributeSizeLimit uint32
 }
 
 // MeasurementProcessor allows applications to extend metric events
@@ -81,6 +89,42 @@ func (p Performance) Validate() Performance {
 	if p.AggregatorCardinalityLimit == 0 {
 		p.AggregatorCardinalityLimit = DefaultAggregatorCardinalityLimit
 	}
+	if p.AttributeSizeLimit == 0 {
+		p.AttributeSizeLimit = DefaultAttributeSizeLimit
+	}
 
 	return p
+}
+
+func (p Performance) TruncateAttributes(attrs []attribute.KeyValue) []attribute.KeyValue {
+	sizeLimit := p.AttributeSizeLimit
+	if sizeLimit == 0 {
+		return attrs
+	}
+	for idx, kv := range attrs {
+		if len(kv.Key) > int(sizeLimit) {
+			attrs[idx].Key = kv.Key[:sizeLimit]
+		}
+		switch attrs[idx].Value.Type() {
+		case attribute.STRING:
+			s := kv.Value.AsString()
+			if len(s) > int(sizeLimit) {
+				attrs[idx].Value = attribute.StringValue(s[:sizeLimit])
+			}
+
+		case attribute.STRINGSLICE:
+			any := false
+			ss := kv.Value.AsStringSlice()
+			for jdx := range ss {
+				if len(ss[jdx]) > int(sizeLimit) {
+					ss[jdx] = ss[jdx][:sizeLimit]
+					any = true
+				}
+			}
+			if any {
+				attrs[idx].Value = attribute.StringSliceValue(ss)
+			}
+		}
+	}
+	return attrs
 }
