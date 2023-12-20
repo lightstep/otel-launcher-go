@@ -348,6 +348,8 @@ func Observe[N number.Any, Traits number.Traits[N]](ctx context.Context, inst *O
 		keyValues = cfg.Attributes.ToSlice()
 	}
 
+	keyValues = inst.performance.TruncateAttributes(keyValues)
+
 	if inst.performance.MeasurementProcessor != nil {
 		keyValues = inst.performance.MeasurementProcessor.Process(ctx, keyValues)
 	}

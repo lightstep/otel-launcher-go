@@ -34,6 +34,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 )
@@ -54,7 +55,8 @@ var (
 	}
 
 	ignorePerf = sdkinstrument.Performance{
-		IgnoreCollisions: false,
+		IgnoreCollisions:   false,
+		AttributeSizeLimit: sdkinstrument.DefaultAttributeSizeLimit,
 	}
 )
 
@@ -415,4 +417,41 @@ func TestOutOfRangeValues(t *testing.T) {
 	}
 	require.True(t, haveNaN)
 	require.True(t, haveInf)
+}
+
+func TestAttributeSizeLimit(t *testing.T) {
+	tsdk := testAsync("test")
+	cntr := testIntObserver(tsdk, "counter", sdkinstrument.AsyncCounter)
+	cb, err := NewCallback([]metric.Observable{cntr}, tsdk, func(ctx context.Context, obs metric.Observer) error {
+		obs.ObserveInt64(cntr, 1234,
+			metric.WithAttributes(attribute.String(strings.Repeat("X", 1<<14), strings.Repeat("Y", 1<<14))),
+		)
+		return nil
+	})
+	require.NoError(t, err)
+
+	state := testState(0)
+
+	// run the callback once legitimately
+	cb.Run(context.Background(), state)
+
+	cntr.SnapshotAndProcess(state)
+
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			tsdk.compilers[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			cntr.descriptor,
+			test.Point(startTime, endTime, sum.NewMonotonicInt64(1234), aggregation.CumulativeTemporality,
+				attribute.String(
+					strings.Repeat("X", sdkinstrument.DefaultAttributeSizeLimit),
+					strings.Repeat("Y", sdkinstrument.DefaultAttributeSizeLimit),
+				),
+			),
+		),
+	)
 }
