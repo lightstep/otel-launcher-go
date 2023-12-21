@@ -3,7 +3,7 @@ module github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/example
 go 1.21
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.22.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.23.0
 	github.com/lightstep/otel-launcher-go/pipelines v1.8.0
 	go.opentelemetry.io/proto/otlp v1.0.0
 )
@@ -36,7 +36,7 @@ require (
 	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
 	github.com/knadh/koanf/v2 v2.0.1 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.22.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.23.0 // indirect
 	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
 	github.com/minio/c2goasm v0.0.0-20190812172519-36a3d3bbc4f3 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
