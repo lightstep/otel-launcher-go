@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.23.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.23.0) - 2023-12-20)
+
+- Update to OTel-Arrow v0.13.0 dependencies. [#591](https://github.com/lightstep/otel-launcher-go/pull/591)
 - LS metrics SDK: Record a span and a metric about the outcome of export. [#590](https://github.com/lightstep/otel-launcher-go/pull/590)
 - LS Metrics SDK add an `AttributeSizeLimit` [#588](https://github.com/lightstep/otel-launcher-go/pull/588)
 - Change the name of the otelcol batch processor to indicate whether traces or metrics. [#587](https://github.com/lightstep/otel-launcher-go/pull/587)
