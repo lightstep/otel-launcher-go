@@ -58,7 +58,6 @@ require (
 	github.com/open-telemetry/otel-arrow/collector v0.13.0 // indirect
 	github.com/open-telemetry/otel-arrow/collector/exporter/otelarrowexporter v0.13.0 // indirect
 	github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor v0.13.0 // indirect
-	github.com/open-telemetry/otel-arrow/collector/receiver/otelarrowreceiver v0.13.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
