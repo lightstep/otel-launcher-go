@@ -18,22 +18,25 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/trace/exporters/otlp/otelcol"
 	"go.opentelemetry.io/contrib/propagators/b3"
 	"go.opentelemetry.io/contrib/propagators/ot"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace"
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc/encoding/gzip"
 )
 
 func NewTracePipeline(c PipelineConfig) (func() error, error) {
-	spanExporter, err := c.newTraceExporter()
+	spanExporter, err := c.newTraceExporter(c.secureTraceOption())
 	if err != nil {
 		return nil, fmt.Errorf("failed to create span exporter: %v", err)
 	}
 
+	// Note: this processor does not metric the spans it drops.
+	// TODO: either improve the spec, so the otel-go SDK BSP will do
+	// this, or else add the lightstep-internal BSP w/ export metrics
+	// to this repo.
 	bsp := trace.NewBatchSpanProcessor(spanExporter)
 	tp := trace.NewTracerProvider(
 		trace.WithSampler(trace.AlwaysSample()),
@@ -48,19 +51,18 @@ func NewTracePipeline(c PipelineConfig) (func() error, error) {
 	otel.SetTracerProvider(tp)
 
 	return func() error {
-		_ = bsp.Shutdown(context.Background())
-		return spanExporter.Shutdown(context.Background())
+		return bsp.Shutdown(context.Background())
 	}, nil
 }
 
-func (c PipelineConfig) newTraceExporter() (*otlptrace.Exporter, error) {
-	return otlptrace.New(
+func (c PipelineConfig) newTraceExporter(secure otelcol.Option) (trace.SpanExporter, error) {
+	return otelcol.NewExporter(
 		context.Background(),
-		otlptracegrpc.NewClient(
-			c.secureTraceOption(),
-			otlptracegrpc.WithEndpoint(c.Endpoint),
-			otlptracegrpc.WithHeaders(c.Headers),
-			otlptracegrpc.WithCompressor(gzip.Name),
+		otelcol.NewConfig(
+			secure,
+			otelcol.WithEndpoint(c.Endpoint),
+			otelcol.WithHeaders(c.Headers),
+			otelcol.WithCompressor(gzip.Name),
 		),
 	)
 }

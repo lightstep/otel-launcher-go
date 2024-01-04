@@ -75,7 +75,7 @@ func NewDefaultConfig() Config {
 			Timeout:            0,
 			SendBatchSize:      1000,
 			SendBatchMaxSize:   1500,
-			MaxInFlightSizeMiB: 32 * 1024 * 1024,
+			MaxInFlightSizeMiB: 32,
 		},
 		Exporter: otelarrowexporter.Config{
 			TimeoutSettings: exporterhelper.TimeoutSettings{
@@ -216,10 +216,10 @@ func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
 		ctx,
 		"otelsdk_export_metrics",
 	)
+	defer span.End()
+
 	converted := c.d2pd(data)
 	points := int64(converted.DataPointCount())
-
-	defer span.End()
 
 	err := c.batcher.ConsumeMetrics(ctx, converted)
 

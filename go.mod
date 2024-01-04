@@ -45,6 +45,7 @@ require (
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.23.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.23.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.23.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
 	github.com/minio/c2goasm v0.0.0-20190812172519-36a3d3bbc4f3 // indirect
@@ -94,8 +95,6 @@ require (
 	go.opentelemetry.io/contrib/propagators/b3 v1.21.1 // indirect
 	go.opentelemetry.io/contrib/propagators/ot v1.20.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.44.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.21.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.21.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.21.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.0.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect

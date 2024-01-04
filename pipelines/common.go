@@ -15,14 +15,13 @@
 package pipelines
 
 import (
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otelcol"
+	otelcolmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otelcol"
+	otelcoltrace "github.com/lightstep/otel-launcher-go/lightstep/sdk/trace/exporters/otlp/otelcol"
 
 	"go.opentelemetry.io/collector/config/configtls"
 	oldotlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"google.golang.org/grpc/credentials"
-
-	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"google.golang.org/grpc/credentials"
 )
 
 type PipelineConfig struct {
@@ -68,28 +67,30 @@ type PipelineConfig struct {
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)
 
-func (p PipelineConfig) secureMetricOption() (otelcol.Option, oldotlpmetricgrpc.Option) {
+func (p PipelineConfig) secureMetricOption() (otelcolmetric.Option, oldotlpmetricgrpc.Option) {
 	if p.Insecure {
-		return otelcol.WithInsecure(), oldotlpmetricgrpc.WithInsecure()
+		return otelcolmetric.WithInsecure(), oldotlpmetricgrpc.WithInsecure()
 	} else if p.Credentials != nil {
 		return nil, oldotlpmetricgrpc.WithTLSCredentials(p.Credentials)
 	} else if p.TLSSetting != nil {
-		return otelcol.WithTLSSetting(*p.TLSSetting), nil
+		return otelcolmetric.WithTLSSetting(*p.TLSSetting), nil
 	}
-	return otelcol.WithTLSSetting(configtls.TLSClientSetting{
+	return otelcolmetric.WithTLSSetting(configtls.TLSClientSetting{
 			Insecure: false,
 		}), oldotlpmetricgrpc.WithTLSCredentials(
 			credentials.NewClientTLSFromCert(nil, ""),
 		)
 }
 
-func (p PipelineConfig) secureTraceOption() otlptracegrpc.Option {
+func (p PipelineConfig) secureTraceOption() otelcoltrace.Option {
 	if p.Insecure {
-		return otlptracegrpc.WithInsecure()
+		return otelcoltrace.WithInsecure()
 	} else if p.Credentials != nil {
-		return otlptracegrpc.WithTLSCredentials(p.Credentials)
+		return nil
+	} else if p.TLSSetting != nil {
+		return otelcoltrace.WithTLSSetting(*p.TLSSetting)
 	}
-	return otlptracegrpc.WithTLSCredentials(
-		credentials.NewClientTLSFromCert(nil, ""),
-	)
+	return otelcoltrace.WithTLSSetting(configtls.TLSClientSetting{
+		Insecure: false,
+	})
 }
