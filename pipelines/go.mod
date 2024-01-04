@@ -5,7 +5,11 @@ go 1.21
 require (
 	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.23.0
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.23.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.23.0
+
+	// For otelcol-based exporter configuration.
 	go.opentelemetry.io/collector/config/configtls v0.90.0
+
 	// Host and runtime instrumentation
 	go.opentelemetry.io/contrib/instrumentation/host v0.45.0
 	go.opentelemetry.io/contrib/instrumentation/runtime v0.45.0
@@ -15,10 +19,6 @@ require (
 	go.opentelemetry.io/contrib/propagators/ot v1.20.0
 	go.opentelemetry.io/otel v1.21.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.44.0
-
-	// Standard trace SDK and gRPC OTLP exporter
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.21.0
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.21.0
 	go.opentelemetry.io/otel/metric v1.21.0
 	go.opentelemetry.io/otel/sdk v1.21.0
 	go.opentelemetry.io/otel/sdk/metric v1.21.0
@@ -48,11 +48,13 @@ require (
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/flatbuffers v2.0.8+incompatible // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.16.0 // indirect
+	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/klauspost/asmfmt v1.3.2 // indirect
 	github.com/klauspost/compress v1.17.3 // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/knadh/koanf/maps v0.1.1 // indirect
+	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
 	github.com/knadh/koanf/v2 v2.0.1 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.23.0 // indirect
@@ -67,6 +69,8 @@ require (
 	github.com/mostynb/go-grpc-compression v1.2.2 // indirect
 	github.com/open-telemetry/otel-arrow v0.13.0 // indirect
 	github.com/open-telemetry/otel-arrow/collector v0.13.0 // indirect
+	github.com/open-telemetry/otel-arrow/collector/exporter/otelarrowexporter v0.13.0 // indirect
+	github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor v0.13.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.18 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
@@ -104,6 +108,7 @@ require (
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/net v0.18.0 // indirect
+	golang.org/x/sync v0.4.0 // indirect
 	golang.org/x/sys v0.14.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.10.0 // indirect
@@ -114,17 +119,11 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-require (
-	github.com/hashicorp/go-version v1.6.0 // indirect
-	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
-	github.com/open-telemetry/otel-arrow/collector/exporter/otelarrowexporter v0.13.0 // indirect
-	github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor v0.13.0 // indirect
-	golang.org/x/sync v0.4.0 // indirect
-)
-
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/internal => ../lightstep/sdk/internal
 
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/metric => ../lightstep/sdk/metric
+
+replace github.com/lightstep/otel-launcher-go/lightstep/sdk/trace => ../lightstep/sdk/trace
 
 replace github.com/lightstep/otel-launcher-go/lightstep/instrumentation => ../lightstep/instrumentation
 
