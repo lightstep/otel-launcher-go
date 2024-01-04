@@ -16,6 +16,7 @@ package otelcol
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
@@ -31,8 +32,11 @@ import (
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/processor"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	otelcodes "go.opentelemetry.io/otel/codes"
 	noopmetric "go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/trace"
+	traceapi "go.opentelemetry.io/otel/trace"
 	nooptrace "go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
@@ -55,10 +59,43 @@ type client struct {
 	exporter exporter.Traces
 	batcher  processor.Traces
 	settings exporter.CreateSettings
+	tracer   traceapi.Tracer
 }
 
 func (c *client) ExportSpans(ctx context.Context, spans []trace.ReadOnlySpan) error {
-	return c.batcher.ConsumeTraces(ctx, c.d2pd(spans))
+	ctx, span := c.tracer.Start(
+		ctx,
+		"otelsdk_export_traces",
+	)
+	defer span.End()
+
+	converted := c.d2pd(spans)
+	count := converted.SpanCount()
+
+	err := c.batcher.ConsumeTraces(ctx, converted)
+	success := err == nil
+	var state string
+	if success {
+		state = "ok"
+	} else if errors.Is(err, context.Canceled) {
+		state = "canceled"
+	} else if errors.Is(err, context.DeadlineExceeded) {
+		state = "timeout"
+	} else {
+		state = "error"
+	}
+
+	var attrs = []attribute.KeyValue{
+		attribute.Bool("success", success),
+		attribute.String("state", state),
+	}
+	span.SetAttributes(append(attrs, attribute.Int("num_spans", count))...)
+	if err == nil {
+		span.SetStatus(otelcodes.Ok, state)
+	} else {
+		span.SetStatus(otelcodes.Error, state)
+	}
+	return err
 }
 
 func (c *client) Shutdown(ctx context.Context) error {
@@ -75,12 +112,12 @@ func (c *client) Shutdown(ctx context.Context) error {
 func NewDefaultConfig() Config {
 	return Config{
 		SelfMetrics: true,
-		SelfSpans:   false,
+		SelfSpans:   true,
 		Batcher: concurrentbatchprocessor.Config{
 			Timeout:            time.Second,
 			SendBatchSize:      1000,
 			SendBatchMaxSize:   1500,
-			MaxInFlightSizeMiB: 32 * 1024 * 1024,
+			MaxInFlightSizeMiB: 32,
 		},
 		Exporter: otelarrowexporter.Config{
 			TimeoutSettings: exporterhelper.TimeoutSettings{
@@ -166,12 +203,21 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 
 	if cfg.SelfSpans {
 		c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
+		c.tracer = c.settings.TelemetrySettings.TracerProvider.Tracer("lightstep-go/sdk/trace")
 	} else {
 		c.settings.TelemetrySettings.TracerProvider = nooptrace.NewTracerProvider()
 	}
 	if cfg.SelfMetrics {
 		c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
 		c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
+		// Note: the metrics SDK creates a counter at this
+		// point and counts points.  The same is not done here
+		// because there is another layer above the exporter
+		// that is capable of dropping, and we want the
+		// otelsdk.* metrics to count all items, not only
+		// exported ones.  There is no such intermediate
+		// processor between the periodic metric reader and
+		// the exporter.
 	} else {
 		c.settings.TelemetrySettings.MeterProvider = noopmetric.NewMeterProvider()
 	}
