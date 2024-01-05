@@ -188,16 +188,16 @@ to be maintained.  The temporality preference is configured by calling
 `OTEL_EXPORTER_OTLP_METRIC_TEMPORALITY_PREFERENCE` environment
 variable.
 
-The launcher supports a "stateless" temporality preference.  This
-selection configures the ideal behavior for Lightstep by mixing
-temporality setings.
+The launcher supports the standard "lowmemory" temporality preference,
+also known as "stateless" in this library.  This selection configures
+the ideal behavior for Lightstep by mixing temporality setings.
 
 The 1.x launcher release series configures the "cumulative"
 temporality preference by default.  The next major release of launcher
-will configure the "stateless" temporality preference.
+will configure the "lowmemory" temporality preference.
 
 Lightstep users are recommended to select either the "cumulative" or
-"stateless" preference.  The OpenTelemetry-specified "delta"
+"lowmemory" preference.  The OpenTelemetry-specified "delta"
 temporality preference is not recommended for Lightstep users.
 
 ------
