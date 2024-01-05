@@ -16,8 +16,6 @@ package pipelines
 
 import (
 	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"fmt"
 	"testing"
 
@@ -32,20 +30,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
-
-func newTLSConfig() *tls.Config {
-	certPool := x509.NewCertPool()
-
-	ok := certPool.AppendCertsFromPEM([]byte(test.TestCARootCertificate))
-
-	if !ok {
-		panic("could not parse certificate authority certificate")
-	}
-	return &tls.Config{
-		RootCAs:    certPool,
-		ServerName: test.ServerName,
-	}
-}
 
 func newTLSClientSetting() *configtls.TLSClientSetting {
 	return &configtls.TLSClientSetting{
