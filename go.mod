@@ -3,7 +3,6 @@ module github.com/lightstep/otel-launcher-go
 go 1.21
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.23.0
 	github.com/lightstep/otel-launcher-go/pipelines v1.23.0
 	github.com/sethvargo/go-envconfig v0.8.3
 	github.com/stretchr/testify v1.8.4
@@ -45,6 +44,7 @@ require (
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.23.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.23.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.23.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.23.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/minio/asm2plan9s v0.0.0-20200509001527-cdd76441f9d8 // indirect
