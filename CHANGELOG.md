@@ -8,6 +8,9 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+- Metric exporter: always use LS metrics SDK and OTel Collector export path, remove dependency on OTel-Go OTLP metric exporter and OTel-Go-Contrib metric instrumentation. [#596](https://github.com/lightstep/otel-launcher-go/pull/596)
+- Trace exporter: always use LS instrumentation packages and OTel Collector export path, remove dependency on OTel-Go OTLP trace exporter. [#595](https://github.com/lightstep/otel-launcher-go/pull/595)
+
 ## [1.23.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.23.0) - 2023-12-20)
 
 - Update to OTel-Arrow v0.13.0 dependencies. [#591](https://github.com/lightstep/otel-launcher-go/pull/591)
