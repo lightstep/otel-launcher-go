@@ -23,7 +23,6 @@ import (
 	"testing"
 	"time"
 
-	sdkmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/pipelines/test"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/otel"
@@ -325,7 +324,6 @@ func (suite *testSuite) TestDefaultConfig() {
 		LogLevel:                            "info",
 		Propagators:                         []string{"b3"},
 		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		UseLightstepMetricsSDK:              true,
 		logger:                              &suite.testLogger,
 		errorHandler:                        &suite.testErrorHandler,
 	}
@@ -365,7 +363,6 @@ func (suite *testSuite) TestEnvironmentVariables() {
 		LogLevel:                            "debug",
 		Propagators:                         []string{"b3", "w3c"},
 		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		UseLightstepMetricsSDK:              true,
 		MetricsEnabled:                      false,
 		MetricsBuiltinsEnabled:              false,
 		MetricsBuiltinLibraries:             []string{"cputime:stable", "runtime:stable"},
@@ -394,7 +391,6 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		WithLogger(&suite.testLogger),
 		WithErrorHandler(&suite.testErrorHandler),
 		WithPropagators([]string{"b3"}),
-		WithLightstepMetricsSDK(false),
 		WithMetricsEnabled(true),
 		WithMetricsBuiltinsEnabled(true),
 		WithMetricsBuiltinLibraries([]string{"host:stable"}),
@@ -424,7 +420,6 @@ func (suite *testSuite) TestConfigurationOverrides() {
 		LogLevel:                            "info",
 		Propagators:                         []string{"b3"},
 		Resource:                            resource.NewWithAttributes(semconv.SchemaURL, attributes...),
-		UseLightstepMetricsSDK:              false,
 		MetricsEnabled:                      true,
 		MetricsBuiltinsEnabled:              true,
 		MetricsBuiltinLibraries:             []string{"host:stable"},
@@ -662,20 +657,4 @@ func unsetEnvironment() {
 func TestMain(m *testing.M) {
 	unsetEnvironment()
 	os.Exit(m.Run())
-}
-
-func (suite *testSuite) TestLightstepMetricsSDK() {
-	lsOtel := ConfigureOpentelemetry(
-		append(suite.bothInsecureEndpointOptions(),
-			WithServiceName("test-service"),
-			WithAccessToken(fakeAccessToken()),
-			WithLightstepMetricsSDK(true),
-		)...,
-	)
-	defer lsOtel.Shutdown()
-
-	sdk := otel.GetMeterProvider()
-	if _, ok := sdk.(*sdkmetric.MeterProvider); !ok {
-		suite.T().Errorf("did not find a lightstep metrics SDK")
-	}
 }
