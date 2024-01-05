@@ -169,8 +169,7 @@ func tempoOptions(c PipelineConfig) (view.Option, error) {
 		// Lightstep users to choose.
 		syncPref = aggregation.DeltaTemporality
 		asyncPref = aggregation.DeltaTemporality
-	case "stateless":
-		// asyncPref set above.
+	case "stateless", "lowmemory":
 		syncPref = aggregation.DeltaTemporality
 	case "", "cumulative":
 	default:

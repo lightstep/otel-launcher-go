@@ -42,13 +42,13 @@ func (p *statefulSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence,
 	}
 }
 
-// statelessSyncInstrument is a synchronous instrument that maintains no state.
-type statelessSyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
+// lowmemorySyncInstrument is a synchronous instrument that maintains no state.
+type lowmemorySyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
 	compiledSyncBase[N, Storage, Methods]
 }
 
 // Collect for synchronous delta temporality.
-func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
+func (p *lowmemorySyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
 	var methods Methods
 
 	p.instLock.Lock()
@@ -91,14 +91,14 @@ func (p *statelessSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 	}
 }
 
-// statelessAsyncInstrument is an asynchronous instrument that keeps
+// lowmemoryAsyncInstrument is an asynchronous instrument that keeps
 // maintains no state.
-type statelessAsyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
+type lowmemoryAsyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
 	compiledAsyncBase[N, Storage, Methods]
 }
 
 // Collect for asynchronous cumulative temporality.
-func (p *statelessAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
+func (p *lowmemoryAsyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
 	p.instLock.Lock()
 	defer p.instLock.Unlock()
 
