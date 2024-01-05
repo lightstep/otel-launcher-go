@@ -52,7 +52,7 @@ type PipelineConfig struct {
 	//  cputime: v1 is lightstep/instrumentation/cputime
 	MetricsBuiltinLibraries []string
 
-	// TemporalityPreference is one of "cumulative", "delta", or "stateless"
+	// TemporalityPreference is one of "cumulative", "delta", or "lowmemory" (a.k.a. "stateless")
 	TemporalityPreference string
 
 	// Credentials carries the TLS settings.

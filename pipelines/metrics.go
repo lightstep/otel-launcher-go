@@ -249,7 +249,7 @@ func tempoOptions(c PipelineConfig) (view.Option, otelsdkmetric.TemporalitySelec
 		otelSelector = func(otelsdkmetric.InstrumentKind) metricdata.Temporality {
 			return metricdata.DeltaTemporality
 		}
-	case "stateless":
+	case "stateless", "lowmemory":
 		// asyncPref set above.
 		syncPref = aggregation.DeltaTemporality
 
