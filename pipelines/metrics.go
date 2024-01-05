@@ -26,34 +26,17 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/otlp/otelcol"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
+	"google.golang.org/grpc/encoding/gzip"
 
 	// The v1 instrumentation
 	lightstepCputime "github.com/lightstep/otel-launcher-go/lightstep/instrumentation/cputime"
 	lightstepHost "github.com/lightstep/otel-launcher-go/lightstep/instrumentation/host"
 	lightstepRuntime "github.com/lightstep/otel-launcher-go/lightstep/instrumentation/runtime"
 
-	// The v0 instrumentation
-	contribHost "go.opentelemetry.io/contrib/instrumentation/host"
-	contribRuntime "go.opentelemetry.io/contrib/instrumentation/runtime"
-
 	// OTel APIs
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/metric"
-
-	// The otel Metrics SDK
-	otelotlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	otelsdkmetric "go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/metric/metricdata"
-	"google.golang.org/grpc/encoding/gzip"
 )
-
-func prestableHostMetrics(provider metric.MeterProvider) error {
-	return contribHost.Start(contribHost.WithMeterProvider(provider))
-}
-
-func prestableRuntimeMetrics(provider metric.MeterProvider) error {
-	return contribRuntime.Start(contribRuntime.WithMeterProvider(provider))
-}
 
 func stableHostMetrics(provider metric.MeterProvider) error {
 	return lightstepHost.Start(lightstepHost.WithMeterProvider(provider))
@@ -73,25 +56,20 @@ func libraries(inits ...initFunc) []initFunc {
 	return inits
 }
 
-const prestableVersion = "prestable"
 const defaultVersion = "stable"
 
 var builtinMetricsVersions = map[string]map[string][]initFunc{
 	"all": {
-		defaultVersion:   libraries(stableHostMetrics, stableRuntimeMetrics, stableCputimeMetrics),
-		prestableVersion: libraries(prestableHostMetrics, prestableRuntimeMetrics),
+		defaultVersion: libraries(stableHostMetrics, stableRuntimeMetrics, stableCputimeMetrics),
 	},
 	"cputime": {
-		defaultVersion:   libraries(stableCputimeMetrics),
-		prestableVersion: libraries(),
+		defaultVersion: libraries(stableCputimeMetrics),
 	},
 	"host": {
-		defaultVersion:   libraries(stableHostMetrics),
-		prestableVersion: libraries(prestableHostMetrics),
+		defaultVersion: libraries(stableHostMetrics),
 	},
 	"runtime": {
-		defaultVersion:   libraries(stableRuntimeMetrics),
-		prestableVersion: libraries(prestableRuntimeMetrics),
+		defaultVersion: libraries(stableRuntimeMetrics),
 	},
 }
 
@@ -112,65 +90,29 @@ func NewMetricsPipeline(c PipelineConfig) (func() error, error) {
 	var provider metric.MeterProvider
 	var shutdown func() error
 
-	lsPref, otelPref, err := tempoOptions(c)
-	lsSecure, otelSecure := c.secureMetricOption()
+	lsPref, err := tempoOptions(c)
+	lsSecure := c.secureMetricOption()
 	if err != nil {
 		return nil, fmt.Errorf("invalid metric view configuration: %v", err)
 	}
 
-	if c.UseLightstepMetricsSDK {
-		// Install the Lightstep metrics SDK
-		metricExporter, err := c.newMetricsExporter(lsSecure)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create metric exporter: %v", err)
-		}
+	// Install the Lightstep metrics SDK
+	metricExporter, err := c.newMetricsExporter(lsSecure)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create metric exporter: %v", err)
+	}
 
-		if c.TLSSetting != nil {
-			// Credentials is not used
-			c.Credentials = nil
-		} else if c.Credentials != nil {
-			return nil, fmt.Errorf("use TLSSettings with the Lightstep metrics SDK, not Credentials")
-		}
+	sdk := sdkmetric.NewMeterProvider(
+		sdkmetric.WithResource(c.Resource),
+		sdkmetric.WithReader(
+			sdkmetric.NewPeriodicReader(metricExporter, period),
+			lsPref,
+		),
+	)
 
-		sdk := sdkmetric.NewMeterProvider(
-			sdkmetric.WithResource(c.Resource),
-			sdkmetric.WithReader(
-				sdkmetric.NewPeriodicReader(metricExporter, period),
-				lsPref,
-			),
-		)
-
-		provider = sdk
-		shutdown = func() error {
-			return sdk.Shutdown(context.Background())
-		}
-
-	} else {
-
-		if c.Credentials != nil {
-			// TLSSetting is not used
-			c.TLSSetting = nil
-		} else if c.TLSSetting != nil {
-			return nil, fmt.Errorf("use Credentials with the OTel-Go metrics SDK, not TLSSetting")
-		}
-
-		// Install the OTel-Go community metrics SDK.
-		metricExporter, err := c.newOtelMetricsExporter(otelPref, otelSecure)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create metric exporter: %v", err)
-		}
-		meterProvider := otelsdkmetric.NewMeterProvider(
-			otelsdkmetric.WithResource(c.Resource),
-			otelsdkmetric.WithReader(otelsdkmetric.NewPeriodicReader(
-				metricExporter,
-				otelsdkmetric.WithInterval(period),
-			)),
-		)
-		otel.SetMeterProvider(meterProvider)
-		provider = meterProvider
-		shutdown = func() error {
-			return meterProvider.Shutdown(context.Background())
-		}
+	provider = sdk
+	shutdown = func() error {
+		return sdk.Shutdown(context.Background())
 	}
 
 	if c.MetricsBuiltinsEnabled {
@@ -216,21 +158,9 @@ func (c PipelineConfig) newMetricsExporter(secure otelcol.Option) (sdkmetric.Pus
 	)
 }
 
-func (c PipelineConfig) newOtelMetricsExporter(temporality otelsdkmetric.TemporalitySelector, secureOpt otelotlpmetricgrpc.Option) (otelsdkmetric.Exporter, error) {
-	return otelotlpmetricgrpc.New(
-		context.Background(),
-		secureOpt,
-		otelotlpmetricgrpc.WithTemporalitySelector(temporality),
-		otelotlpmetricgrpc.WithEndpoint(c.Endpoint),
-		otelotlpmetricgrpc.WithHeaders(c.Headers),
-		otelotlpmetricgrpc.WithCompressor(gzip.Name),
-	)
-}
-
-func tempoOptions(c PipelineConfig) (view.Option, otelsdkmetric.TemporalitySelector, error) {
+func tempoOptions(c PipelineConfig) (view.Option, error) {
 	syncPref := aggregation.CumulativeTemporality
 	asyncPref := aggregation.CumulativeTemporality
-	var otelSelector otelsdkmetric.TemporalitySelector
 
 	switch lower := strings.ToLower(c.TemporalityPreference); lower {
 	case "delta":
@@ -239,30 +169,11 @@ func tempoOptions(c PipelineConfig) (view.Option, otelsdkmetric.TemporalitySelec
 		// Lightstep users to choose.
 		syncPref = aggregation.DeltaTemporality
 		asyncPref = aggregation.DeltaTemporality
-
-		// Note: the following is incorrect for UpDownCounter
-		// and async UpDownCounter, which the OTel
-		// specification stipulates are not affected by the
-		// preference setting.  We WILL NOT FIX this defect.
-		// Instead, as otel-launcher-go v1.10.x will use the
-		// Lightstep metrics SDK by default.
-		otelSelector = func(otelsdkmetric.InstrumentKind) metricdata.Temporality {
-			return metricdata.DeltaTemporality
-		}
 	case "stateless", "lowmemory":
-		// asyncPref set above.
 		syncPref = aggregation.DeltaTemporality
-
-		otelSelector = func(otelsdkmetric.InstrumentKind) metricdata.Temporality {
-			return metricdata.DeltaTemporality
-		}
 	case "", "cumulative":
-		// syncPref, asyncPref set above.
-		otelSelector = func(otelsdkmetric.InstrumentKind) metricdata.Temporality {
-			return metricdata.CumulativeTemporality
-		}
 	default:
-		return nil, nil, fmt.Errorf("invalid temporality preference: %v", c.TemporalityPreference)
+		return nil, fmt.Errorf("invalid temporality preference: %v", c.TemporalityPreference)
 
 	}
 	return view.WithDefaultAggregationTemporalitySelector(
@@ -276,5 +187,5 @@ func tempoOptions(c PipelineConfig) (view.Option, otelsdkmetric.TemporalitySelec
 				return asyncPref
 			}
 		},
-	), otelSelector, nil
+	), nil
 }

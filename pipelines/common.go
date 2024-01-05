@@ -19,7 +19,6 @@ import (
 	otelcoltrace "github.com/lightstep/otel-launcher-go/lightstep/sdk/trace/exporters/otlp/otelcol"
 
 	"go.opentelemetry.io/collector/config/configtls"
-	oldotlpmetricgrpc "go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"google.golang.org/grpc/credentials"
 )
@@ -55,38 +54,33 @@ type PipelineConfig struct {
 	// TemporalityPreference is one of "cumulative", "delta", or "lowmemory" (a.k.a. "stateless")
 	TemporalityPreference string
 
-	// Credentials carries the TLS settings.
-	Credentials credentials.TransportCredentials
 	// TLSSetting is the newer form.
 	TLSSetting *configtls.TLSClientSetting
 
-	// UseLightstepMetricsSDK determines whether to use the metrics
-	// SDK at ../lightstep/sdk/metric.
-	UseLightstepMetricsSDK bool
+	// The Lightstep SDK is always used, the OTel-Go SDK is no longer
+	// an option supported by this library.
+	DeprecatedUseLightstepMetricsSDK bool
+	// Credentials carries the TLS settings used by OTel-Go SDKs.
+	// This is not used.
+	DeprecatedCredentials credentials.TransportCredentials
 }
 
 type PipelineSetupFunc func(PipelineConfig) (func() error, error)
 
-func (p PipelineConfig) secureMetricOption() (otelcolmetric.Option, oldotlpmetricgrpc.Option) {
+func (p PipelineConfig) secureMetricOption() otelcolmetric.Option {
 	if p.Insecure {
-		return otelcolmetric.WithInsecure(), oldotlpmetricgrpc.WithInsecure()
-	} else if p.Credentials != nil {
-		return nil, oldotlpmetricgrpc.WithTLSCredentials(p.Credentials)
+		return otelcolmetric.WithInsecure()
 	} else if p.TLSSetting != nil {
-		return otelcolmetric.WithTLSSetting(*p.TLSSetting), nil
+		return otelcolmetric.WithTLSSetting(*p.TLSSetting)
 	}
 	return otelcolmetric.WithTLSSetting(configtls.TLSClientSetting{
-			Insecure: false,
-		}), oldotlpmetricgrpc.WithTLSCredentials(
-			credentials.NewClientTLSFromCert(nil, ""),
-		)
+		Insecure: false,
+	})
 }
 
 func (p PipelineConfig) secureTraceOption() otelcoltrace.Option {
 	if p.Insecure {
 		return otelcoltrace.WithInsecure()
-	} else if p.Credentials != nil {
-		return nil
 	} else if p.TLSSetting != nil {
 		return otelcoltrace.WithTLSSetting(*p.TLSSetting)
 	}

@@ -10,18 +10,12 @@ require (
 	// For otelcol-based exporter configuration.
 	go.opentelemetry.io/collector/config/configtls v0.90.0
 
-	// Host and runtime instrumentation
-	go.opentelemetry.io/contrib/instrumentation/host v0.45.0
-	go.opentelemetry.io/contrib/instrumentation/runtime v0.45.0
-
 	// b3 and opentracing propagators
 	go.opentelemetry.io/contrib/propagators/b3 v1.21.1
 	go.opentelemetry.io/contrib/propagators/ot v1.20.0
 	go.opentelemetry.io/otel v1.21.0
-	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc v0.44.0
 	go.opentelemetry.io/otel/metric v1.21.0
 	go.opentelemetry.io/otel/sdk v1.21.0
-	go.opentelemetry.io/otel/sdk/metric v1.21.0
 
 	// gRPC
 	google.golang.org/grpc v1.59.0
