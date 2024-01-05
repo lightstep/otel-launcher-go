@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -1451,6 +1452,59 @@ func TestInputAttributeSliceRaceCondition(t *testing.T) {
 	}()
 
 	wg.Wait()
+}
+
+func TestAttributeSizeLimit(t *testing.T) {
+	ctx := context.Background()
+	lib := instrumentation.Library{
+		Name: "testlib",
+	}
+	// This enters a default value
+	perf := sdkinstrument.Performance{}.Validate()
+	perf.AttributeSizeLimit = 100
+	vcs := make([]*viewstate.Compiler, 2)
+	vcs[0] = viewstate.New(lib, view.New(
+		"test",
+		perf,
+		deltaSelector,
+	))
+
+	desc := test.Descriptor(
+		"counter",
+		sdkinstrument.SyncCounter,
+		number.Float64Kind)
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 1)
+	pipes[0], _ = vcs[0].Compile(desc)
+
+	require.NotNil(t, pipes[0])
+
+	inst := New(desc, perf, nil, pipes)
+	require.NotNil(t, inst)
+
+	inst.ObserveFloat64(ctx, 1, attrsConfig(attribute.String(strings.Repeat("X", 1<<20), strings.Repeat("Y", 1<<20))))
+	inst.ObserveFloat64(ctx, 2, attrsConfig(attribute.String(strings.Repeat("X", 1<<20), strings.Repeat("Y", 1<<20))))
+	inst.ObserveFloat64(ctx, 3, attrsConfig(attribute.String(strings.Repeat("X", 1<<20), strings.Repeat("Y", 1<<20))))
+
+	limit := int(perf.AttributeSizeLimit)
+
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs[0].Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			test.Point(middleTime, endTime,
+				sum.NewMonotonicFloat64(6),
+				aggregation.DeltaTemporality,
+				attribute.String(strings.Repeat("X", limit), strings.Repeat("Y", limit)),
+			),
+		),
+	)
 }
 
 func TestSyncExemplars(t *testing.T) {

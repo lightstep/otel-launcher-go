@@ -182,9 +182,8 @@ func (t *clientTestSuite) SetupSuite() {
 
 	factory := otelarrowreceiver.NewFactory()
 	cfg := factory.CreateDefaultConfig().(*otelarrowreceiver.Config)
-	cfg.Protocols.Arrow = &otelarrowreceiver.ArrowSettings{}
+	cfg.Protocols.Arrow = otelarrowreceiver.ArrowSettings{}
 	cfg.GRPC.NetAddr = confignet.NetAddr{Endpoint: t.addr, Transport: "tcp"}
-	cfg.HTTP = nil
 
 	set := receivertest.NewNopCreateSettings()
 	tc := &consumertest.MetricsSink{}
@@ -276,7 +275,7 @@ func (t *clientTestSuite) TestCounterAndGauge() {
 
 	counter.Add(ctx, 1, metric.WithAttributes(testStmtAttrs...))
 
-	_ = t.sdk.Shutdown(ctx)
+	t.NoError(t.sdk.Shutdown(ctx))
 
 	t.Equal(1, len(t.sink.AllMetrics()))
 

@@ -21,7 +21,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	"github.com/lightstep/otel-launcher-go/pipelines/test"
@@ -82,7 +81,7 @@ func TestSecureTrace(t *testing.T) {
 			attribute.String("test-r1", "test-v1"),
 		),
 		ReportingPeriod: "24h",
-		Credentials:     credentials.NewTLS(newTLSConfig()),
+		TLSSetting:      newTLSClientSetting(),
 		Propagators:     []string{"tracecontext", "baggage"},
 	})
 	assert.NoError(t, err)

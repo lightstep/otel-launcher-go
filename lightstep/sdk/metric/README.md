@@ -194,6 +194,12 @@ This hook also supports removing attributes from metric events based
 on attribute value before they are aggregated, for example to
 dynamically configure allowed cardinality values.
 
+#### AttributeSizeLimit
+
+This limit is used to truncate attribute key and string values to a
+reasonable size.  The default limit is 8kB.  Zero is not a valid
+limit.
+
 #### Exemplars
 
 **Status**: Experimental
@@ -279,3 +285,4 @@ If the number of BLUE items is 3000, and the number of YELLOW items is
 
 Note that we expect the sum of `sample.weight` for the exemplars to
 equal the total number of input events (i.e., 3000 BLUE, 7000 YELLOW).
+
