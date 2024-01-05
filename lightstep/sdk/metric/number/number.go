@@ -14,7 +14,9 @@
 
 package number
 
-import "math"
+import (
+	"math"
+)
 
 //go:generate stringer -type=Kind
 
@@ -27,10 +29,16 @@ const (
 
 	// Float64Kind indicates float64.
 	Float64Kind
+
+	// Float64HistogramKind indicates metrics.Float64Histogram.
+	IgnoreKind
 )
 
-// Number is a 64bit numeric value, one of the Any interface types.
+// Number is a 64bit numeric value, one of the numeric Any types.
 type Number uint64
+
+// Ignore is a kind indicating non-numeric metric values are in use.
+type Ignore uint64
 
 // Any is any of the supported generic Number types.
 type Any interface {
@@ -39,10 +47,14 @@ type Any interface {
 
 // CoerceToFloat64 converts Number to float64 according to Kind.
 func (n Number) CoerceToFloat64(k Kind) float64 {
-	if k == Int64Kind {
+	switch k {
+	case Int64Kind:
 		return float64(n)
+	case Float64Kind:
+		return math.Float64frombits(uint64(n))
+	default:
+		return math.NaN()
 	}
-	return math.Float64frombits(uint64(n))
 }
 
 // ToFloat64 converts Number to float64.

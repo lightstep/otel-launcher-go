@@ -122,7 +122,7 @@ func (bd *builtinDescriptor) ignorePattern(pattern string) {
 	bd.add(pattern, builtinSkip)
 }
 
-func (bd *builtinDescriptor) ignoreHistogram(pattern string) {
+func (bd *builtinDescriptor) singleHistogram(pattern string) {
 	bd.add(pattern, builtinHistogram)
 }
 

@@ -139,3 +139,43 @@ func (Float64Traits) IsInf(value float64) bool {
 func (Float64Traits) Kind() Kind {
 	return Float64Kind
 }
+
+// IgnoreTraits implements Traits[any].
+type IgnoreTraits[T any] struct{}
+
+func (IgnoreTraits[T]) ToNumber(x T) Number {
+	return Number(math.NaN())
+}
+
+func (IgnoreTraits[T]) FromNumber(n Number) T {
+	var zero T
+	return zero
+}
+
+func (IgnoreTraits[T]) GetAtomic(ptr *T) T {
+	var zero T
+	return zero
+}
+
+func (IgnoreTraits[T]) SetAtomic(ptr *float64, value float64) {
+}
+
+func (IgnoreTraits[T]) SwapAtomic(ptr *float64, value float64) T {
+	var zero T
+	return zero
+}
+
+func (IgnoreTraits[T]) AddAtomic(ptr *T, value T) {
+}
+
+func (IgnoreTraits[T]) IsNaN(value T) bool {
+	return true
+}
+
+func (IgnoreTraits[T]) IsInf(value T) bool {
+	return false
+}
+
+func (IgnoreTraits[T]) Kind() Kind {
+	return IgnoreKind
+}

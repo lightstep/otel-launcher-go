@@ -78,7 +78,17 @@ func Start(opts ...Option) error {
 	)
 
 	r := newBuiltinRuntime(meter, metrics.All, metrics.Read)
-	return r.register(expectRuntimeMetrics())
+	err := r.register(expectRuntimeMetrics())
+	if err == nil {
+		go func() {
+			// This library has no way of being stopped or
+			// unregistered.  TODO: if it did, we would
+			// need an apparatus to unregister that stops
+			// and waits for this goroutine.
+
+		}()
+	}
+	return err
 }
 
 // allFunc is the function signature of metrics.All()
@@ -119,16 +129,9 @@ func (r *builtinRuntime) register(desc *builtinDescriptor) error {
 			otel.Handle(fmt.Errorf("unrecognized runtime/metrics name: %s", m.Name))
 			continue
 		}
-		if kind == builtinSkip {
+		if kind == builtinSkip || kind == builtinHistogram {
 			// skip e.g., totalized metrics
-			continue
-		}
-
-		if kind == builtinHistogram {
-			// skip unsupported data types
-			if m.Kind != metrics.KindFloat64Histogram {
-				otel.Handle(fmt.Errorf("expected histogram runtime/metrics: %s", mname))
-			}
+			// histograms are handled in a special way
 			continue
 		}
 
