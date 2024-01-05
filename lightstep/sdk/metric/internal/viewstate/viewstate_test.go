@@ -1393,7 +1393,7 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 	acc2.(Updater[float64]).Update(1)
 
 	// There are two references to one entry in the map.
-	require.Equal(t, 1, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+	require.Equal(t, 1, len(inst.(*lowmemorySyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
 
 	acc1.SnapshotAndProcess(false)
 	acc2.SnapshotAndProcess(true)
@@ -1408,7 +1408,7 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 		),
 	)
 
-	require.Equal(t, 1, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+	require.Equal(t, 1, len(inst.(*lowmemorySyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
 
 	acc1.SnapshotAndProcess(true)
 
@@ -1419,7 +1419,7 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 		),
 	)
 
-	require.Equal(t, 0, len(inst.(*statelessSyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+	require.Equal(t, 0, len(inst.(*lowmemorySyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
 }
 
 func TestRegexpMatch(t *testing.T) {

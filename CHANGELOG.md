@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+- Add "lowmemory" temporality naming, leaving "stateless" as an alias. [#597](https://github.com/lightstep/otel-launcher-go/pull/597)
+
 ## [1.23.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.23.0) - 2023-12-20)
 
 - Update to OTel-Arrow v0.13.0 dependencies. [#591](https://github.com/lightstep/otel-launcher-go/pull/591)
