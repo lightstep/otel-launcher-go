@@ -54,3 +54,13 @@ func ToFloat64(n Number) float64 {
 func ToInt64(n Number) int64 {
 	return int64(n)
 }
+
+// FromFloat64 converts float64 to Number.
+func FromFloat64(n float64) Number {
+	return Number(math.Float64bits(n))
+}
+
+// FromInt64 converts int64 to Number.
+func FromInt64(n int64) Number {
+	return Number(n)
+}

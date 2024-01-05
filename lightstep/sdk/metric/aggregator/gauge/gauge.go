@@ -137,7 +137,7 @@ func (Methods[N, Traits]) Copy(from, to *State[N, Traits]) {
 	to.seq = from.seq
 }
 
-func (Methods[N, Traits]) Update(state *State[N, Traits], number N) {
+func (Methods[N, Traits]) Update(state *State[N, Traits], number N, _ aggregator.ExemplarBits) {
 	newSeq := atomic.AddUint64(&sequenceVar, 1)
 
 	state.lock.Lock()
@@ -168,4 +168,12 @@ func (Methods[N, Traits]) ToStorage(aggr aggregation.Aggregation) (*State[N, Tra
 
 func (Methods[N, Traits]) SubtractSwap(operand, argument *State[N, Traits]) {
 	panic("not used for non-temporal metrics")
+}
+
+func (Methods[N, Traits]) Exemplars(ptr *State[N, Traits], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
+	return in
+}
+
+func (Methods[N, Traits]) Weight(_ N) float64 {
+	return 1
 }

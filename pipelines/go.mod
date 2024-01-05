@@ -119,6 +119,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
+require github.com/lightstep/varopt v1.4.0 // indirect
+
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/internal => ../lightstep/sdk/internal
 
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/metric => ../lightstep/sdk/metric

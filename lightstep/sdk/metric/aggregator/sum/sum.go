@@ -116,7 +116,7 @@ func (Methods[N, Traits, M]) HasChange(ptr *State[N, Traits, M]) bool {
 	return ptr.value != 0
 }
 
-func (Methods[N, Traits, M]) Update(state *State[N, Traits, M], value N) {
+func (Methods[N, Traits, M]) Update(state *State[N, Traits, M], value N, _ aggregator.ExemplarBits) {
 	var t Traits
 	t.AddAtomic(&state.value, value)
 }
@@ -142,4 +142,16 @@ func (Methods[N, Traits, M]) ToStorage(aggr aggregation.Aggregation) (*State[N, 
 
 func (Methods[N, Traits, M]) SubtractSwap(operand, argument *State[N, Traits, M]) {
 	operand.value = argument.value - operand.value
+}
+
+func (Methods[N, Traits, M]) Exemplars(ptr *State[N, Traits, M], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
+	return in
+}
+
+func (Methods[N, Traits, M]) Weight(n N) float64 {
+	// TODO: Traits should really support ToFloat64(), otherwise
+	// the following has a run-time condition could be compiled out.
+	var tr Traits
+	num := tr.ToNumber(n)
+	return num.CoerceToFloat64(tr.Kind())
 }
