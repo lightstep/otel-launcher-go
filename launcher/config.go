@@ -403,7 +403,6 @@ func setupMetrics(c Config) (func() error, error) {
 		TemporalityPreference:   c.MetricExporterTemporalityPreference,
 		MetricsBuiltinsEnabled:  c.MetricsBuiltinsEnabled,
 		MetricsBuiltinLibraries: c.MetricsBuiltinLibraries,
-		UseLightstepMetricsSDK:  c.UseLightstepMetricsSDK,
 	})
 }
 

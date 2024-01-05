@@ -23,7 +23,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/protobuf/encoding/prototext"
 
 	"github.com/lightstep/otel-launcher-go/pipelines/test"
@@ -81,7 +80,6 @@ func testInsecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 		ReportingPeriod:         "24h",
 		MetricsBuiltinsEnabled:  builtins,
 		MetricsBuiltinLibraries: []string{"cputime:stable"},
-		UseLightstepMetricsSDK:  lightstepSDK,
 	})
 	assert.NoError(t, err)
 
@@ -129,13 +127,8 @@ func testSecureMetrics(t *testing.T, lightstepSDK, builtins bool) {
 		ReportingPeriod:         "24h",
 		MetricsBuiltinsEnabled:  builtins,
 		MetricsBuiltinLibraries: []string{"cputime:stable"},
-		UseLightstepMetricsSDK:  lightstepSDK,
 	}
-	if lightstepSDK {
-		cfg.TLSSetting = newTLSClientSetting()
-	} else {
-		cfg.Credentials = credentials.NewTLS(newTLSConfig())
-	}
+	cfg.TLSSetting = newTLSClientSetting()
 
 	shutdown, err := NewMetricsPipeline(cfg)
 	require.NoError(t, err)
@@ -212,7 +205,6 @@ func testBuiltinMetrics(t *testing.T, builtins []string, expectMetric string) {
 		Resource:                resource.Empty(),
 		MetricsBuiltinsEnabled:  true,
 		MetricsBuiltinLibraries: builtins,
-		UseLightstepMetricsSDK:  true,
 	})
 	assert.NoError(t, err)
 
@@ -246,14 +238,8 @@ func TestBuiltins(t *testing.T) {
 		// empty version: success
 		{[]string{"cputime:"}, "process.uptime"},
 
-		// Old runtime library
-		{[]string{"runtime:prestable"}, "runtime.uptime"},
-
 		// New runtime library
 		{[]string{"runtime:stable"}, "process.runtime.go.gc.heap.frees.objects"},
-
-		// Old host library
-		{[]string{"host:prestable"}, "system.cpu.time"},
 
 		// New host library
 		{[]string{"host:stable"}, "system.cpu.time"},
@@ -262,10 +248,6 @@ func TestBuiltins(t *testing.T) {
 		{[]string{"all:stable"}, "system.cpu.time"},
 		{[]string{"all:stable"}, "process.uptime"},
 		{[]string{"all:stable"}, "process.runtime.go.gc.heap.frees.objects"},
-
-		// All prestable libraries
-		{[]string{"all:prestable"}, "process.cpu.time"},
-		{[]string{"all:prestable"}, "runtime.uptime"},
 	} {
 		testBuiltinMetrics(t, test.Builtins, test.Expect)
 	}
