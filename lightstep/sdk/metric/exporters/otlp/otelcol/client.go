@@ -28,6 +28,7 @@ import (
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter"
@@ -81,7 +82,7 @@ func NewDefaultConfig() Config {
 			TimeoutSettings: exporterhelper.TimeoutSettings{
 				Timeout: 15 * time.Second,
 			},
-			RetrySettings: exporterhelper.RetrySettings{
+			RetrySettings: configretry.BackOffConfig{
 				Enabled: false,
 			},
 			QueueSettings: exporterhelper.QueueSettings{
