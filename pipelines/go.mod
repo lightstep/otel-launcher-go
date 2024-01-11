@@ -3,8 +3,8 @@ module github.com/lightstep/otel-launcher-go/pipelines
 go 1.21
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.23.0
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.23.0
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.24.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.24.0
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.23.0
 
 	// For otelcol-based exporter configuration.
