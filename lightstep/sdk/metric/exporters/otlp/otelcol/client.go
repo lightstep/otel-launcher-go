@@ -82,7 +82,7 @@ func NewDefaultConfig() Config {
 			TimeoutSettings: exporterhelper.TimeoutSettings{
 				Timeout: 15 * time.Second,
 			},
-			RetrySettings: configretry.BackOffConfig{
+			RetryConfig: configretry.BackOffConfig{
 				Enabled: false,
 			},
 			QueueSettings: exporterhelper.QueueSettings{
