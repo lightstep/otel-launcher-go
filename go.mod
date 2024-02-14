@@ -43,7 +43,7 @@ require (
 	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.25.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.25.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.25.0 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.24.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.25.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.1-0.20231216201459-8508981c8b6c // indirect
