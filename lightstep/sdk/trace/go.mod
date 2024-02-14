@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/google/go-cmp v0.6.0
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.24.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.25.0
 	github.com/open-telemetry/otel-arrow/collector/exporter/otelarrowexporter v0.17.0
 	github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor v0.17.0
 	github.com/open-telemetry/otel-arrow/collector/receiver/otelarrowreceiver v0.17.0
