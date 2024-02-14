@@ -8,7 +8,11 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
-## [1.24.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.23.0) - 2024-01-11)
+## [1.25.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.25.0) - 2024-02-14)
+
+- Dependency update: Use OpenTelemetry Collector v0.94.1, OTel-Arrow v0.17.0. [#634](https://github.com/lightstep/otel-launcher-go/pull/634)
+
+## [1.24.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.24.0) - 2024-01-11)
 
 - Dependency update: Use OpenTelemetry Collector v0.92.0, OTel-Arrow v0.14.0. [#600](https://github.com/lightstep/otel-launcher-go/pull/600)
 - Trace exporter: always use LS instrumentation packages and OTel Collector export path, remove dependency on OTel-Go OTLP trace exporter. [#595](https://github.com/lightstep/otel-launcher-go/pull/595)
