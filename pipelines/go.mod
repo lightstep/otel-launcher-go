@@ -8,7 +8,7 @@ require (
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.25.0
 
 	// For otelcol-based exporter configuration.
-	go.opentelemetry.io/collector/config/configtls v0.94.1
+	go.opentelemetry.io/collector/config/configtls v0.95.0
 
 	// b3 and opentracing propagators
 	go.opentelemetry.io/contrib/propagators/b3 v1.21.1
@@ -45,7 +45,7 @@ require (
 	github.com/klauspost/cpuid/v2 v2.2.5 // indirect
 	github.com/knadh/koanf/maps v0.1.1 // indirect
 	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
-	github.com/knadh/koanf/v2 v2.0.2 // indirect
+	github.com/knadh/koanf/v2 v2.1.0 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.25.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
@@ -76,10 +76,10 @@ require (
 	go.opentelemetry.io/collector/config/configcompression v0.94.1 // indirect
 	go.opentelemetry.io/collector/config/configgrpc v0.94.1 // indirect
 	go.opentelemetry.io/collector/config/confignet v0.94.1 // indirect
-	go.opentelemetry.io/collector/config/configopaque v0.94.1 // indirect
+	go.opentelemetry.io/collector/config/configopaque v1.2.0 // indirect
 	go.opentelemetry.io/collector/config/configtelemetry v0.94.1 // indirect
 	go.opentelemetry.io/collector/config/internal v0.94.1 // indirect
-	go.opentelemetry.io/collector/confmap v0.94.1 // indirect
+	go.opentelemetry.io/collector/confmap v0.95.0 // indirect
 	go.opentelemetry.io/collector/consumer v0.94.1 // indirect
 	go.opentelemetry.io/collector/exporter v0.94.1 // indirect
 	go.opentelemetry.io/collector/extension v0.94.1 // indirect
