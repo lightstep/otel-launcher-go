@@ -118,8 +118,8 @@ github.com/open-telemetry/otel-arrow/collector/exporter/otelarrowexporter v0.18.
 github.com/open-telemetry/otel-arrow/collector/exporter/otelarrowexporter v0.18.0/go.mod h1:m4S22YmNS7NSmIIAQy7nYL52DyghsDIXJsK0TI16kCM=
 github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor v0.18.0 h1:mrA3n/Tz/wua+jOGi4I7tRnECqQGcE4QpyJIxi4mC/Q=
 github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor v0.18.0/go.mod h1:at2Y+8nxs3exKqE8n5zIiued+4O7W6J+KRvM6UA+hU8=
-github.com/open-telemetry/otel-arrow/collector/receiver/otelarrowreceiver v0.17.0 h1:TpHi1l+9wWPymiLIaQ3bryfLNKlI+/4hrfVcOjyYe9k=
-github.com/open-telemetry/otel-arrow/collector/receiver/otelarrowreceiver v0.17.0/go.mod h1:WDOzVRiH6aUZxlbvmVWnQhfGamzCy9BPpmDjEpeeWuM=
+github.com/open-telemetry/otel-arrow/collector/receiver/otelarrowreceiver v0.18.0 h1:FVj3WGBBT8DlX1cZDDYcxQlrmsiHIG2D7JeLFwZxaVE=
+github.com/open-telemetry/otel-arrow/collector/receiver/otelarrowreceiver v0.18.0/go.mod h1:GDHj7fwtwWf8IXxo+VWATcUwAyczb7QRkTU8xn74aM0=
 github.com/pierrec/lz4/v4 v4.1.18 h1:xaKrnTkyoqfh1YItXl56+6KJNVYWlEEPuAQW9xsplYQ=
 github.com/pierrec/lz4/v4 v4.1.18/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
