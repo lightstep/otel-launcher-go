@@ -3,8 +3,8 @@ module github.com/lightstep/otel-launcher-go/pipelines
 go 1.21
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.25.0
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.25.0
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.26.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.26.0
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.25.0
 
 	// For otelcol-based exporter configuration.
@@ -47,7 +47,7 @@ require (
 	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
 	github.com/knadh/koanf/v2 v2.1.0 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.25.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.26.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
