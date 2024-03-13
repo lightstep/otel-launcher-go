@@ -29,7 +29,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.1.0
 	go.uber.org/multierr v1.11.0
 	go.uber.org/zap v1.27.0
-	google.golang.org/protobuf v1.32.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
