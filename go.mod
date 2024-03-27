@@ -3,7 +3,7 @@ module github.com/lightstep/otel-launcher-go
 go 1.21
 
 require (
-	github.com/lightstep/otel-launcher-go/pipelines v1.26.0
+	github.com/lightstep/otel-launcher-go/pipelines v1.27.0
 	github.com/sethvargo/go-envconfig v0.8.3
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/otel v1.24.0
@@ -40,9 +40,9 @@ require (
 	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
 	github.com/knadh/koanf/v2 v2.1.0 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.26.0 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.26.0 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.26.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.27.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.27.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.27.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.25.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
