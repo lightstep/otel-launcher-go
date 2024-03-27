@@ -136,7 +136,7 @@ func NewDefaultConfig() Config {
 				WriteBufferSize: 512 * 1024,
 				WaitForReady:    true,
 			},
-			Arrow: otelarrowexporter.ArrowSettings{
+			Arrow: otelarrowexporter.ArrowConfig{
 				Disabled:         true,
 				NumStreams:       1,
 				DisableDowngrade: true,
@@ -191,9 +191,9 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 	c := &client{}
 
 	if !cfg.Exporter.Arrow.Disabled {
-		c.settings.ID = component.NewID("otel/sdk/trace/arrow")
+		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_trace_arrow"))
 	} else {
-		c.settings.ID = component.NewID("otel/sdk/trace/otlp")
+		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_trace_otlp"))
 	}
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -229,7 +229,7 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 	}
 
 	bset := processor.CreateSettings{
-		ID:                component.NewID("otel/sdk/trace/batch"),
+		ID:                component.NewID(component.MustNewType("otel_sdk_trace_batch")),
 		TelemetrySettings: c.settings.TelemetrySettings,
 		BuildInfo:         c.settings.BuildInfo,
 	}
