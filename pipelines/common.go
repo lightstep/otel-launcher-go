@@ -55,7 +55,7 @@ type PipelineConfig struct {
 	TemporalityPreference string
 
 	// TLSSetting is the newer form.
-	TLSSetting *configtls.TLSClientSetting
+	TLSSetting *configtls.ClientConfig
 
 	// The Lightstep SDK is always used, the OTel-Go SDK is no longer
 	// an option supported by this library.
@@ -73,7 +73,7 @@ func (p PipelineConfig) secureMetricOption() otelcolmetric.Option {
 	} else if p.TLSSetting != nil {
 		return otelcolmetric.WithTLSSetting(*p.TLSSetting)
 	}
-	return otelcolmetric.WithTLSSetting(configtls.TLSClientSetting{
+	return otelcolmetric.WithTLSSetting(configtls.ClientConfig{
 		Insecure: false,
 	})
 }
@@ -84,7 +84,7 @@ func (p PipelineConfig) secureTraceOption() otelcoltrace.Option {
 	} else if p.TLSSetting != nil {
 		return otelcoltrace.WithTLSSetting(*p.TLSSetting)
 	}
-	return otelcoltrace.WithTLSSetting(configtls.TLSClientSetting{
+	return otelcoltrace.WithTLSSetting(configtls.ClientConfig{
 		Insecure: false,
 	})
 }

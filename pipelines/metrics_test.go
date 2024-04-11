@@ -31,9 +31,9 @@ import (
 	semconv "go.opentelemetry.io/otel/semconv/v1.4.0"
 )
 
-func newTLSClientSetting() *configtls.TLSClientSetting {
-	return &configtls.TLSClientSetting{
-		TLSSetting: configtls.TLSSetting{
+func newTLSClientSetting() *configtls.ClientConfig {
+	return &configtls.ClientConfig{
+		Config: configtls.Config{
 			CAFile:   "test/testdata/caroot.crt",
 			CertFile: "test/testdata/testserver.crt",
 			KeyFile:  "test/testdata/testserver.key",
