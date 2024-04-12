@@ -12,7 +12,7 @@ require (
 
 	// b3 and opentracing propagators
 	go.opentelemetry.io/contrib/propagators/b3 v1.21.1
-	go.opentelemetry.io/contrib/propagators/ot v1.20.0
+	go.opentelemetry.io/contrib/propagators/ot v1.25.0
 	go.opentelemetry.io/otel v1.25.0
 	go.opentelemetry.io/otel/metric v1.25.0
 	go.opentelemetry.io/otel/sdk v1.25.0
