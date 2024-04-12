@@ -181,7 +181,7 @@ func WithInsecure() Option {
 	}
 }
 
-func WithTLSSetting(tlss configtls.TLSClientSetting) Option {
+func WithTLSSetting(tlss configtls.ClientConfig) Option {
 	return func(cfg *Config) {
 		cfg.Exporter.ClientConfig.TLSSetting = tlss
 	}
