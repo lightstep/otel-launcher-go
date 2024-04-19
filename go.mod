@@ -44,6 +44,7 @@ require (
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.28.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.28.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.25.0 // indirect
+	github.com/lightstep/varopt v1.4.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect

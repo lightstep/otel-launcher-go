@@ -113,6 +113,12 @@ var (
 		Last:  middleTime,
 		Now:   endTime,
 	}
+
+	nobits = aggregator.ExemplarBits{}
+
+	// Both accumulators pass for updaters, in at least one case.
+	_ Updater[float64] = &asyncAccumulator[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]{}
+	_ Updater[float64] = &syncAccumulator[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods, alwaysOffSampleFilter]{}
 )
 
 const (
@@ -435,7 +441,7 @@ func TestDuplicatesMergeDescriptor(t *testing.T) {
 	require.Equal(t, inst1, inst3)
 
 	accUpp := inst1.NewAccumulator(attribute.NewSet())
-	accUpp.(Updater[int64]).Update(1)
+	accUpp.(Updater[int64]).Update(1, nobits)
 
 	accUpp.SnapshotAndProcess(false)
 
@@ -472,7 +478,7 @@ func TestViewDescription(t *testing.T) {
 		attribute.String("K", "V"),
 	}
 	accUpp := inst1.NewAccumulator(attribute.NewSet(attrs...))
-	accUpp.(Updater[int64]).Update(1)
+	accUpp.(Updater[int64]).Update(1, nobits)
 
 	accUpp.SnapshotAndProcess(false)
 
@@ -511,8 +517,8 @@ func TestKeyFilters(t *testing.T) {
 		attribute.NewSet(attribute.String("a", "1"), attribute.String("b", "2"), attribute.String("d", "4")),
 	)
 
-	accUpp1.(Updater[int64]).Update(1)
-	accUpp2.(Updater[int64]).Update(1)
+	accUpp1.(Updater[int64]).Update(1, nobits)
+	accUpp2.(Updater[int64]).Update(1, nobits)
 	accUpp1.SnapshotAndProcess(false)
 	accUpp2.SnapshotAndProcess(false)
 
@@ -563,7 +569,7 @@ func TestTwoViewsOneInt64Instrument(t *testing.T) {
 		inst.NewAccumulator(attribute.NewSet(attribute.String("a", "2"), attribute.String("b", "1"))),
 		inst.NewAccumulator(attribute.NewSet(attribute.String("a", "2"), attribute.String("b", "2"))),
 	} {
-		acc.(Updater[int64]).Update(1)
+		acc.(Updater[int64]).Update(1, nobits)
 		acc.SnapshotAndProcess(false)
 	}
 
@@ -623,10 +629,10 @@ func TestHistogramTwoAggregations(t *testing.T) {
 	require.NoError(t, err)
 
 	acc := inst.NewAccumulator(attribute.NewSet())
-	acc.(Updater[float64]).Update(1)
-	acc.(Updater[float64]).Update(2)
-	acc.(Updater[float64]).Update(3)
-	acc.(Updater[float64]).Update(4)
+	acc.(Updater[float64]).Update(1, nobits)
+	acc.(Updater[float64]).Update(2, nobits)
+	acc.(Updater[float64]).Update(3, nobits)
+	acc.(Updater[float64]).Update(4, nobits)
 	acc.SnapshotAndProcess(false)
 
 	output := testCollect(t, vc)
@@ -662,11 +668,11 @@ func TestAllKeysFilter(t *testing.T) {
 	require.NoError(t, err)
 
 	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("a", "1")))
-	acc1.(Updater[float64]).Update(1)
+	acc1.(Updater[float64]).Update(1, nobits)
 	acc1.SnapshotAndProcess(false)
 
 	acc2 := inst.NewAccumulator(attribute.NewSet(attribute.String("b", "2")))
-	acc2.(Updater[float64]).Update(1)
+	acc2.(Updater[float64]).Update(1, nobits)
 	acc2.SnapshotAndProcess(false)
 
 	output := testCollect(t, vc)
@@ -714,7 +720,7 @@ func TestAnySumAggregation(t *testing.T) {
 		}
 
 		acc := inst.NewAccumulator(attribute.NewSet())
-		acc.(Updater[float64]).Update(1)
+		acc.(Updater[float64]).Update(1, nobits)
 		acc.SnapshotAndProcess(false)
 	}
 
@@ -762,12 +768,12 @@ func TestDuplicateAsyncMeasurementsIngored(t *testing.T) {
 
 	for _, inst := range []Instrument{inst1, inst2} {
 		acc := inst.NewAccumulator(attribute.NewSet())
-		acc.(Updater[float64]).Update(1)
-		acc.(Updater[float64]).Update(10)
-		acc.(Updater[float64]).Update(100)
-		acc.(Updater[float64]).Update(1000)
-		acc.(Updater[float64]).Update(10000)
-		acc.(Updater[float64]).Update(100000)
+		acc.(Updater[float64]).Update(1, nobits)
+		acc.(Updater[float64]).Update(10, nobits)
+		acc.(Updater[float64]).Update(100, nobits)
+		acc.(Updater[float64]).Update(1000, nobits)
+		acc.(Updater[float64]).Update(10000, nobits)
+		acc.(Updater[float64]).Update(100000, nobits)
 		acc.SnapshotAndProcess(false)
 	}
 
@@ -820,7 +826,7 @@ func TestCumulativeTemporality(t *testing.T) {
 			inst2.NewAccumulator(setA),
 			inst2.NewAccumulator(setB),
 		} {
-			acc.(Updater[float64]).Update(1)
+			acc.(Updater[float64]).Update(1, nobits)
 			acc.SnapshotAndProcess(false)
 		}
 
@@ -876,7 +882,7 @@ func TestDeltaTemporalityCounter(t *testing.T) {
 			inst2.NewAccumulator(setA),
 			inst2.NewAccumulator(setB),
 		} {
-			acc.(Updater[float64]).Update(float64(rounds))
+			acc.(Updater[float64]).Update(float64(rounds), nobits)
 			acc.SnapshotAndProcess(false)
 		}
 
@@ -926,11 +932,11 @@ func TestDeltaTemporalityAsyncCounter(t *testing.T) {
 
 	observe := func(x int) {
 		accI := instI.NewAccumulator(set)
-		accI.(Updater[int64]).Update(int64(x))
+		accI.(Updater[int64]).Update(int64(x), nobits)
 		accI.SnapshotAndProcess(true)
 
 		accF := instF.NewAccumulator(set)
-		accF.(Updater[float64]).Update(float64(x))
+		accF.(Updater[float64]).Update(float64(x), nobits)
 		accF.SnapshotAndProcess(true)
 	}
 
@@ -1033,11 +1039,11 @@ func TestDeltaTemporalityAsyncGauge(t *testing.T) {
 
 	observe := func(x int) {
 		accI := instI.NewAccumulator(set)
-		accI.(Updater[int64]).Update(int64(x))
+		accI.(Updater[int64]).Update(int64(x), nobits)
 		accI.SnapshotAndProcess(true)
 
 		accF := instF.NewAccumulator(set)
-		accF.(Updater[float64]).Update(float64(x))
+		accF.(Updater[float64]).Update(float64(x), nobits)
 		accF.SnapshotAndProcess(true)
 	}
 
@@ -1135,8 +1141,8 @@ func TestDeltaTemporalitySyncGauge(t *testing.T) {
 
 	observe := func(release bool, xs ...int) {
 		for _, x := range xs {
-			accI.(Updater[int64]).Update(int64(x))
-			accF.(Updater[float64]).Update(float64(x))
+			accI.(Updater[int64]).Update(int64(x), nobits)
+			accF.(Updater[float64]).Update(float64(x), nobits)
 		}
 
 		accI.SnapshotAndProcess(release)
@@ -1293,19 +1299,19 @@ func TestSyncDeltaTemporalityCounter(t *testing.T) {
 
 	observe := func(mono, nonMono int) {
 		accCI := instCI.NewAccumulator(set)
-		accCI.(Updater[int64]).Update(int64(mono))
+		accCI.(Updater[int64]).Update(int64(mono), nobits)
 		accCI.SnapshotAndProcess(false)
 
 		accCF := instCF.NewAccumulator(set)
-		accCF.(Updater[float64]).Update(float64(mono))
+		accCF.(Updater[float64]).Update(float64(mono), nobits)
 		accCF.SnapshotAndProcess(false)
 
 		accUI := instUI.NewAccumulator(set)
-		accUI.(Updater[int64]).Update(int64(nonMono))
+		accUI.(Updater[int64]).Update(int64(nonMono), nobits)
 		accUI.SnapshotAndProcess(false)
 
 		accUF := instUF.NewAccumulator(set)
-		accUF.(Updater[float64]).Update(float64(nonMono))
+		accUF.(Updater[float64]).Update(float64(nonMono), nobits)
 		accUF.SnapshotAndProcess(false)
 	}
 
@@ -1389,11 +1395,11 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 	acc1 := inst.NewAccumulator(set)
 	acc2 := inst.NewAccumulator(set)
 
-	acc1.(Updater[float64]).Update(1)
-	acc2.(Updater[float64]).Update(1)
+	acc1.(Updater[float64]).Update(1, nobits)
+	acc2.(Updater[float64]).Update(1, nobits)
 
 	// There are two references to one entry in the map.
-	require.Equal(t, 1, len(inst.(*lowmemorySyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+	require.Equal(t, 1, len(inst.(*lowmemorySyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods, alwaysOffSampleFilter]).data))
 
 	acc1.SnapshotAndProcess(false)
 	acc2.SnapshotAndProcess(true)
@@ -1408,7 +1414,7 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 		),
 	)
 
-	require.Equal(t, 1, len(inst.(*lowmemorySyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+	require.Equal(t, 1, len(inst.(*lowmemorySyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods, alwaysOffSampleFilter]).data))
 
 	acc1.SnapshotAndProcess(true)
 
@@ -1419,7 +1425,7 @@ func TestSyncDeltaTemporalityMapDeletion(t *testing.T) {
 		),
 	)
 
-	require.Equal(t, 0, len(inst.(*lowmemorySyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods]).data))
+	require.Equal(t, 0, len(inst.(*lowmemorySyncInstrument[float64, sum.MonotonicFloat64, sum.MonotonicFloat64Methods, alwaysOffSampleFilter]).data))
 }
 
 func TestRegexpMatch(t *testing.T) {
@@ -1478,7 +1484,7 @@ func TestDeltaTemporalityMinMaxSumCount(t *testing.T) {
 	for round := 0; round < rounds; round++ {
 		value := math.Exp2(float64(-round))
 		expectSum += value
-		minmaxsumcount.Float64Methods{}.Update(expectMMSC, value)
+		minmaxsumcount.Float64Methods{}.Update(expectMMSC, value, nobits)
 	}
 	require.Equal(t, expectCount, expectMMSC.Count())
 	require.Equal(t, expectSum, expectMMSC.Sum().CoerceToFloat64(number.Float64Kind))
@@ -1490,7 +1496,7 @@ func TestDeltaTemporalityMinMaxSumCount(t *testing.T) {
 		inst1.NewAccumulator(setB),
 	} {
 		for round := 0; round < 10; round++ {
-			acc.(Updater[float64]).Update(math.Exp2(float64(-round)))
+			acc.(Updater[float64]).Update(math.Exp2(float64(-round)), nobits)
 			acc.SnapshotAndProcess(false)
 		}
 	}
@@ -1579,7 +1585,7 @@ func TestViewHints(t *testing.T) {
 		dg.NewAccumulator(set),
 	} {
 		for _, inp := range inputs {
-			acc.(Updater[float64]).Update(inp)
+			acc.(Updater[float64]).Update(inp, nobits)
 		}
 		acc.SnapshotAndProcess(false)
 	}
@@ -1698,7 +1704,7 @@ func TestViewHintNoOverrideEmpty(t *testing.T) {
 	seq := testSequence
 	set := attribute.NewSet(attribute.String("test", "attr"))
 	acc := inst.NewAccumulator(set)
-	acc.(Updater[float64]).Update(1)
+	acc.(Updater[float64]).Update(1, nobits)
 	acc.SnapshotAndProcess(false)
 
 	test.RequireEqualMetrics(t, testCollectSequence(t, vc, seq),
@@ -1736,11 +1742,11 @@ func TestEmptyKeyFilter(t *testing.T) {
 	require.NoError(t, err)
 
 	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "1value"), attribute.String("K", "V")))
-	acc1.(Updater[float64]).Update(1)
+	acc1.(Updater[float64]).Update(1, nobits)
 	acc1.SnapshotAndProcess(false)
 
 	acc2 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "2value"), attribute.String("K", "V")))
-	acc2.(Updater[float64]).Update(1)
+	acc2.(Updater[float64]).Update(1, nobits)
 	acc2.SnapshotAndProcess(false)
 
 	output := testCollect(t, vc)
@@ -1773,11 +1779,11 @@ func TestEmptyKeyFilterAndView(t *testing.T) {
 	require.NoError(t, err)
 
 	acc1 := inst.NewAccumulator(attribute.NewSet(attribute.String("a", "1"), attribute.String("", "empty"), attribute.String("b", "ignored")))
-	acc1.(Updater[float64]).Update(1)
+	acc1.(Updater[float64]).Update(1, nobits)
 	acc1.SnapshotAndProcess(false)
 
 	acc2 := inst.NewAccumulator(attribute.NewSet(attribute.String("", "different"), attribute.String("a", "1")))
-	acc2.(Updater[float64]).Update(1)
+	acc2.(Updater[float64]).Update(1, nobits)
 	acc2.SnapshotAndProcess(false)
 
 	output := testCollect(t, vc)
@@ -1838,7 +1844,7 @@ func TestOverflowSyncCumulative(t *testing.T) {
 
 	for i := 0; i < 1000; i++ {
 		acc1 := instA.NewAccumulator(attribute.NewSet(attribute.Int("a", i)))
-		acc1.(Updater[float64]).Update(1)
+		acc1.(Updater[float64]).Update(1, nobits)
 		acc1.SnapshotAndProcess(true)
 
 		if i < limitA-1 {
@@ -1851,7 +1857,7 @@ func TestOverflowSyncCumulative(t *testing.T) {
 		}
 
 		acc2 := instB.NewAccumulator(attribute.NewSet(attribute.Int("b", i)))
-		acc2.(Updater[float64]).Update(1)
+		acc2.(Updater[float64]).Update(1, nobits)
 		acc2.SnapshotAndProcess(true)
 
 		if i < limitB-1 {
@@ -1864,7 +1870,7 @@ func TestOverflowSyncCumulative(t *testing.T) {
 		}
 
 		acc3 := instC.NewAccumulator(attribute.NewSet(attribute.Int("c", i)))
-		acc3.(Updater[float64]).Update(1)
+		acc3.(Updater[float64]).Update(1, nobits)
 		acc3.SnapshotAndProcess(true)
 
 		if i < limitC-1 {
@@ -1960,15 +1966,15 @@ func TestOverflowAsyncCumulative(t *testing.T) {
 	for reps := 0; reps < 10; reps++ {
 		for i := 0; i < count; i++ {
 			acc1 := instA.NewAccumulator(attribute.NewSet(attribute.Int("a", i)))
-			acc1.(Updater[int64]).Update(1)
+			acc1.(Updater[int64]).Update(1, nobits)
 			acc1.SnapshotAndProcess(true)
 
 			acc2 := instB.NewAccumulator(attribute.NewSet(attribute.Int("b", i)))
-			acc2.(Updater[int64]).Update(1)
+			acc2.(Updater[int64]).Update(1, nobits)
 			acc2.SnapshotAndProcess(true)
 
 			acc3 := instC.NewAccumulator(attribute.NewSet(attribute.Int("c", i)))
-			acc3.(Updater[int64]).Update(1)
+			acc3.(Updater[int64]).Update(1, nobits)
 			acc3.SnapshotAndProcess(true)
 		}
 
@@ -2039,7 +2045,7 @@ func TestOneViewOverflowsOneDoesNot(t *testing.T) {
 			sattr,
 			vattr,
 		))
-		acc.(Updater[float64]).Update(1)
+		acc.(Updater[float64]).Update(1, nobits)
 		acc.SnapshotAndProcess(true)
 
 		if i < limit-1 {
@@ -2105,11 +2111,11 @@ func TestInstrumentOverflowCombined(t *testing.T) {
 			aset := attribute.NewSet(attr)
 
 			accS := instS.NewAccumulator(aset)
-			accS.(Updater[float64]).Update(1)
+			accS.(Updater[float64]).Update(1, nobits)
 			accS.SnapshotAndProcess(true)
 
 			accA := instA.NewAccumulator(aset)
-			accA.(Updater[int64]).Update(1)
+			accA.(Updater[int64]).Update(1, nobits)
 			accA.SnapshotAndProcess(true)
 		}
 
@@ -2156,4 +2162,98 @@ func TestInstrumentOverflowCombined(t *testing.T) {
 		totalA += sumA
 		require.Equal(t, int64((reps+1)*count), totalA, "rep %d", reps)
 	}
+}
+
+// TestExemplars is the most-basic test for exemplars there could be.
+// It creates three series, distinguished by b=1,2,3 then filters b
+// leaving three points.
+func TestExemplars(t *testing.T) {
+	views := view.New(
+		"test",
+		safePerf,
+		view.WithClause(
+			view.WithKeys([]attribute.Key{"a"}),
+			view.WithAggregatorConfig(
+				aggregator.Config{
+					Exemplar: aggregator.ExemplarConfig{
+						Filter: aggregator.AlwaysOnKind,
+						Size:   3,
+					},
+				},
+			),
+		),
+	)
+
+	vc := New(testLib, views)
+
+	inst, err := testCompile(vc, "foo", sdkinstrument.SyncCounter, number.Float64Kind)
+	require.NoError(t, err)
+
+	all1 := []attribute.KeyValue{
+		attribute.Int("b", 1),
+		attribute.Int("a", 1),
+	}
+	all2 := []attribute.KeyValue{
+		attribute.Int("b", 2),
+		attribute.Int("a", 1),
+	}
+	all3 := []attribute.KeyValue{
+		attribute.Int("b", 3),
+		attribute.Int("a", 1),
+	}
+	acc1 := inst.NewAccumulator(attribute.NewSet(all1...))
+	eb1 := aggregator.ExemplarBits{
+		Time:       middleTime,
+		Number:     number.FromInt64(1),
+		Attributes: all1,
+		Span:       test.FakeSpan(1, 1),
+	}
+	acc1.(Updater[float64]).Update(1, eb1)
+	acc1.SnapshotAndProcess(false)
+
+	acc2 := inst.NewAccumulator(attribute.NewSet(all2...))
+	eb2 := aggregator.ExemplarBits{
+		Time:       middleTime,
+		Number:     number.FromInt64(2),
+		Attributes: all2,
+		Span:       test.FakeSpan(2, 2),
+	}
+	acc2.(Updater[float64]).Update(2, eb2)
+	acc2.SnapshotAndProcess(false)
+
+	acc3 := inst.NewAccumulator(attribute.NewSet(all3...))
+	eb3 := aggregator.ExemplarBits{
+		Time:       middleTime,
+		Number:     number.FromInt64(3),
+		Attributes: all3,
+		Span:       test.FakeSpan(3, 3),
+	}
+	acc3.(Updater[float64]).Update(3, eb3)
+	acc3.SnapshotAndProcess(false)
+
+	output := testCollect(t, vc)
+
+	// In this test, the number of examples equals the reservoir size.
+	// Weight == point value.
+	test.RequireEqualMetrics(t, output,
+		test.Instrument(
+			test.Descriptor("foo", sdkinstrument.SyncCounter, number.Float64Kind),
+			test.PointEx(
+				startTime, endTime, sum.NewMonotonicFloat64(1+2+3), cumulative,
+				[]attribute.KeyValue{attribute.Int("a", 1)},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: eb1,
+					Weight:       1,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: eb2,
+					Weight:       2,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: eb3,
+					Weight:       3,
+				},
+			),
+		),
+	)
 }
