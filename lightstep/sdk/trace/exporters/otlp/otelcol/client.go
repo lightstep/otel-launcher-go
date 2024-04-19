@@ -26,6 +26,7 @@ import (
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
+	"go.opentelemetry.io/collector/config/configretry"
 	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter"
@@ -123,19 +124,19 @@ func NewDefaultConfig() Config {
 			TimeoutSettings: exporterhelper.TimeoutSettings{
 				Timeout: 15 * time.Second,
 			},
-			RetrySettings: exporterhelper.RetrySettings{
+			RetryConfig: configretry.BackOffConfig{
 				Enabled: false,
 			},
 			QueueSettings: exporterhelper.QueueSettings{
 				Enabled: false,
 			},
-			GRPCClientSettings: configgrpc.GRPCClientSettings{
+			ClientConfig: configgrpc.ClientConfig{
 				Headers:         map[string]configopaque.String{},
-				Compression:     configcompression.Zstd,
+				Compression:     configcompression.TypeZstd,
 				WriteBufferSize: 512 * 1024,
 				WaitForReady:    true,
 			},
-			Arrow: otelarrowexporter.ArrowSettings{
+			Arrow: otelarrowexporter.ArrowConfig{
 				Disabled:         true,
 				NumStreams:       1,
 				DisableDowngrade: true,
@@ -156,33 +157,33 @@ func NewConfig(opts ...Option) Config {
 
 func WithEndpoint(addr string) Option {
 	return func(cfg *Config) {
-		cfg.Exporter.GRPCClientSettings.Endpoint = addr
+		cfg.Exporter.ClientConfig.Endpoint = addr
 	}
 }
 
 func WithHeaders(hdrs map[string]string) Option {
 	return func(cfg *Config) {
 		for key, val := range hdrs {
-			cfg.Exporter.GRPCClientSettings.Headers[key] = configopaque.String(val)
+			cfg.Exporter.ClientConfig.Headers[key] = configopaque.String(val)
 		}
 	}
 }
 
 func WithCompressor(comp string) Option {
 	return func(cfg *Config) {
-		cfg.Exporter.GRPCClientSettings.Compression = configcompression.CompressionType(comp)
+		cfg.Exporter.ClientConfig.Compression = configcompression.Type(comp)
 	}
 }
 
 func WithInsecure() Option {
 	return func(cfg *Config) {
-		cfg.Exporter.GRPCClientSettings.TLSSetting.Insecure = true
+		cfg.Exporter.ClientConfig.TLSSetting.Insecure = true
 	}
 }
 
-func WithTLSSetting(tlss configtls.TLSClientSetting) Option {
+func WithTLSSetting(tlss configtls.ClientConfig) Option {
 	return func(cfg *Config) {
-		cfg.Exporter.GRPCClientSettings.TLSSetting = tlss
+		cfg.Exporter.ClientConfig.TLSSetting = tlss
 	}
 }
 
@@ -190,9 +191,9 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 	c := &client{}
 
 	if !cfg.Exporter.Arrow.Disabled {
-		c.settings.ID = component.NewID("otel/sdk/trace/arrow")
+		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_trace_arrow"))
 	} else {
-		c.settings.ID = component.NewID("otel/sdk/trace/otlp")
+		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_trace_otlp"))
 	}
 	logger, err := zap.NewProduction()
 	if err != nil {
@@ -228,7 +229,7 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 	}
 
 	bset := processor.CreateSettings{
-		ID:                component.NewID("otel/sdk/trace/batch"),
+		ID:                component.NewID(component.MustNewType("otel_sdk_trace_batch")),
 		TelemetrySettings: c.settings.TelemetrySettings,
 		BuildInfo:         c.settings.BuildInfo,
 	}

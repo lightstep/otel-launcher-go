@@ -25,7 +25,7 @@ Differences from the OpenTelemetry metrics SDK specification:
    point](https://opentelemetry.io/docs/reference/specification/metrics/datamodel/#histogram).
    Note that this aggregation only encodes the `.Min` and `.Max`
    fields when configured with delta temporality.  [Consider using the
-   "stateless" temporality preference in the launcher.](../../../README.md#temporality-settings).
+   "lowmemory" temporality preference in the launcher.](../../../README.md#temporality-settings).
 3. Synchronous Gauge instrument behavior is [supported using an API 
    hint](#metric-instrument-hints-api).
 4. The OTLP exporter is the only provided exporter.  The OTLP exporter

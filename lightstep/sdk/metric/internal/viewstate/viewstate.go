@@ -470,9 +470,9 @@ func newSyncViewWithEx[
 }
 
 // newSyncView returns a compiled synchronous instrument.  If the view
-// calls for delta temporality, a stateless instrument is returned,
+// calls for delta temporality, a lowmemory instrument is returned,
 // otherwise for cumulative temporality a stateful instrument will be
-// used.  I.e., Delta->Stateless, Cumulative->Stateful.
+// used.  I.e., Delta->Lowmemory, Cumulative->Stateful.
 func newSyncView[
 	N number.Any,
 	Storage any,
@@ -496,7 +496,7 @@ func newSyncView[
 		instrumentBase: metric, //nolint:govet
 	}
 	if behavior.tempo == aggregation.DeltaTemporality {
-		return &statelessSyncInstrument[N, Storage, Methods, Samp]{
+		return &lowmemorySyncInstrument[N, Storage, Methods, Samp]{
 			compiledSyncBase: instrument, //nolint:govet
 		}
 	}
@@ -553,8 +553,8 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 
 // newAsyncView returns a compiled asynchronous instrument.  If the
 // view calls for delta temporality, a stateful instrument is
-// returned, otherwise for cumulative temporality a stateless
-// instrument will be used.  I.e., Cumulative->Stateless,
+// returned, otherwise for cumulative temporality a lowmemory
+// instrument will be used.  I.e., Cumulative->Lowmemory,
 // Delta->Stateful.
 func newAsyncView[
 	N number.Any,
@@ -584,11 +584,11 @@ func newAsyncView[
 				compiledAsyncBase: instrument, //nolint:govet
 			}
 		}
-		// Gauges fall through to the stateless behavior
+		// Gauges fall through to the lowmemory behavior
 		// regardless of delta temporality.
 	}
 
-	return &statelessAsyncInstrument[N, Storage, Methods]{
+	return &lowmemoryAsyncInstrument[N, Storage, Methods]{
 		compiledAsyncBase: instrument, //nolint:govet
 	}
 }
