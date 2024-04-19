@@ -108,6 +108,7 @@ require (
 require (
 	github.com/apache/arrow/go/v14 v14.0.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.0.0-alpha.1 // indirect
+	github.com/lightstep/varopt v1.4.0 // indirect
 	go.opentelemetry.io/collector/config/configretry v0.98.0 // indirect
 )
 
