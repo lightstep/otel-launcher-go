@@ -1,10 +1,11 @@
 module github.com/lightstep/otel-launcher-go
 
 go 1.21
+toolchain go1.22.2
 
 require (
 	github.com/lightstep/otel-launcher-go/pipelines v1.28.0
-	github.com/sethvargo/go-envconfig v0.8.3
+	github.com/sethvargo/go-envconfig v1.0.2
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/otel v1.25.0
 	go.opentelemetry.io/otel/metric v1.25.0
