@@ -8,7 +8,7 @@ require (
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.25.0
 
 	// For otelcol-based exporter configuration.
-	go.opentelemetry.io/collector/config/configtls v0.98.0
+	go.opentelemetry.io/collector/config/configtls v0.101.0
 
 	// b3 and opentracing propagators
 	go.opentelemetry.io/contrib/propagators/b3 v1.21.1
@@ -75,10 +75,10 @@ require (
 	go.opentelemetry.io/collector/config/configcompression v1.5.0 // indirect
 	go.opentelemetry.io/collector/config/configgrpc v0.98.0 // indirect
 	go.opentelemetry.io/collector/config/confignet v0.98.0 // indirect
-	go.opentelemetry.io/collector/config/configopaque v1.5.0 // indirect
+	go.opentelemetry.io/collector/config/configopaque v1.8.0 // indirect
 	go.opentelemetry.io/collector/config/configtelemetry v0.98.0 // indirect
 	go.opentelemetry.io/collector/config/internal v0.98.0 // indirect
-	go.opentelemetry.io/collector/confmap v0.98.0 // indirect
+	go.opentelemetry.io/collector/confmap v0.101.0 // indirect
 	go.opentelemetry.io/collector/consumer v0.98.0 // indirect
 	go.opentelemetry.io/collector/exporter v0.98.0 // indirect
 	go.opentelemetry.io/collector/extension v0.98.0 // indirect
