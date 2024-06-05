@@ -468,7 +468,6 @@ func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior)
 			sum.Methods[N, Traits, sum.NonMonotonic],
 		](behavior)
 	case aggregation.GaugeKind:
-		// Note: off-spec synchronous gauge support
 		return newSyncView[
 			N,
 			gauge.State[N, Traits],
@@ -672,6 +671,12 @@ func checkSemanticCompatibility(ik sdkinstrument.Kind, behavior *singleBehavior)
 		}
 
 	case sdkinstrument.AsyncGauge:
+		switch cat {
+		case aggregation.GaugeCategory:
+			return nil
+		}
+
+	case sdkinstrument.SyncGauge:
 		switch cat {
 		case aggregation.GaugeCategory:
 			return nil
