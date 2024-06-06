@@ -35,6 +35,10 @@ type (
 		embedded.Int64UpDownCounter
 		observer *syncstate.Observer
 	}
+	int64Gauge struct {
+		embedded.Int64Gauge
+		observer *syncstate.Observer
+	}
 	int64Histogram struct {
 		embedded.Int64Histogram
 		observer *syncstate.Observer
@@ -45,6 +49,10 @@ type (
 	}
 	float64UpDownCounter struct {
 		embedded.Float64UpDownCounter
+		observer *syncstate.Observer
+	}
+	float64Gauge struct {
+		embedded.Float64Gauge
 		observer *syncstate.Observer
 	}
 	float64Histogram struct {
@@ -101,6 +109,10 @@ func (i int64UpDownCounter) Add(ctx context.Context, value int64, options ...met
 	i.observer.ObserveInt64(ctx, value, addToOpConfig(options))
 }
 
+func (i int64Gauge) Record(ctx context.Context, value int64, options ...metric.RecordOption) {
+	i.observer.ObserveInt64(ctx, value, recordToOpConfig(options))
+}
+
 func (i int64Histogram) RecordWithKeyValues(ctx context.Context, value int64, attrs ...attribute.KeyValue) {
 	i.observer.ObserveInt64(ctx, value, syncstate.OpConfig{
 		KeyValues: attrs,
@@ -131,6 +143,10 @@ func (i float64UpDownCounter) Add(ctx context.Context, value float64, options ..
 	i.observer.ObserveFloat64(ctx, value, addToOpConfig(options))
 }
 
+func (i float64Gauge) Record(ctx context.Context, value float64, options ...metric.RecordOption) {
+	i.observer.ObserveFloat64(ctx, value, recordToOpConfig(options))
+}
+
 func (i float64Histogram) RecordWithKeyValues(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
 	i.observer.ObserveFloat64(ctx, value, syncstate.OpConfig{
 		KeyValues: attrs,
@@ -151,6 +167,11 @@ func (m *meter) Int64UpDownCounter(name string, opts ...metric.Int64UpDownCounte
 	return int64UpDownCounter{observer: inst}, err
 }
 
+func (m *meter) Int64Gauge(name string, opts ...metric.Int64GaugeOption) (metric.Int64Gauge, error) {
+	inst, err := m.synchronousInstrument(name, metric.NewInt64GaugeConfig(opts...), number.Int64Kind, sdkinstrument.SyncGauge)
+	return int64Gauge{observer: inst}, err
+}
+
 func (m *meter) Int64Histogram(name string, opts ...metric.Int64HistogramOption) (metric.Int64Histogram, error) {
 	inst, err := m.synchronousInstrument(name, metric.NewInt64HistogramConfig(opts...), number.Int64Kind, sdkinstrument.SyncHistogram)
 	return int64Histogram{observer: inst}, err
@@ -164,6 +185,11 @@ func (m *meter) Float64Counter(name string, opts ...metric.Float64CounterOption)
 func (m *meter) Float64UpDownCounter(name string, opts ...metric.Float64UpDownCounterOption) (metric.Float64UpDownCounter, error) {
 	inst, err := m.synchronousInstrument(name, metric.NewFloat64UpDownCounterConfig(opts...), number.Float64Kind, sdkinstrument.SyncUpDownCounter)
 	return float64UpDownCounter{observer: inst}, err
+}
+
+func (m *meter) Float64Gauge(name string, opts ...metric.Float64GaugeOption) (metric.Float64Gauge, error) {
+	inst, err := m.synchronousInstrument(name, metric.NewFloat64GaugeConfig(opts...), number.Float64Kind, sdkinstrument.SyncGauge)
+	return float64Gauge{observer: inst}, err
 }
 
 func (m *meter) Float64Histogram(name string, opts ...metric.Float64HistogramOption) (metric.Float64Histogram, error) {

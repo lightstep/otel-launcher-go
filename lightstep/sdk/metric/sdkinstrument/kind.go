@@ -24,6 +24,8 @@ const (
 	SyncCounter Kind = iota
 	// SyncUpDownCounter indicates a UpDownCounter instrument.
 	SyncUpDownCounter
+	// SyncGauge indicates a Gauge instrument.
+	SyncGauge
 	// SyncHistogram indicates a Histogram instrument.
 	SyncHistogram
 
@@ -42,7 +44,7 @@ const (
 // Synchronous returns whether this is a synchronous kind of instrument.
 func (k Kind) Synchronous() bool {
 	switch k {
-	case SyncCounter, SyncUpDownCounter, SyncHistogram:
+	case SyncCounter, SyncUpDownCounter, SyncGauge, SyncHistogram:
 		return true
 	}
 	return false
