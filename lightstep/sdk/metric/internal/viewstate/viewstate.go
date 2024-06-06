@@ -678,6 +678,9 @@ func checkSemanticCompatibility(ik sdkinstrument.Kind, behavior *singleBehavior)
 
 	case sdkinstrument.SyncGauge:
 		switch cat {
+		// TODO: consider letting gauges have semantic compatibility
+		// with histogram aggregation, histograms have semantic compat
+		// with gauge aggregation, and so on.
 		case aggregation.GaugeCategory:
 			return nil
 		}
