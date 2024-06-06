@@ -5,8 +5,8 @@ go 1.21.0
 toolchain go1.22.2
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.28.0
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.28.0
+	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.29.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.29.0
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.25.0
 
 	// For otelcol-based exporter configuration.

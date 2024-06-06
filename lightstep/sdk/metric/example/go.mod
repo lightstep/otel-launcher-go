@@ -5,7 +5,7 @@ go 1.21.0
 toolchain go1.22.2
 
 require (
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.28.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.29.0
 	github.com/lightstep/otel-launcher-go/pipelines v1.8.0
 	go.opentelemetry.io/proto/otlp v1.2.0
 )
@@ -35,7 +35,7 @@ require (
 	github.com/knadh/koanf/providers/confmap v0.1.0 // indirect
 	github.com/knadh/koanf/v2 v2.1.1 // indirect
 	github.com/lightstep/go-expohisto v1.0.0 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.28.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.29.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
