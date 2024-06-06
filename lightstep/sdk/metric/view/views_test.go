@@ -192,7 +192,7 @@ func TestStandardAggregation(t *testing.T) {
 func expectStandardAggregation(t *testing.T, v *Views) {
 	for i := sdkinstrument.Kind(0); i < sdkinstrument.NumKinds; i++ {
 		switch i {
-		case sdkinstrument.AsyncGauge:
+		case sdkinstrument.AsyncGauge, sdkinstrument.SyncGauge:
 			require.Equal(t, aggregation.GaugeKind, v.Defaults.Aggregation(i))
 		case sdkinstrument.SyncCounter, sdkinstrument.AsyncCounter:
 			require.Equal(t, aggregation.MonotonicSumKind, v.Defaults.Aggregation(i))
@@ -201,6 +201,7 @@ func expectStandardAggregation(t *testing.T, v *Views) {
 		case sdkinstrument.SyncHistogram:
 			require.Equal(t, aggregation.HistogramKind, v.Defaults.Aggregation(i))
 		default:
+			t.Logf("Unexpected aggregation %v", i)
 			t.Fail()
 		}
 	}
