@@ -25,7 +25,7 @@ import (
 	sdkmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
-	"github.com/open-telemetry/otel-arrow/collector/receiver/otelarrowreceiver"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otelarrowreceiver"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confignet"
