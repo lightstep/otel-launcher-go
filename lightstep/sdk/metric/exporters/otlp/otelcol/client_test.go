@@ -170,7 +170,7 @@ func (t *clientTestSuite) SetupSuite() {
 	cfg.Protocols.Arrow = otelarrowreceiver.ArrowConfig{}
 	cfg.GRPC.NetAddr = confignet.AddrConfig{Endpoint: t.addr, Transport: "tcp"}
 
-	set := receivertest.NewNopCreateSettings()
+	set := receivertest.NewNopSettings()
 	tc := &consumertest.MetricsSink{}
 
 	mr, err := factory.CreateMetricsReceiver(ctx, set, cfg, tc)

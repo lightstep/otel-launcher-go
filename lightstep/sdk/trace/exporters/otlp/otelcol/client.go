@@ -59,7 +59,7 @@ type client struct {
 
 	exporter exporter.Traces
 	batcher  processor.Traces
-	settings exporter.CreateSettings
+	settings exporter.Settings
 	tracer   traceapi.Tracer
 }
 
@@ -228,7 +228,7 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 		return nil, err
 	}
 
-	bset := processor.CreateSettings{
+	bset := processor.Settings{
 		ID:                component.NewID(component.MustNewType("otel_sdk_trace_batch")),
 		TelemetrySettings: c.settings.TelemetrySettings,
 		BuildInfo:         c.settings.BuildInfo,
