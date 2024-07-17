@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.30.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.30.0) - 2024-07-17
+
+- Update OpenTelemetry-Arrow components to latest, now in collector-contrib. [#736](https://github.com/lightstep/otel-launcher-go/pull/736)
+
 ## [1.29.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.29.0) - 2024-06-06
 
 - Update to OpenTelemetry-Go 1.27.0, including new Synchronous Gauge support. [#713](https://github.com/lightstep/otel-launcher-go/pull/713)
