@@ -61,7 +61,7 @@ type ExporterOptions struct {
 	MeterProvider  metric.MeterProvider
 }
 
-func WithTracerProvider(tp *trace.TracerProvider) func(*ExporterOptions) {
+func WithTracerProvider(tp traceapi.TracerProvider) func(*ExporterOptions) {
 	return func(opts *ExporterOptions) {
 		opts.TracerProvider = tp
 	}
