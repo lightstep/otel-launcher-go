@@ -57,7 +57,7 @@ type Config struct {
 }
 
 type ExporterOptions struct {
-	TracerProvider *trace.TracerProvider
+	TracerProvider traceapi.TracerProvider
 	MeterProvider  metric.MeterProvider
 }
 
