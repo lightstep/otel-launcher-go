@@ -19,7 +19,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter"
 	"github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor"
 	"go.opentelemetry.io/collector/component"
@@ -35,12 +34,15 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/metric"
 	noopmetric "go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/trace"
 	traceapi "go.opentelemetry.io/otel/trace"
 	nooptrace "go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
+
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 )
 
 type Option func(*Config)
@@ -52,6 +54,23 @@ type Config struct {
 	SelfSpans   bool
 	Batcher     concurrentbatchprocessor.Config
 	Exporter    otelarrowexporter.Config
+}
+
+type ExporterOptions struct {
+	TracerProvider *trace.TracerProvider
+	MeterProvider  metric.MeterProvider
+}
+
+func WithTracerProvider(tp *trace.TracerProvider) func(*ExporterOptions) {
+	return func(opts *ExporterOptions) {
+		opts.TracerProvider = tp
+	}
+}
+
+func WithMeterProvider(mp metric.MeterProvider) func(*ExporterOptions) {
+	return func(opts *ExporterOptions) {
+		opts.MeterProvider = mp
+	}
 }
 
 type client struct {
@@ -187,7 +206,12 @@ func WithTLSSetting(tlss configtls.ClientConfig) Option {
 	}
 }
 
-func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
+func NewExporter(ctx context.Context, cfg Config, opts ...func(options *ExporterOptions)) (trace.SpanExporter, error) {
+	options := ExporterOptions{}
+	for _, opt := range opts {
+		opt(&options)
+	}
+
 	c := &client{}
 
 	if !cfg.Exporter.Arrow.Disabled {
@@ -203,13 +227,21 @@ func NewExporter(ctx context.Context, cfg Config) (trace.SpanExporter, error) {
 	c.settings.TelemetrySettings.Logger = logger
 
 	if cfg.SelfSpans {
-		c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
+		if options.TracerProvider == nil {
+			c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
+		} else {
+			c.settings.TelemetrySettings.TracerProvider = options.TracerProvider
+		}
 		c.tracer = c.settings.TelemetrySettings.TracerProvider.Tracer("lightstep-go/sdk/trace")
 	} else {
 		c.settings.TelemetrySettings.TracerProvider = nooptrace.NewTracerProvider()
 	}
 	if cfg.SelfMetrics {
-		c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
+		if options.TracerProvider == nil {
+			c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
+		} else {
+			c.settings.TelemetrySettings.MeterProvider = options.MeterProvider
+		}
 		c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
 		// Note: the metrics SDK creates a counter at this
 		// point and counts points.  The same is not done here
