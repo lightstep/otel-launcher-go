@@ -237,7 +237,7 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 		c.settings.TelemetrySettings.TracerProvider = nooptrace.NewTracerProvider()
 	}
 	if cfg.SelfMetrics {
-		if options.TracerProvider == nil {
+		if options.MeterProvider == nil {
 			c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
 		} else {
 			c.settings.TelemetrySettings.MeterProvider = options.MeterProvider
