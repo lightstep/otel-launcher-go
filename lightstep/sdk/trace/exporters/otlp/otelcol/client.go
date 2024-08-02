@@ -130,7 +130,7 @@ func (c *client) Shutdown(ctx context.Context) error {
 }
 
 func NewDefaultConfig() Config {
-	return Config{
+	cfg := Config{
 		SelfMetrics: true,
 		SelfSpans:   true,
 		Batcher: concurrentbatchprocessor.Config{
@@ -143,12 +143,8 @@ func NewDefaultConfig() Config {
 			TimeoutSettings: exporterhelper.TimeoutSettings{
 				Timeout: 15 * time.Second,
 			},
-			RetryConfig: configretry.BackOffConfig{
-				Enabled: false,
-			},
-			QueueSettings: exporterhelper.QueueSettings{
-				Enabled: false,
-			},
+			RetryConfig:   configretry.NewDefaultBackOffConfig(),
+			QueueSettings: exporterhelper.NewDefaultQueueSettings(),
 			ClientConfig: configgrpc.ClientConfig{
 				Headers:         map[string]configopaque.String{},
 				Compression:     configcompression.TypeZstd,
@@ -162,6 +158,10 @@ func NewDefaultConfig() Config {
 			},
 		},
 	}
+	// All RetryConfig and QueueSettings are taken from the defaults, but disabled.
+	cfg.Exporter.RetryConfig.Enabled = false
+	cfg.Exporter.QueueSettings.Enabled = false
+	return cfg
 }
 
 func NewConfig(opts ...Option) Config {
