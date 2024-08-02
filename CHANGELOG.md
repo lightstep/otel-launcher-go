@@ -8,6 +8,8 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+- Use correct default retry settings. [#741](https://github.com/lightstep/otel-launcher-go/pull/741)
+
 ## [1.30.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.30.0) - 2024-07-17
 
 - Update OpenTelemetry-Arrow components to latest, now in collector-contrib. [#736](https://github.com/lightstep/otel-launcher-go/pull/736)
