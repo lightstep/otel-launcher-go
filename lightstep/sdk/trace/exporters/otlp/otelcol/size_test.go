@@ -12,9 +12,9 @@ import (
 	"go.opentelemetry.io/collector/pdata/ptrace/ptraceotlp"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/trace"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func TestSizeOfSimpleROSpan(t *testing.T) {
@@ -26,23 +26,23 @@ func TestSizeOfSimpleROSpan(t *testing.T) {
 		numSpanLinks  int
 	}{
 		{
-			name:              "simple",
+			name:         "simple",
 			numSpanAttrs: 10,
 		},
 		{
-			name:              "many_attributes",
+			name:         "many_attributes",
 			numSpanAttrs: 100000,
 		},
 		{
-			name:              "with_events",
-			numSpanAttrs: 100000,
+			name:          "with_events",
+			numSpanAttrs:  100000,
 			numSpanEvents: 10000,
 		},
 		{
-			name:              "with_links",
-			numSpanAttrs: 100000,
+			name:          "with_links",
+			numSpanAttrs:  100000,
 			numSpanEvents: 10000,
-			numSpanLinks: 1000,
+			numSpanLinks:  1000,
 		},
 	}
 	for _, tt := range tests {
@@ -90,10 +90,9 @@ func TestSizeOfSimpleROSpan(t *testing.T) {
 
 			protobufSz := float64(len(data))
 			ROSpanSz := float64(sizeOfROSpan(roSpan))
-			percentDiff := math.Abs((ROSpanSz - protobufSz)/protobufSz)
+			percentDiff := math.Abs((ROSpanSz - protobufSz) / protobufSz)
 
 			assert.LessOrEqual(t, percentDiff, 0.1)
-			fmt.Println(percentDiff)
 		})
 	}
 }

@@ -17,12 +17,11 @@ package otelcol
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter"
-	"github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor"
 	"github.com/open-telemetry/otel-arrow/collector/admission"
+	"github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -123,8 +122,6 @@ func (c *client) ExportSpans(ctx context.Context, spans []trace.ReadOnlySpan) (r
 	for _, span := range spans {
 		spanSz += sizeOfROSpan(span)
 	}
-	fmt.Println("SPAN SIZE")
-	fmt.Println(spanSz)
 	retErr = c.boundedQueue.Acquire(ctx, int64(spanSz))
 	if retErr != nil {
 		return
@@ -154,10 +151,10 @@ func (c *client) Shutdown(ctx context.Context) error {
 
 func NewDefaultConfig() Config {
 	cfg := Config{
-		SelfMetrics: true,
-		SelfSpans:   true,
+		SelfMetrics:       true,
+		SelfSpans:         true,
 		AdmissionLimitMiB: 64,
-		WaiterLimit: 1000,
+		WaiterLimit:       1000,
 		Batcher: concurrentbatchprocessor.Config{
 			Timeout:            time.Second,
 			SendBatchSize:      1000,

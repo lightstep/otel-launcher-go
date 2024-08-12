@@ -1,7 +1,6 @@
 package otelcol
 
 import (
-	"fmt"
 	math_bits "math/bits"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -81,8 +80,6 @@ func sizeOfSpanLinks(links []trace.Link) int {
 			sz += 1 + sovTrace(uint64(link.DroppedAttributeCount))
 		}
 	}
-	fmt.Println("LINK SZ")
-	fmt.Println(sz)
 	return sz
 }
 
@@ -100,7 +97,6 @@ func sizeOfSpanEvents(events []trace.Event) int {
 	}
 	return sz
 }
-
 
 func sizeOfROSpan(span trace.ReadOnlySpan) int {
 	sz := 0

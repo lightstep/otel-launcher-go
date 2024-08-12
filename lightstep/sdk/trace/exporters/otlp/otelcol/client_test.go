@@ -25,6 +25,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otelarrowreceiver"
+	// "github.com/open-telemetry/otel-arrow/collector/admission"
 	"github.com/stretchr/testify/suite"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confignet"
@@ -44,7 +45,6 @@ import (
 	resourcev1 "go.opentelemetry.io/proto/otlp/resource/v1"
 	tracev1 "go.opentelemetry.io/proto/otlp/trace/v1"
 
-	// "google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -201,7 +201,7 @@ func (t *clientTestSuite) TestSpan() {
 			{
 				Resource: &resourcev1.Resource{
 					Attributes: []*commonpb.KeyValue{
-						&commonpb.KeyValue{
+						{
 							Key: "property",
 							Value: &commonpb.AnyValue{
 								Value: &commonpb.AnyValue_StringValue{
@@ -209,7 +209,7 @@ func (t *clientTestSuite) TestSpan() {
 								},
 							},
 						},
-						&commonpb.KeyValue{
+						{
 							Key: "service.name",
 							Value: &commonpb.AnyValue{
 								Value: &commonpb.AnyValue_StringValue{
@@ -220,12 +220,12 @@ func (t *clientTestSuite) TestSpan() {
 					},
 				},
 				ScopeSpans: []*tracev1.ScopeSpans{
-					&tracev1.ScopeSpans{
+					{
 						Scope: &commonpb.InstrumentationScope{
 							Name: "test-tracer",
 						},
 						Spans: []*tracev1.Span{
-							&tracev1.Span{
+							{
 								SpanId:  []byte(unqSpanID),
 								TraceId: []byte(unqTraceID),
 								Kind:    tracev1.Span_SPAN_KIND_SERVER,
@@ -235,7 +235,7 @@ func (t *clientTestSuite) TestSpan() {
 									Message: "failed",
 								},
 								Attributes: []*commonpb.KeyValue{
-									&commonpb.KeyValue{
+									{
 										Key: "test-attribute-1",
 										Value: &commonpb.AnyValue{
 											Value: &commonpb.AnyValue_StringValue{
@@ -388,6 +388,9 @@ func (t *clientTestSuite) TestSpanSizeTooLarge() {
 
 	// AdmissionLimitMiB is 0 so we should have no traces arriving.
 	t.Equal(0, len(t.sink.AllTraces()))
-
 	t.assertTimestamps()
+
+	roSpans := []sdktrace.ReadOnlySpan{span.(sdktrace.ReadOnlySpan), child.(sdktrace.ReadOnlySpan)}
+	err = exp.ExportSpans(ctx, roSpans)
+	t.ErrorContains(err, "request size larger than configured limit")
 }
