@@ -17,10 +17,12 @@ package otelcol
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter"
 	"github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor"
+	"github.com/open-telemetry/otel-arrow/collector/admission"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
@@ -50,10 +52,12 @@ type Option func(*Config)
 // TODO: Config, Option, and the option impls are duplicated between
 // this package and the metric exporter.  Fix this.
 type Config struct {
-	SelfMetrics bool
-	SelfSpans   bool
-	Batcher     concurrentbatchprocessor.Config
-	Exporter    otelarrowexporter.Config
+	SelfMetrics       bool
+	SelfSpans         bool
+	AdmissionLimitMiB int64
+	WaiterLimit       int64
+	Batcher           concurrentbatchprocessor.Config
+	Exporter          otelarrowexporter.Config
 }
 
 type ExporterOptions struct {
@@ -76,46 +80,65 @@ func WithMeterProvider(mp metric.MeterProvider) func(*ExporterOptions) {
 type client struct {
 	internal.ResourceMap
 
-	exporter exporter.Traces
-	batcher  processor.Traces
-	settings exporter.Settings
-	tracer   traceapi.Tracer
+	exporter     exporter.Traces
+	batcher      processor.Traces
+	settings     exporter.Settings
+	tracer       traceapi.Tracer
+	boundedQueue *admission.BoundedQueue
 }
 
-func (c *client) ExportSpans(ctx context.Context, spans []trace.ReadOnlySpan) error {
+func (c *client) ExportSpans(ctx context.Context, spans []trace.ReadOnlySpan) (retErr error) {
+	count := 0
 	ctx, span := c.tracer.Start(
 		ctx,
 		"otelsdk_export_traces",
 	)
 	defer span.End()
+	defer func() {
+		success := retErr == nil
+		var state string
+		if success {
+			state = "ok"
+		} else if errors.Is(retErr, context.Canceled) {
+			state = "canceled"
+		} else if errors.Is(retErr, context.DeadlineExceeded) {
+			state = "timeout"
+		} else {
+			state = "error"
+		}
+
+		var attrs = []attribute.KeyValue{
+			attribute.Bool("success", success),
+			attribute.String("state", state),
+		}
+		span.SetAttributes(append(attrs, attribute.Int("num_spans", count))...)
+		if retErr == nil {
+			span.SetStatus(otelcodes.Ok, state)
+		} else {
+			span.SetStatus(otelcodes.Error, state)
+		}
+	}()
+
+	spanSz := 0
+	for _, span := range spans {
+		spanSz += sizeOfROSpan(span)
+	}
+	fmt.Println("SPAN SIZE")
+	fmt.Println(spanSz)
+	retErr = c.boundedQueue.Acquire(ctx, int64(spanSz))
+	if retErr != nil {
+		return
+	}
+
+	defer func() {
+		retErr = c.boundedQueue.Release(int64(spanSz))
+	}()
 
 	converted := c.d2pd(spans)
-	count := converted.SpanCount()
+	count = converted.SpanCount()
 
-	err := c.batcher.ConsumeTraces(ctx, converted)
-	success := err == nil
-	var state string
-	if success {
-		state = "ok"
-	} else if errors.Is(err, context.Canceled) {
-		state = "canceled"
-	} else if errors.Is(err, context.DeadlineExceeded) {
-		state = "timeout"
-	} else {
-		state = "error"
-	}
-
-	var attrs = []attribute.KeyValue{
-		attribute.Bool("success", success),
-		attribute.String("state", state),
-	}
-	span.SetAttributes(append(attrs, attribute.Int("num_spans", count))...)
-	if err == nil {
-		span.SetStatus(otelcodes.Ok, state)
-	} else {
-		span.SetStatus(otelcodes.Error, state)
-	}
-	return err
+	retErr = c.batcher.ConsumeTraces(ctx, converted)
+	return
 }
 
 func (c *client) Shutdown(ctx context.Context) error {
@@ -133,6 +156,8 @@ func NewDefaultConfig() Config {
 	cfg := Config{
 		SelfMetrics: true,
 		SelfSpans:   true,
+		AdmissionLimitMiB: 64,
+		WaiterLimit: 1000,
 		Batcher: concurrentbatchprocessor.Config{
 			Timeout:            time.Second,
 			SendBatchSize:      1000,
@@ -212,7 +237,9 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 		opt(&options)
 	}
 
-	c := &client{}
+	c := &client{
+		boundedQueue: admission.NewBoundedQueue(cfg.AdmissionLimitMiB<<20, cfg.WaiterLimit),
+	}
 
 	if !cfg.Exporter.Arrow.Disabled {
 		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_trace_arrow"))

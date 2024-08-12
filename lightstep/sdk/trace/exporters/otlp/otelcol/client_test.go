@@ -17,6 +17,7 @@ package otelcol
 import (
 	"context"
 	"encoding/hex"
+	"fmt"
 	"net"
 	"strconv"
 	"testing"
@@ -343,4 +344,50 @@ func (t *clientTestSuite) TestD2PD() {
 	t.Equal(1, childSpan.Attributes().Len())
 	sattr, _ = childSpan.Attributes().Get("test-attribute-2")
 	t.Equal("test-value-2", sattr.Str())
+}
+
+func (t *clientTestSuite) TestSpanSizeTooLarge() {
+	ctx := context.Background()
+	cfg := NewConfig(
+		WithInsecure(),
+		WithEndpoint(t.addr),
+		WithHeaders(map[string]string{"lightstep-access-token": "${TOKEN}"}),
+	)
+	cfg.AdmissionLimitMiB = 0
+	exp, err := NewExporter(
+		ctx,
+		cfg,
+	)
+	t.NoError(err)
+
+	t.sdk = sdktrace.NewTracerProvider(
+		sdktrace.WithResource(
+			resource.NewSchemaless(testResourceAttrs...),
+		),
+		sdktrace.WithBatcher(exp),
+	)
+
+	tracer := t.sdk.Tracer("test-tracer")
+	_, span := tracer.Start(ctx, "ExecuteRequest", trace.WithSpanKind(trace.SpanKindClient))
+	for i := 0; i < 100000; i++ {
+		key := fmt.Sprintf("test-attribute-%d", i)
+		val := fmt.Sprintf("test-value-%d", i)
+		span.SetAttributes(attribute.String(key, val))
+	}
+	span.AddEvent("test event", trace.WithAttributes(attribute.String("test-event-attribute-1", "test-event-value-1")))
+	span.SetStatus(codes.Ok, "this is suppressed")
+
+	_, child := tracer.Start(ctx, "child", trace.WithSpanKind(trace.SpanKindInternal))
+	child.SetAttributes(attribute.String("test-attribute-2", "test-value-2"))
+	child.AddEvent("child test event", trace.WithAttributes(attribute.String("test-child-event-attribute-2", "test-child-event-value-2")))
+	child.End()
+
+	span.End()
+
+	t.NoError(t.sdk.Shutdown(ctx))
+
+	// AdmissionLimitMiB is 0 so we should have no traces arriving.
+	t.Equal(0, len(t.sink.AllTraces()))
+
+	t.assertTimestamps()
 }
