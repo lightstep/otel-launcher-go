@@ -134,10 +134,9 @@ func NewDefaultConfig() Config {
 		SelfMetrics: true,
 		SelfSpans:   true,
 		Batcher: concurrentbatchprocessor.Config{
-			Timeout:            time.Second,
-			SendBatchSize:      1000,
-			SendBatchMaxSize:   1500,
-			MaxInFlightSizeMiB: 32,
+			Timeout:          time.Second,
+			SendBatchSize:    1000,
+			SendBatchMaxSize: 1500,
 		},
 		Exporter: otelarrowexporter.Config{
 			TimeoutSettings: exporterhelper.TimeoutSettings{
