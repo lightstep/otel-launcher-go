@@ -42,7 +42,7 @@ import (
 )
 
 var (
-	testLib = instrumentation.Library{
+	testLib = instrumentation.Scope{
 		Name: "test",
 	}
 
