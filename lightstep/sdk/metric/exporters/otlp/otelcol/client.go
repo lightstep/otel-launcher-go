@@ -167,7 +167,7 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	}
 
 	if cfg.SelfMetrics {
-		c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
+		c.settings.TelemetrySettings.MeterProvider = internal.NOTelColMeterProvider(otel.GetMeterProvider())
 		c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
 		c.counter, _ = c.settings.TelemetrySettings.MeterProvider.Meter("lightstep/sdk/metric").Int64Counter("otelsdk.telemetry.items")
 	} else {
