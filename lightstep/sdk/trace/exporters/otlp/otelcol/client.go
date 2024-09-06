@@ -241,6 +241,7 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 		} else {
 			c.settings.TelemetrySettings.MeterProvider = options.MeterProvider
 		}
+		c.settings.TelemetrySettings.MeterProvider = internal.NOTelColMeterProvider(c.settings.TelemetrySettings.MeterProvider)
 		c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
 		// Note: the metrics SDK creates a counter at this
 		// point and counts points.  The same is not done here
