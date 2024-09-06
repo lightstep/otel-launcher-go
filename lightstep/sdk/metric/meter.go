@@ -38,7 +38,7 @@ type (
 	meter struct {
 		embedded.Meter
 
-		library   instrumentation.Library
+		library   instrumentation.Scope
 		provider  *MeterProvider
 		compilers pipeline.Register[*viewstate.Compiler]
 

@@ -47,7 +47,7 @@ type (
 	// See the comments on Metrics about re-use of slices in this struct.
 	Scope struct {
 		// Library describes the instrumentation scope.
-		Library instrumentation.Library
+		Library instrumentation.Scope
 
 		// Instruments is a slice of metric data, one per Instrument
 		// in the scope.

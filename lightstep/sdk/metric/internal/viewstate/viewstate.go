@@ -63,7 +63,7 @@ type Compiler struct {
 
 	// library is the value used fr matching
 	// instrumentation library information.
-	library instrumentation.Library
+	library instrumentation.Scope
 
 	// lock protects collectors and names.
 	compilerLock sync.Mutex
@@ -177,7 +177,7 @@ type singleBehavior struct {
 }
 
 // New returns a compiler for library given configured views.
-func New(library instrumentation.Library, views *view.Views) *Compiler {
+func New(library instrumentation.Scope, views *view.Views) *Compiler {
 	views, _ = view.Validate(views)
 	return &Compiler{
 		library: library,
