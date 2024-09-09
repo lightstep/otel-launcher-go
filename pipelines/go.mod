@@ -20,7 +20,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.29.0
 
 	// gRPC
-	google.golang.org/grpc v1.65.0
+	google.golang.org/grpc v1.66.1
 )
 
 require (
