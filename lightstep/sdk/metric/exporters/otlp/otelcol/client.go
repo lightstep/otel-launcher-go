@@ -16,7 +16,7 @@ package otelcol
 
 import (
 	"context"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/common"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/export"
 	"time"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
@@ -147,7 +147,8 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_metric_otlp"))
 	}
 
-	err := common.ConfigureSelfTelemetry(
+	err := internal.ConfigureSelfTelemetry(
+		"lightstep-go/sdk/metric",
 		cfg.SelfSpans,
 		cfg.SelfMetrics,
 		&c.settings,
@@ -196,7 +197,7 @@ func (c *client) String() string {
 
 // ExportMetrics implements PushExporter.
 func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
-	return common.ExportMetrics(
+	return export.ExportMetrics(
 		ctx,
 		data,
 		c.tracer,

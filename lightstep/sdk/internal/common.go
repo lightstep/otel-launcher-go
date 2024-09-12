@@ -15,12 +15,20 @@
 package internal
 
 import (
+	"go.opentelemetry.io/collector/config/configtelemetry"
+	"go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/otel"
+	noopmetric "go.opentelemetry.io/otel/metric/noop"
+	"go.opentelemetry.io/otel/trace"
+	nooptrace "go.opentelemetry.io/otel/trace/noop"
+	"go.uber.org/zap"
 	"strings"
 	"sync"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
+	metricapi "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
@@ -190,4 +198,54 @@ func (no notelMeter) RegisterCallback(f metric.Callback, instruments ...metric.O
 
 func NOTelColMeterProvider(m metric.MeterProvider) metric.MeterProvider {
 	return &notelMeterProvider{meterProvider: m}
+}
+
+const (
+	selfTelemetryItemsCounterName = "otelsdk.telemetry.items"
+)
+
+func ConfigureSelfTelemetry(
+	name string,
+	selfSpans bool,
+	selfMetrics bool,
+	exporterSettings *exporter.Settings,
+	tracer *trace.Tracer,
+	telemetryItemsCounter *metricapi.Int64Counter,
+) error {
+	// setup logs
+	logger, err := zap.NewProduction()
+	if err != nil {
+		return err
+	}
+
+	exporterSettings.TelemetrySettings.Logger = logger
+
+	// setup traces
+	tracerProvider := trace.TracerProvider(nooptrace.NewTracerProvider())
+	if selfSpans {
+		tracerProvider = otel.GetTracerProvider()
+	}
+
+	exporterSettings.TelemetrySettings.TracerProvider = tracerProvider
+	*tracer = exporterSettings.TelemetrySettings.TracerProvider.Tracer(name)
+
+	// setup metrics
+	meterProvider := metricapi.MeterProvider(noopmetric.NewMeterProvider())
+	if selfMetrics {
+		meterProvider = NOTelColMeterProvider(otel.GetMeterProvider())
+	}
+
+	exporterSettings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
+	exporterSettings.TelemetrySettings.MeterProvider = meterProvider
+	exporterSettings.TelemetrySettings.LeveledMeterProvider = func(level configtelemetry.Level) metricapi.MeterProvider {
+		return meterProvider
+	}
+
+	// setup the telemetry item counter metric
+	if telemetryItemsCounter != nil {
+		meter := exporterSettings.TelemetrySettings.LeveledMeterProvider(configtelemetry.LevelNormal).Meter(name)
+		*telemetryItemsCounter, err = meter.Int64Counter(selfTelemetryItemsCounterName)
+	}
+
+	return err
 }

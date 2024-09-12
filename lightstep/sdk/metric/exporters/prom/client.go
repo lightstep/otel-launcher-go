@@ -19,7 +19,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/common"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/export"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
 	"go.opentelemetry.io/collector/component"
@@ -78,7 +78,8 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 
 	c.settings.ID = component.NewID(component.MustNewType("otel_sdk_metric_prom"))
 
-	err := common.ConfigureSelfTelemetry(
+	err := internal.ConfigureSelfTelemetry(
+		"lightstep-go/sdk/metric",
 		cfg.SelfSpans,
 		cfg.SelfMetrics,
 		&c.settings,
@@ -110,7 +111,7 @@ func (c *client) String() string {
 
 // ExportMetrics implements PushExporter.
 func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
-	return common.ExportMetrics(ctx, data, c.tracer, c.counter, &c.ResourceMap, c.exporter)
+	return export.ExportMetrics(ctx, data, c.tracer, c.counter, &c.ResourceMap, c.exporter)
 }
 
 // ShutdownMetrics implements PushExporter.
