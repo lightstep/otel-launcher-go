@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package otelcol
+package convert
 
 import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
@@ -180,11 +180,11 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 	}
 }
 
-func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
+func MetricToPMetric(resourceMap *internal.ResourceMap, in data.Metrics) pmetric.Metrics {
 	out := pmetric.NewMetrics()
 	rm := out.ResourceMetrics().AppendEmpty()
 
-	c.ResourceMap.Get(in.Resource).CopyTo(rm.Resource())
+	resourceMap.Get(in.Resource).CopyTo(rm.Resource())
 
 	for _, inS := range in.Scopes {
 		sm := rm.ScopeMetrics().AppendEmpty()
