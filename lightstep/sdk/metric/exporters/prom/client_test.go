@@ -37,8 +37,8 @@ import (
 const promPort = 2356
 
 var testResourceAttrs = []attribute.KeyValue{
-	attribute.String("service.name", "tester"),
 	attribute.String("property", "value"),
+	attribute.String("service.name", "tester"),
 }
 
 type clientTestSuite struct {
@@ -53,9 +53,12 @@ func TestExporterSuite(t *testing.T) {
 func (t *clientTestSuite) SetupTest() {
 	ctx := context.Background()
 
+	cfg := NewDefaultConfig()
+	cfg.Exporter.Endpoint = fmt.Sprintf("0.0.0.0:%d", promPort)
+
 	exp, err := NewExporter(
 		ctx,
-		NewConfig(WithPort(promPort)),
+		cfg,
 	)
 	require.NoError(t.T(), err)
 
@@ -78,17 +81,14 @@ func (t *clientTestSuite) TestExporter() {
 
 	counter.Add(ctx, 12)
 
-	time.Sleep(time.Second)
-
 	require.Eventuallyf(t.T(), func() bool {
-		res := readMetricsEndpoint(t.T())
-		lines := strings.Split(res, "\n")
+		lines := readMetricsEndpoint(t.T())
 
-		return slices.Contains(lines, `requests{job="tester"} 12`)
+		return slices.Contains(lines, `requests{job="tester",property="value",service_name="tester"} 12`)
 	}, 15*time.Second, time.Second, "verify requests metric")
 }
 
-func readMetricsEndpoint(t *testing.T) string {
+func readMetricsEndpoint(t *testing.T) []string {
 	resp, err := http.Get(fmt.Sprintf("http://localhost:%d/metrics", promPort))
 	require.NoError(t, err)
 	defer resp.Body.Close() // Ensure that the response body is closed after reading
@@ -99,5 +99,5 @@ func readMetricsEndpoint(t *testing.T) string {
 	body, err := io.ReadAll(resp.Body)
 	require.NoError(t, err)
 
-	return string(body)
+	return strings.Split(string(body), "\n")
 }

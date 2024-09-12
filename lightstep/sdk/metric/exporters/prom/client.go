@@ -16,12 +16,12 @@ package prom
 
 import (
 	"context"
-	"fmt"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exporters/common"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/exporter"
@@ -30,8 +30,6 @@ import (
 	"go.uber.org/multierr"
 	"time"
 )
-
-type Option func(*Config)
 
 // TODO: Config, Option, and the option impls are duplicated between
 // this package and the metric exporter.  Fix this.
@@ -55,22 +53,6 @@ type client struct {
 var _ metric.PushExporter = &client{}
 var _ component.Host = &client{}
 
-func NewConfig(opts ...Option) Config {
-	cfg := NewDefaultConfig()
-	for _, option := range opts {
-		if option != nil {
-			option(&cfg)
-		}
-	}
-	return cfg
-}
-
-func WithPort(port int) Option {
-	return func(cfg *Config) {
-		cfg.Exporter.Endpoint = fmt.Sprintf("0.0.0.0:%d", port)
-	}
-}
-
 func NewDefaultConfig() Config {
 	cfg := Config{
 		SelfMetrics: true,
@@ -78,14 +60,13 @@ func NewDefaultConfig() Config {
 
 		Exporter: prometheusexporter.Config{
 			ServerConfig: confighttp.ServerConfig{
-				// 9090 is the default port that /metrics should be served on, though this can be
-				// overridden using WithPort
+				// 9090 is the default port that prometheus metrics should be served on
 				Endpoint: "0.0.0.0:9090",
 			},
-			MetricExpiration: 15 * time.Minute,
+			MetricExpiration:            time.Hour,
+			ResourceToTelemetrySettings: resourcetotelemetry.Settings{Enabled: true},
 		},
 	}
-
 	return cfg
 }
 
