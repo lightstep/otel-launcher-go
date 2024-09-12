@@ -16,6 +16,7 @@ package prom
 
 import (
 	"context"
+	"fmt"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
@@ -53,6 +54,18 @@ type client struct {
 var _ metric.PushExporter = &client{}
 var _ component.Host = &client{}
 
+type Option func(*Config)
+
+func NewConfig(opts ...Option) Config {
+	cfg := NewDefaultConfig()
+	for _, option := range opts {
+		if option != nil {
+			option(&cfg)
+		}
+	}
+	return cfg
+}
+
 func NewDefaultConfig() Config {
 	cfg := Config{
 		SelfMetrics: true,
@@ -68,6 +81,12 @@ func NewDefaultConfig() Config {
 		},
 	}
 	return cfg
+}
+
+func WithPort(port int) Option {
+	return func(c *Config) {
+		c.Exporter.Endpoint = fmt.Sprintf("0.0.0.0:%d", port)
+	}
 }
 
 // NewExporter creates a new prometheus exporter from the provided config.

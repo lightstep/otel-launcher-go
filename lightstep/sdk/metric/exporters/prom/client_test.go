@@ -52,13 +52,10 @@ func TestExporterSuite(t *testing.T) {
 
 func (t *clientTestSuite) SetupTest() {
 	ctx := context.Background()
-
-	cfg := NewDefaultConfig()
-	cfg.Exporter.Endpoint = fmt.Sprintf("0.0.0.0:%d", promPort)
-
+	
 	exp, err := NewExporter(
 		ctx,
-		cfg,
+		NewConfig(WithPort(promPort)),
 	)
 	require.NoError(t.T(), err)
 
