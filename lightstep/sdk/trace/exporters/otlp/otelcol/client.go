@@ -26,19 +26,15 @@ import (
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configretry"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/processor"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/metric"
-	noopmetric "go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/trace"
 	traceapi "go.opentelemetry.io/otel/trace"
-	nooptrace "go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
@@ -218,41 +214,17 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 	} else {
 		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_trace_otlp"))
 	}
-	logger, err := zap.NewProduction()
+
+	err := internal.ConfigureSelfTelemetry(
+		"lightstep-go/sdk/trace",
+		cfg.SelfSpans,
+		cfg.SelfMetrics,
+		&c.settings,
+		&c.tracer,
+		nil,
+	)
 	if err != nil {
 		return nil, err
-	}
-
-	c.settings.TelemetrySettings.Logger = logger
-
-	if cfg.SelfSpans {
-		if options.TracerProvider == nil {
-			c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
-		} else {
-			c.settings.TelemetrySettings.TracerProvider = options.TracerProvider
-		}
-		c.tracer = c.settings.TelemetrySettings.TracerProvider.Tracer("lightstep-go/sdk/trace")
-	} else {
-		c.settings.TelemetrySettings.TracerProvider = nooptrace.NewTracerProvider()
-	}
-	if cfg.SelfMetrics {
-		if options.MeterProvider == nil {
-			c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
-		} else {
-			c.settings.TelemetrySettings.MeterProvider = options.MeterProvider
-		}
-		c.settings.TelemetrySettings.MeterProvider = internal.NOTelColMeterProvider(c.settings.TelemetrySettings.MeterProvider)
-		c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
-		// Note: the metrics SDK creates a counter at this
-		// point and counts points.  The same is not done here
-		// because there is another layer above the exporter
-		// that is capable of dropping, and we want the
-		// otelsdk.* metrics to count all items, not only
-		// exported ones.  There is no such intermediate
-		// processor between the periodic metric reader and
-		// the exporter.
-	} else {
-		c.settings.TelemetrySettings.MeterProvider = noopmetric.NewMeterProvider()
 	}
 
 	exp, err := otelarrowexporter.NewFactory().CreateTracesExporter(ctx, c.settings, &cfg.Exporter)

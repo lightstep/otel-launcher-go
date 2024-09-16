@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package otelcol
+package export
 
 import (
+	"context"
+	"errors"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
@@ -23,8 +25,13 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
+	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/otel/attribute"
+	otelcodes "go.opentelemetry.io/otel/codes"
+	metricapi "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func toTemporality(t aggregation.Temporality) pmetric.AggregationTemporality {
@@ -180,11 +187,11 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 	}
 }
 
-func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
+func d2pd(resourceMap *internal.ResourceMap, in data.Metrics) pmetric.Metrics {
 	out := pmetric.NewMetrics()
 	rm := out.ResourceMetrics().AppendEmpty()
 
-	c.ResourceMap.Get(in.Resource).CopyTo(rm.Resource())
+	resourceMap.Get(in.Resource).CopyTo(rm.Resource())
 
 	for _, inS := range in.Scopes {
 		sm := rm.ScopeMetrics().AppendEmpty()
@@ -218,4 +225,48 @@ func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
 	}
 
 	return out
+}
+
+func ExportMetrics(
+	ctx context.Context,
+	data data.Metrics,
+	tracer trace.Tracer,
+	telemetryItemsCounter metricapi.Int64Counter,
+	resourceMap *internal.ResourceMap,
+	exporter exporter.Metrics,
+) error {
+	ctx, span := tracer.Start(
+		ctx,
+		"otelsdk_export_metrics",
+	)
+	defer span.End()
+
+	converted := d2pd(resourceMap, data)
+	points := int64(converted.DataPointCount())
+
+	err := exporter.ConsumeMetrics(ctx, converted)
+	success := err == nil
+	var state string
+	if success {
+		state = "ok"
+	} else if errors.Is(err, context.Canceled) {
+		state = "canceled"
+	} else if errors.Is(err, context.DeadlineExceeded) {
+		state = "timeout"
+	} else {
+		state = "error"
+	}
+
+	var attrs = []attribute.KeyValue{
+		attribute.Bool("success", success),
+		attribute.String("state", state),
+	}
+	telemetryItemsCounter.Add(ctx, points, metricapi.WithAttributes(attrs...))
+	span.SetAttributes(append(attrs, attribute.Int64("num_points", points))...)
+	if err == nil {
+		span.SetStatus(otelcodes.Ok, state)
+	} else {
+		span.SetStatus(otelcodes.Error, state)
+	}
+	return err
 }
