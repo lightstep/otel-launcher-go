@@ -20,7 +20,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.29.0
 
 	// gRPC
-	google.golang.org/grpc v1.65.0
+	google.golang.org/grpc v1.67.0
 )
 
 require (
@@ -98,8 +98,8 @@ require (
 	golang.org/x/text v0.17.0 // indirect
 	golang.org/x/tools v0.23.0 // indirect
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240711142825-46eb208f015d // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240708141625-4ad9e859172b // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240814211410-ddb44dafa142 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
