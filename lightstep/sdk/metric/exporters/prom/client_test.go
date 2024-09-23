@@ -52,7 +52,7 @@ func TestExporterSuite(t *testing.T) {
 
 func (t *clientTestSuite) SetupTest() {
 	ctx := context.Background()
-	
+
 	exp, err := NewExporter(
 		ctx,
 		NewConfig(WithPort(promPort)),
@@ -69,7 +69,7 @@ func (t *clientTestSuite) SetupTest() {
 	otel.SetMeterProvider(t.sdk)
 }
 
-func (t *clientTestSuite) TestExporter() {
+func (t *clientTestSuite) TestInt64Counter() {
 	ctx := context.Background()
 
 	meter := t.sdk.Meter("test-meter")
@@ -83,6 +83,22 @@ func (t *clientTestSuite) TestExporter() {
 
 		return slices.Contains(lines, `requests{job="tester",property="value",service_name="tester"} 12`)
 	}, 15*time.Second, time.Second, "verify requests metric")
+}
+
+func (t *clientTestSuite) TestInt64Histogram() {
+	ctx := context.Background()
+
+	meter := t.sdk.Meter("test-meter")
+	counter, err := meter.Int64Histogram("request-size")
+	require.NoError(t.T(), err)
+
+	counter.Record(ctx, 0)
+
+	require.Eventuallyf(t.T(), func() bool {
+		lines := readMetricsEndpoint(t.T())
+
+		return slices.Contains(lines, `request_size_bucket{job="tester",property="value",service_name="tester",le="0"} 1`)
+	}, 15*time.Second, time.Second, "verify request-size metric")
 }
 
 func readMetricsEndpoint(t *testing.T) []string {
