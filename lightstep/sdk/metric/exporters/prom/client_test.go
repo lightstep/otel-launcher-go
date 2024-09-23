@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/sdk/resource"
 	"io"
@@ -50,7 +49,7 @@ func TestExporterSuite(t *testing.T) {
 	suite.Run(t, new(clientTestSuite))
 }
 
-func (t *clientTestSuite) SetupTest() {
+func (t *clientTestSuite) SetupSuite() {
 	ctx := context.Background()
 
 	exp, err := NewExporter(
@@ -65,8 +64,10 @@ func (t *clientTestSuite) SetupTest() {
 			resource.NewSchemaless(testResourceAttrs...),
 		),
 	)
+}
 
-	otel.SetMeterProvider(t.sdk)
+func (t *clientTestSuite) TearDownSuite() {
+	require.NoError(t.T(), t.sdk.Shutdown(context.Background()))
 }
 
 func (t *clientTestSuite) TestInt64Counter() {
