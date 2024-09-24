@@ -10,16 +10,17 @@ func _() {
 	var x [1]struct{}
 	_ = x[SyncCounter-0]
 	_ = x[SyncUpDownCounter-1]
-	_ = x[SyncHistogram-2]
-	_ = x[AsyncCounter-3]
-	_ = x[AsyncUpDownCounter-4]
-	_ = x[AsyncGauge-5]
-	_ = x[NumKinds-6]
+	_ = x[SyncGauge-2]
+	_ = x[SyncHistogram-3]
+	_ = x[AsyncCounter-4]
+	_ = x[AsyncUpDownCounter-5]
+	_ = x[AsyncGauge-6]
+	_ = x[NumKinds-7]
 }
 
-const _Kind_name = "SyncCounterSyncUpDownCounterSyncHistogramAsyncCounterAsyncUpDownCounterAsyncGaugeNumKinds"
+const _Kind_name = "SyncCounterSyncUpDownCounterSyncGaugeSyncHistogramAsyncCounterAsyncUpDownCounterAsyncGaugeNumKinds"
 
-var _Kind_index = [...]uint8{0, 11, 28, 41, 53, 71, 81, 89}
+var _Kind_index = [...]uint8{0, 11, 28, 37, 50, 62, 80, 90, 98}
 
 func (i Kind) String() string {
 	if i < 0 || i >= Kind(len(_Kind_index)-1) {

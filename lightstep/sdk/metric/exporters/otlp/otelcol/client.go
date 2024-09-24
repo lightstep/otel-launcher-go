@@ -16,31 +16,25 @@ package otelcol
 
 import (
 	"context"
-	"errors"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/export"
 	"time"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
-	"github.com/open-telemetry/otel-arrow/collector/exporter/otelarrowexporter"
+	"github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter"
 	"github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor"
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configcompression"
 	"go.opentelemetry.io/collector/config/configgrpc"
 	"go.opentelemetry.io/collector/config/configopaque"
 	"go.opentelemetry.io/collector/config/configretry"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/collector/config/configtls"
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/processor"
-	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
-	otelcodes "go.opentelemetry.io/otel/codes"
 	metricapi "go.opentelemetry.io/otel/metric"
-	noopmetric "go.opentelemetry.io/otel/metric/noop"
 	traceapi "go.opentelemetry.io/otel/trace"
-	nooptrace "go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 )
@@ -61,7 +55,7 @@ type client struct {
 
 	exporter exporter.Metrics
 	batcher  processor.Metrics
-	settings exporter.CreateSettings
+	settings exporter.Settings
 
 	// self-observability
 	tracer  traceapi.Tracer
@@ -69,25 +63,20 @@ type client struct {
 }
 
 func NewDefaultConfig() Config {
-	return Config{
+	cfg := Config{
 		SelfMetrics: true,
 		SelfSpans:   true,
 		Batcher: concurrentbatchprocessor.Config{
-			Timeout:            0,
-			SendBatchSize:      1000,
-			SendBatchMaxSize:   1500,
-			MaxInFlightSizeMiB: 32,
+			Timeout:          0,
+			SendBatchSize:    1000,
+			SendBatchMaxSize: 1500,
 		},
 		Exporter: otelarrowexporter.Config{
 			TimeoutSettings: exporterhelper.TimeoutSettings{
 				Timeout: 15 * time.Second,
 			},
-			RetryConfig: configretry.BackOffConfig{
-				Enabled: false,
-			},
-			QueueSettings: exporterhelper.QueueSettings{
-				Enabled: false,
-			},
+			RetryConfig:   configretry.NewDefaultBackOffConfig(),
+			QueueSettings: exporterhelper.NewDefaultQueueSettings(),
 			ClientConfig: configgrpc.ClientConfig{
 				Headers:         map[string]configopaque.String{},
 				Compression:     configcompression.TypeZstd,
@@ -101,6 +90,10 @@ func NewDefaultConfig() Config {
 			},
 		},
 	}
+	// All RetryConfig and QueueSettings are taken from the defaults, but disabled.
+	cfg.Exporter.RetryConfig.Enabled = false
+	cfg.Exporter.QueueSettings.Enabled = false
+	return cfg
 }
 
 func NewConfig(opts ...Option) Config {
@@ -153,26 +146,17 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	} else {
 		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_metric_otlp"))
 	}
-	logger, err := zap.NewProduction()
+
+	err := internal.ConfigureSelfTelemetry(
+		"lightstep-go/sdk/metric",
+		cfg.SelfSpans,
+		cfg.SelfMetrics,
+		&c.settings,
+		&c.tracer,
+		&c.counter,
+	)
 	if err != nil {
 		return nil, err
-	}
-
-	c.settings.TelemetrySettings.Logger = logger
-
-	if cfg.SelfSpans {
-		c.settings.TelemetrySettings.TracerProvider = otel.GetTracerProvider()
-		c.tracer = c.settings.TelemetrySettings.TracerProvider.Tracer("lightstep-go/sdk/metric")
-	} else {
-		c.settings.TelemetrySettings.TracerProvider = nooptrace.NewTracerProvider()
-	}
-
-	if cfg.SelfMetrics {
-		c.settings.TelemetrySettings.MeterProvider = otel.GetMeterProvider()
-		c.settings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
-		c.counter, _ = c.settings.TelemetrySettings.MeterProvider.Meter("lightstep/sdk/metric").Int64Counter("otelsdk.telemetry.items")
-	} else {
-		c.settings.TelemetrySettings.MeterProvider = noopmetric.NewMeterProvider()
 	}
 
 	exp, err := otelarrowexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
@@ -180,7 +164,7 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 		return nil, err
 	}
 
-	bset := processor.CreateSettings{
+	bset := processor.Settings{
 		ID:                component.NewID(component.MustNewType("otel_sdk_metric_batch")),
 		TelemetrySettings: c.settings.TelemetrySettings,
 		BuildInfo:         c.settings.BuildInfo,
@@ -213,41 +197,14 @@ func (c *client) String() string {
 
 // ExportMetrics implements PushExporter.
 func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
-	ctx, span := c.tracer.Start(
+	return export.ExportMetrics(
 		ctx,
-		"otelsdk_export_metrics",
+		data,
+		c.tracer,
+		c.counter,
+		&c.ResourceMap,
+		c.exporter,
 	)
-	defer span.End()
-
-	converted := c.d2pd(data)
-	points := int64(converted.DataPointCount())
-
-	err := c.batcher.ConsumeMetrics(ctx, converted)
-
-	success := err == nil
-	var state string
-	if success {
-		state = "ok"
-	} else if errors.Is(err, context.Canceled) {
-		state = "canceled"
-	} else if errors.Is(err, context.DeadlineExceeded) {
-		state = "timeout"
-	} else {
-		state = "error"
-	}
-
-	var attrs = []attribute.KeyValue{
-		attribute.Bool("success", success),
-		attribute.String("state", state),
-	}
-	c.counter.Add(ctx, points, metricapi.WithAttributes(attrs...))
-	span.SetAttributes(append(attrs, attribute.Int64("num_points", points))...)
-	if err == nil {
-		span.SetStatus(otelcodes.Ok, state)
-	} else {
-		span.SetStatus(otelcodes.Error, state)
-	}
-	return err
 }
 
 // ShutdownMetrics implements PushExporter.

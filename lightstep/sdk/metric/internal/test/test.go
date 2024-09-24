@@ -74,16 +74,16 @@ func Instrument(desc sdkinstrument.Descriptor, points ...data.Point) data.Instru
 	}
 }
 
-func Library(name string, opts ...metric.MeterOption) instrumentation.Library {
+func Library(name string, opts ...metric.MeterOption) instrumentation.Scope {
 	cfg := metric.NewMeterConfig(opts...)
-	return instrumentation.Library{
+	return instrumentation.Scope{
 		Name:      name,
 		Version:   cfg.InstrumentationVersion(),
 		SchemaURL: cfg.SchemaURL(),
 	}
 }
 
-func Scope(library instrumentation.Library, insts ...data.Instrument) data.Scope {
+func Scope(library instrumentation.Scope, insts ...data.Instrument) data.Scope {
 	return data.Scope{
 		Library:     library,
 		Instruments: insts,

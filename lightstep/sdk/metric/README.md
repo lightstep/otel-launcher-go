@@ -26,9 +26,7 @@ Differences from the OpenTelemetry metrics SDK specification:
    Note that this aggregation only encodes the `.Min` and `.Max`
    fields when configured with delta temporality.  [Consider using the
    "lowmemory" temporality preference in the launcher.](../../../README.md#temporality-settings).
-3. Synchronous Gauge instrument behavior is [supported using an API 
-   hint](#metric-instrument-hints-api).
-4. The OTLP exporter is the only provided exporter.  The OTLP exporter
+3. The OTLP exporter is the only provided exporter.  The OTLP exporter
    is based on the OTel-Core `batchprocessor` and the OTel-Arrow
    `otlpexporter` collector components.
 

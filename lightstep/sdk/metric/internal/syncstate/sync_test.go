@@ -171,7 +171,7 @@ func testSyncStateConcurrencyWithPerf[N number.Any, Traits number.Traits[N]](t *
 	readers.Add(numReaders)
 	writers.Add(numRoutines)
 
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	vcs := make([]*viewstate.Compiler, numReaders)
@@ -275,7 +275,7 @@ func TestSyncStatePartialNoopInstrument(t *testing.T) {
 			view.WithAggregation(aggregation.DropKind),
 		),
 	}
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	vcs := make([]*viewstate.Compiler, 2)
@@ -344,7 +344,7 @@ func TestSyncStateFullNoopInstrument(t *testing.T) {
 			view.WithAggregation(aggregation.DropKind),
 		),
 	}
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	vcs := make([]*viewstate.Compiler, 2)
@@ -384,7 +384,7 @@ func TestOutOfRangeValues(t *testing.T) {
 		test.Descriptor("hi", sdkinstrument.SyncHistogram, number.Int64Kind),
 	} {
 		ctx := context.Background()
-		lib := instrumentation.Library{
+		lib := instrumentation.Scope{
 			Name: "testlib",
 		}
 		vcs := make([]*viewstate.Compiler, 1)
@@ -462,7 +462,7 @@ func TestOutOfRangeValues(t *testing.T) {
 
 func TestSyncGaugeDeltaInstrument(t *testing.T) {
 	ctx := context.Background()
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	vcs := make([]*viewstate.Compiler, 2)
@@ -762,7 +762,7 @@ func TestFingerprintCollision(t *testing.T) {
 
 func TestDuplicateFingerprintSafety(t *testing.T) {
 	ctx := context.Background()
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	vcs := make([]*viewstate.Compiler, 2)
@@ -961,7 +961,7 @@ func TestDuplicateFingerprintSafety(t *testing.T) {
 
 func TestDuplicateFingerprintCollisionIgnored(t *testing.T) {
 	ctx := context.Background()
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	vcs := make([]*viewstate.Compiler, 1)
@@ -1059,7 +1059,7 @@ func TestRecordInactivity(t *testing.T) {
 	for inactive := uint32(1); inactive < 10; inactive++ {
 		t.Run(fmt.Sprint(inactive), func(t *testing.T) {
 			ctx := context.Background()
-			lib := instrumentation.Library{
+			lib := instrumentation.Scope{
 				Name: "testlib",
 			}
 			vcs := make([]*viewstate.Compiler, 1)
@@ -1169,7 +1169,7 @@ func TestCardinalityOverflowCumulative(t *testing.T) {
 	const limit = 133
 
 	ctx := context.Background()
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	perf := sdkinstrument.Performance{
@@ -1261,7 +1261,7 @@ func TestCardinalityOverflowAvoidedDelta(t *testing.T) {
 	const limit = 100 // has to be even
 
 	ctx := context.Background()
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	perf := sdkinstrument.Performance{
@@ -1328,7 +1328,7 @@ func TestCardinalityOverflowOscillationDelta(t *testing.T) {
 	const limit = 4
 
 	ctx := context.Background()
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	perf := sdkinstrument.Performance{
@@ -1407,7 +1407,7 @@ func TestCardinalityOverflowOscillationDelta(t *testing.T) {
 
 func TestInputAttributeSliceRaceCondition(t *testing.T) {
 	ctx := context.Background()
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	perf := sdkinstrument.Performance{}
@@ -1456,7 +1456,7 @@ func TestInputAttributeSliceRaceCondition(t *testing.T) {
 
 func TestAttributeSizeLimit(t *testing.T) {
 	ctx := context.Background()
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	// This enters a default value

@@ -8,6 +8,20 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.31.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.31.0) - 2024-09-06
+
+- SDK-internal metrics: replace "otelcol_" prefix with "otelsdk_" [#760](https://github.com/lightstep/otel-launcher-go/pull/760)
+- Traces exporter: allow custom meter/trace providers [#739](https://github.com/lightstep/otel-launcher-go/pull/739)
+- Use correct default retry settings. [#741](https://github.com/lightstep/otel-launcher-go/pull/741)
+
+## [1.30.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.30.0) - 2024-07-17
+
+- Update OpenTelemetry-Arrow components to latest, now in collector-contrib. [#736](https://github.com/lightstep/otel-launcher-go/pull/736)
+
+## [1.29.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.29.0) - 2024-06-06
+
+- Update to OpenTelemetry-Go 1.27.0, including new Synchronous Gauge support. [#713](https://github.com/lightstep/otel-launcher-go/pull/713)
+
 ## [1.28.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.28.0) - 2024-04-12
 
 - Dependency update: Use OpenTelemetry Collector v0.98.0, OTel-Arrow v0.21.0. [#678](https://github.com/lightstep/otel-launcher-go/pull/678)

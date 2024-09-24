@@ -33,7 +33,7 @@ type ClauseConfig struct {
 	instrumentNameRegexp *regexp.Regexp
 	instrumentKind       sdkinstrument.Kind
 	numberKind           number.Kind
-	library              instrumentation.Library
+	library              instrumentation.Scope
 
 	// Properties of the view
 	keys        []attribute.Key // nil implies all keys, []attribute.Key{} implies none
@@ -93,7 +93,7 @@ func MatchNumberKind(k number.Kind) ClauseOption {
 	})
 }
 
-func MatchInstrumentationLibrary(lib instrumentation.Library) ClauseOption {
+func MatchInstrumentationLibrary(lib instrumentation.Scope) ClauseOption {
 	return clauseOptionFunction(func(clause ClauseConfig) ClauseConfig {
 		clause.library = lib
 		return clause
@@ -187,7 +187,7 @@ func regexpMismatch(test *regexp.Regexp, value string) bool {
 	return test != nil && !test.MatchString(value)
 }
 
-func (c *ClauseConfig) libraryMismatch(lib instrumentation.Library) bool {
+func (c *ClauseConfig) libraryMismatch(lib instrumentation.Scope) bool {
 	hasName := c.library.Name != ""
 	hasVersion := c.library.Version != ""
 	hasSchema := c.library.SchemaURL != ""
@@ -200,7 +200,7 @@ func (c *ClauseConfig) libraryMismatch(lib instrumentation.Library) bool {
 		stringMismatch(c.library.SchemaURL, lib.SchemaURL)
 }
 
-func (c *ClauseConfig) Matches(lib instrumentation.Library, desc sdkinstrument.Descriptor) bool {
+func (c *ClauseConfig) Matches(lib instrumentation.Scope, desc sdkinstrument.Descriptor) bool {
 	mismatch := c.libraryMismatch(lib) ||
 		stringMismatch(c.instrumentName, desc.Name) ||
 		ikindMismatch(c.instrumentKind, desc.Kind) ||

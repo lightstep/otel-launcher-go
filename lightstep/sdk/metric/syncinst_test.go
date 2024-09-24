@@ -21,6 +21,7 @@ import (
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/test"
@@ -56,6 +57,8 @@ func TestSyncInsts(t *testing.T) {
 	cf := must(provider.Meter("test").Float64Counter("fcount"))
 	ui := must(provider.Meter("test").Int64UpDownCounter("iupcount"))
 	uf := must(provider.Meter("test").Float64UpDownCounter("fupcount"))
+	gi := must(provider.Meter("test").Int64Gauge("igauge"))
+	gf := must(provider.Meter("test").Float64Gauge("fgauge"))
 	hi := must(provider.Meter("test").Int64Histogram("ihistogram"))
 	hf := must(provider.Meter("test").Float64Histogram("fhistogram"))
 
@@ -65,6 +68,10 @@ func TestSyncInsts(t *testing.T) {
 	cf.Add(ctx, 3, metric.WithAttributes(attr))
 	ui.Add(ctx, 4, metric.WithAttributes(attr))
 	uf.Add(ctx, 5, metric.WithAttributes(attr))
+
+	gi.Record(ctx, 2, metric.WithAttributes(attr))
+
+	gf.Record(ctx, 4.5, metric.WithAttributes(attr))
 
 	hi.Record(ctx, 2, metric.WithAttributes(attr))
 	hi.Record(ctx, 4, metric.WithAttributes(attr))
@@ -97,6 +104,14 @@ func TestSyncInsts(t *testing.T) {
 			test.Instrument(
 				test.Descriptor("fupcount", sdkinstrument.SyncUpDownCounter, number.Float64Kind),
 				test.Point(notime, notime, sum.NewNonMonotonicFloat64(5), cumulative, attr),
+			),
+			test.Instrument(
+				test.Descriptor("igauge", sdkinstrument.SyncGauge, number.Int64Kind),
+				test.Point(notime, notime, gauge.NewInt64(2), cumulative, attr),
+			),
+			test.Instrument(
+				test.Descriptor("fgauge", sdkinstrument.SyncGauge, number.Float64Kind),
+				test.Point(notime, notime, gauge.NewFloat64(4.5), cumulative, attr),
 			),
 			test.Instrument(
 				test.Descriptor("ihistogram", sdkinstrument.SyncHistogram, number.Int64Kind),

@@ -16,10 +16,22 @@ package internal
 
 import (
 	"fmt"
+	"strings"
 	"sync"
+
+	"go.opentelemetry.io/collector/config/configtelemetry"
+	"go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/otel"
+	noopmetric "go.opentelemetry.io/otel/metric/noop"
+	"go.opentelemetry.io/otel/trace"
+	nooptrace "go.opentelemetry.io/otel/trace/noop"
+	"go.uber.org/zap"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
+	metricapi "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
 
@@ -104,4 +116,141 @@ func CopyAttribute(dest pcommon.Map, inA attribute.KeyValue) {
 	default:
 		panic(fmt.Errorf("unhandled case: %v", inA.Value.Type()))
 	}
+}
+
+type notelMeterProvider struct {
+	embedded.MeterProvider
+	meterProvider metric.MeterProvider
+}
+
+type notelMeter struct {
+	embedded.Meter
+	meter metric.Meter
+}
+
+func (no notelMeterProvider) Meter(name string, opts ...metric.MeterOption) metric.Meter {
+	return notelMeter{
+		meter: no.meterProvider.Meter(name, opts...),
+	}
+}
+
+func fixName(name string) string {
+	if strings.HasPrefix(name, "otelcol_") {
+		return "otelsdk_" + name[8:]
+	}
+	return name
+}
+
+func (no notelMeter) Int64Counter(name string, options ...metric.Int64CounterOption) (metric.Int64Counter, error) {
+	return no.meter.Int64Counter(fixName(name), options...)
+}
+
+func (no notelMeter) Int64UpDownCounter(name string, options ...metric.Int64UpDownCounterOption) (metric.Int64UpDownCounter, error) {
+	return no.meter.Int64UpDownCounter(fixName(name), options...)
+}
+
+func (no notelMeter) Int64Histogram(name string, options ...metric.Int64HistogramOption) (metric.Int64Histogram, error) {
+	return no.meter.Int64Histogram(fixName(name), options...)
+}
+
+func (no notelMeter) Int64Gauge(name string, options ...metric.Int64GaugeOption) (metric.Int64Gauge, error) {
+	return no.meter.Int64Gauge(fixName(name), options...)
+}
+
+func (no notelMeter) Int64ObservableCounter(name string, options ...metric.Int64ObservableCounterOption) (metric.Int64ObservableCounter, error) {
+	return no.meter.Int64ObservableCounter(fixName(name), options...)
+}
+
+func (no notelMeter) Int64ObservableUpDownCounter(name string, options ...metric.Int64ObservableUpDownCounterOption) (metric.Int64ObservableUpDownCounter, error) {
+	return no.meter.Int64ObservableUpDownCounter(fixName(name), options...)
+}
+
+func (no notelMeter) Int64ObservableGauge(name string, options ...metric.Int64ObservableGaugeOption) (metric.Int64ObservableGauge, error) {
+	return no.meter.Int64ObservableGauge(fixName(name), options...)
+}
+
+func (no notelMeter) Float64Counter(name string, options ...metric.Float64CounterOption) (metric.Float64Counter, error) {
+	return no.meter.Float64Counter(fixName(name), options...)
+}
+
+func (no notelMeter) Float64UpDownCounter(name string, options ...metric.Float64UpDownCounterOption) (metric.Float64UpDownCounter, error) {
+	return no.meter.Float64UpDownCounter(fixName(name), options...)
+}
+
+func (no notelMeter) Float64Histogram(name string, options ...metric.Float64HistogramOption) (metric.Float64Histogram, error) {
+	return no.meter.Float64Histogram(fixName(name), options...)
+}
+
+func (no notelMeter) Float64Gauge(name string, options ...metric.Float64GaugeOption) (metric.Float64Gauge, error) {
+	return no.meter.Float64Gauge(fixName(name), options...)
+}
+
+func (no notelMeter) Float64ObservableCounter(name string, options ...metric.Float64ObservableCounterOption) (metric.Float64ObservableCounter, error) {
+	return no.meter.Float64ObservableCounter(fixName(name), options...)
+}
+
+func (no notelMeter) Float64ObservableUpDownCounter(name string, options ...metric.Float64ObservableUpDownCounterOption) (metric.Float64ObservableUpDownCounter, error) {
+	return no.meter.Float64ObservableUpDownCounter(fixName(name), options...)
+}
+
+func (no notelMeter) Float64ObservableGauge(name string, options ...metric.Float64ObservableGaugeOption) (metric.Float64ObservableGauge, error) {
+	return no.meter.Float64ObservableGauge(fixName(name), options...)
+}
+
+func (no notelMeter) RegisterCallback(f metric.Callback, instruments ...metric.Observable) (metric.Registration, error) {
+	return no.meter.RegisterCallback(f, instruments...)
+}
+
+func NOTelColMeterProvider(m metric.MeterProvider) metric.MeterProvider {
+	return &notelMeterProvider{meterProvider: m}
+}
+
+const (
+	selfTelemetryItemsCounterName = "otelsdk.telemetry.items"
+)
+
+func ConfigureSelfTelemetry(
+	name string,
+	selfSpans bool,
+	selfMetrics bool,
+	exporterSettings *exporter.Settings,
+	tracer *trace.Tracer,
+	telemetryItemsCounter *metricapi.Int64Counter,
+) error {
+	// setup logs
+	logger, err := zap.NewProduction()
+	if err != nil {
+		return err
+	}
+
+	exporterSettings.TelemetrySettings.Logger = logger
+
+	// setup traces
+	tracerProvider := trace.TracerProvider(nooptrace.NewTracerProvider())
+	if selfSpans {
+		tracerProvider = otel.GetTracerProvider()
+	}
+
+	exporterSettings.TelemetrySettings.TracerProvider = tracerProvider
+	*tracer = exporterSettings.TelemetrySettings.TracerProvider.Tracer(name)
+
+	// setup metrics
+	meterProvider := metricapi.MeterProvider(noopmetric.NewMeterProvider())
+	if selfMetrics {
+		meterProvider = NOTelColMeterProvider(otel.GetMeterProvider())
+	}
+
+	exporterSettings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
+	exporterSettings.TelemetrySettings.MeterProvider = meterProvider
+	exporterSettings.TelemetrySettings.LeveledMeterProvider = func(level configtelemetry.Level) metricapi.MeterProvider {
+		return meterProvider
+	}
+
+	// setup the telemetry item counter metric
+	if telemetryItemsCounter != nil {
+		meter := exporterSettings.TelemetrySettings.LeveledMeterProvider(configtelemetry.LevelNormal).Meter(name)
+		*telemetryItemsCounter, err = meter.Int64Counter(selfTelemetryItemsCounterName)
+	}
+
+	return err
 }

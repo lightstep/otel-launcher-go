@@ -45,7 +45,7 @@ type MeterProvider struct {
 	lock      sync.Mutex
 	ordered   []*meter
 	views     []*view.Views
-	meters    map[instrumentation.Library]*meter
+	meters    map[instrumentation.Scope]*meter
 }
 
 // Compile-time check MeterProvider implements metric.MeterProvider.
@@ -71,7 +71,7 @@ func NewMeterProvider(options ...Option) *MeterProvider {
 	p := &MeterProvider{
 		cfg:       cfg,
 		startTime: time.Now(),
-		meters:    map[instrumentation.Library]*meter{},
+		meters:    map[instrumentation.Scope]*meter{},
 	}
 	for pipe := 0; pipe < len(cfg.readers); pipe++ {
 		r := cfg.readers[pipe]
@@ -102,7 +102,7 @@ func NewMeterProvider(options ...Option) *MeterProvider {
 // This method is safe to call concurrently.
 func (mp *MeterProvider) Meter(name string, options ...metric.MeterOption) metric.Meter {
 	cfg := metric.NewMeterConfig(options...)
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name:      name,
 		Version:   cfg.InstrumentationVersion(),
 		SchemaURL: cfg.SchemaURL(),

@@ -12,9 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package otelcol
+package export
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
@@ -27,10 +29,15 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exemplar"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
+
+	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	otelcodes "go.opentelemetry.io/otel/codes"
+	metricapi "go.opentelemetry.io/otel/metric"
+	"go.opentelemetry.io/otel/trace"
 )
 
 func toTemporality(t aggregation.Temporality) pmetric.AggregationTemporality {
@@ -69,7 +76,7 @@ func copySumPoints(m pmetric.Metric, inM data.Instrument, mono bool) {
 			panic("unhandled case")
 		}
 
-		copyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
+		CopyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
 }
 
@@ -93,7 +100,7 @@ func copyGaugePoints(m pmetric.Metric, inM data.Instrument) {
 			panic("unhandled case")
 		}
 
-		copyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
+		CopyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
 }
 
@@ -144,7 +151,7 @@ func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 			panic("unhandled case")
 		}
 
-		copyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
+		CopyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
 }
 
@@ -190,7 +197,7 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 			panic("unhandled case")
 		}
 
-		copyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
+		CopyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
 }
 
@@ -201,11 +208,11 @@ func unwrapExemplars(agg aggregation.Aggregation) aggregation.Aggregation {
 	return agg
 }
 
-func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
+func d2pd(resourceMap *internal.ResourceMap, in data.Metrics) pmetric.Metrics {
 	out := pmetric.NewMetrics()
 	rm := out.ResourceMetrics().AppendEmpty()
 
-	c.ResourceMap.Get(in.Resource).CopyTo(rm.Resource())
+	resourceMap.Get(in.Resource).CopyTo(rm.Resource())
 
 	for _, inS := range in.Scopes {
 		sm := rm.ScopeMetrics().AppendEmpty()
@@ -245,7 +252,7 @@ func (c *client) d2pd(in data.Metrics) pmetric.Metrics {
 	return out
 }
 
-func copyExemplars(dest pmetric.ExemplarSlice, attrs attribute.Set, nk number.Kind, src []aggregator.WeightedExemplarBits) {
+func CopyExemplars(dest pmetric.ExemplarSlice, attrs attribute.Set, nk number.Kind, src []aggregator.WeightedExemplarBits) {
 	for _, wex := range src {
 		ex := dest.AppendEmpty()
 		ex.SetTimestamp(pcommon.NewTimestampFromTime(wex.Time))
@@ -306,4 +313,48 @@ func copyExemplars(dest pmetric.ExemplarSlice, attrs attribute.Set, nk number.Ki
 			ex.FilteredAttributes().PutDouble("sample.weight", wex.Weight)
 		}
 	}
+}
+
+func ExportMetrics(
+	ctx context.Context,
+	data data.Metrics,
+	tracer trace.Tracer,
+	telemetryItemsCounter metricapi.Int64Counter,
+	resourceMap *internal.ResourceMap,
+	exporter exporter.Metrics,
+) error {
+	ctx, span := tracer.Start(
+		ctx,
+		"otelsdk_export_metrics",
+	)
+	defer span.End()
+
+	converted := d2pd(resourceMap, data)
+	points := int64(converted.DataPointCount())
+
+	err := exporter.ConsumeMetrics(ctx, converted)
+	success := err == nil
+	var state string
+	if success {
+		state = "ok"
+	} else if errors.Is(err, context.Canceled) {
+		state = "canceled"
+	} else if errors.Is(err, context.DeadlineExceeded) {
+		state = "timeout"
+	} else {
+		state = "error"
+	}
+
+	var attrs = []attribute.KeyValue{
+		attribute.Bool("success", success),
+		attribute.String("state", state),
+	}
+	telemetryItemsCounter.Add(ctx, points, metricapi.WithAttributes(attrs...))
+	span.SetAttributes(append(attrs, attribute.Int64("num_points", points))...)
+	if err == nil {
+		span.SetStatus(otelcodes.Ok, state)
+	} else {
+		span.SetStatus(otelcodes.Error, state)
+	}
+	return err
 }

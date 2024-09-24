@@ -33,10 +33,10 @@ var safePerf sdkinstrument.Performance
 
 func TestClauseMatches(t *testing.T) {
 	re := regexp.MustCompile("s.+")
-	lib0 := instrumentation.Library{
+	lib0 := instrumentation.Scope{
 		Name: "fancy",
 	}
-	lib1 := instrumentation.Library{
+	lib1 := instrumentation.Scope{
 		Name:    "limited",
 		Version: "vF.G.H",
 	}
@@ -48,7 +48,7 @@ func TestClauseMatches(t *testing.T) {
 		WithClause(MatchNumberKind(number.Float64Kind)),
 		WithClause(MatchInstrumentationLibrary(lib0)),
 		WithClause(
-			MatchInstrumentationLibrary(instrumentation.Library{Version: "vF.G.H"}),
+			MatchInstrumentationLibrary(instrumentation.Scope{Version: "vF.G.H"}),
 			MatchInstrumentKind(sdkinstrument.AsyncGauge),
 		),
 	)
@@ -192,7 +192,7 @@ func TestStandardAggregation(t *testing.T) {
 func expectStandardAggregation(t *testing.T, v *Views) {
 	for i := sdkinstrument.Kind(0); i < sdkinstrument.NumKinds; i++ {
 		switch i {
-		case sdkinstrument.AsyncGauge:
+		case sdkinstrument.AsyncGauge, sdkinstrument.SyncGauge:
 			require.Equal(t, aggregation.GaugeKind, v.Defaults.Aggregation(i))
 		case sdkinstrument.SyncCounter, sdkinstrument.AsyncCounter:
 			require.Equal(t, aggregation.MonotonicSumKind, v.Defaults.Aggregation(i))
@@ -201,6 +201,7 @@ func expectStandardAggregation(t *testing.T, v *Views) {
 		case sdkinstrument.SyncHistogram:
 			require.Equal(t, aggregation.HistogramKind, v.Defaults.Aggregation(i))
 		default:
+			t.Logf("Unexpected aggregation %v", i)
 			t.Fail()
 		}
 	}
