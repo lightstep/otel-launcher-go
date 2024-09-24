@@ -17,6 +17,8 @@ package export
 import (
 	"context"
 	"errors"
+
+	"github.com/lightstep/go-expohisto/mapping/logarithm"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
@@ -32,7 +34,6 @@ import (
 	otelcodes "go.opentelemetry.io/otel/codes"
 	metricapi "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
-	"math"
 )
 
 func toTemporality(t aggregation.Temporality) pmetric.AggregationTemporality {
@@ -148,10 +149,13 @@ func copyExplicitHistogramBuckets(
 	if sourcePositiveBuckets.Len() > 0 {
 		positiveOffset := sourcePositiveBuckets.Offset()
 		positiveNumElements := int32(sourcePositiveBuckets.Len())
+		mapping, _ := logarithm.NewMapping(sourceScale)
+		leftBound, _ := mapping.LowerBoundary(positiveOffset)
+
 		for element := int32(0); element < positiveNumElements; element++ {
 			index := element + positiveOffset
 
-			leftBound, rightBound := indexToBucketBounds(index, sourceScale, true)
+			rightBound, _ := mapping.LowerBoundary(index + 1)
 
 			// We have to add a bucket to get from zero to the start of the first user-defined bucket.
 			// This has no count.
@@ -162,22 +166,13 @@ func copyExplicitHistogramBuckets(
 
 			dest.ExplicitBounds().Append(rightBound)
 			dest.BucketCounts().Append(sourcePositiveBuckets.At(uint32(element)))
+
+			leftBound = rightBound
 		}
 	}
 
 	// There are no elements in the (..., +Inf] bucket.
 	dest.BucketCounts().Append(0)
-}
-
-// indexToBucketBounds returns (left_bound, right_bound] for the bucket with the given index.
-func indexToBucketBounds(index int32, scale int32, isPositive bool) (float64, float64) {
-	base := math.Pow(2, math.Pow(2, -float64(scale)))
-
-	if isPositive {
-		return math.Pow(base, float64(index)), math.Pow(base, float64(index)+1)
-	} else {
-		return -math.Pow(base, float64(index)+1), -math.Pow(base, float64(index))
-	}
 }
 
 func copyExponentialHistogramPoints(m pmetric.Metric, inM data.Instrument) {
