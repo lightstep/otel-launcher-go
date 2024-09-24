@@ -1508,7 +1508,7 @@ func TestAttributeSizeLimit(t *testing.T) {
 }
 
 func TestSyncExemplars(t *testing.T) {
-	lib := instrumentation.Library{
+	lib := instrumentation.Scope{
 		Name: "testlib",
 	}
 	perf := sdkinstrument.Performance{
