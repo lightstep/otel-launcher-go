@@ -130,7 +130,16 @@ func (c *client) String() string {
 
 // ExportMetrics implements PushExporter.
 func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
-	return export.ExportMetrics(ctx, data, c.tracer, c.counter, &c.ResourceMap, c.exporter)
+	return export.ExportMetrics(
+		ctx,
+		data,
+		c.tracer,
+		c.counter,
+		&c.ResourceMap,
+		c.exporter,
+		// don't use exponential histograms, since the prometheus exporter doesn't support them
+		false,
+	)
 }
 
 // ShutdownMetrics implements PushExporter.

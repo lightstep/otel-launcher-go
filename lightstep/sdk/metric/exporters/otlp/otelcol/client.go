@@ -204,6 +204,7 @@ func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
 		c.counter,
 		&c.ResourceMap,
 		c.exporter,
+		true, // use exponential histograms
 	)
 }
 

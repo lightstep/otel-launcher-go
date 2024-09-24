@@ -17,6 +17,8 @@ package export
 import (
 	"context"
 	"errors"
+
+	"github.com/lightstep/go-expohisto/mapping/logarithm"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
@@ -94,7 +96,86 @@ func copyGaugePoints(m pmetric.Metric, inM data.Instrument) {
 	}
 }
 
-func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
+func copyExplicitHistogramPoints(m pmetric.Metric, inM data.Instrument) {
+	s := m.SetEmptyHistogram()
+	s.SetAggregationTemporality(toTemporality(inM.Points[0].Temporality))
+
+	for _, inP := range inM.Points {
+		dp := s.DataPoints().AppendEmpty()
+
+		dp.SetStartTimestamp(pcommon.NewTimestampFromTime(inP.Start))
+		dp.SetTimestamp(pcommon.NewTimestampFromTime(inP.End))
+		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
+
+		switch t := inP.Aggregation.(type) {
+		case *histogram.Int64:
+			dp.SetSum(t.Sum().CoerceToFloat64(number.Int64Kind))
+			dp.SetCount(t.Count())
+
+			if t.Count() != 0 {
+				dp.SetMax(t.Max().CoerceToFloat64(number.Int64Kind))
+				dp.SetMin(t.Min().CoerceToFloat64(number.Int64Kind))
+			}
+
+			copyExplicitHistogramBuckets(t.Positive(), t.ZeroCount(), t.Scale(), dp)
+
+		case *histogram.Float64:
+			dp.SetSum(number.ToFloat64(t.Sum()))
+			dp.SetCount(t.Count())
+			if t.Count() != 0 {
+				dp.SetMax(number.ToFloat64(t.Max()))
+				dp.SetMin(number.ToFloat64(t.Min()))
+			}
+
+			copyExplicitHistogramBuckets(t.Positive(), t.ZeroCount(), t.Scale(), dp)
+		default:
+			panic("unhandled case")
+		}
+	}
+}
+
+// copyExplicitHistogramBuckets converts a Lightstep exponential histogram to an OTel histogram with
+// explicitly defined buckets.
+func copyExplicitHistogramBuckets(
+	sourcePositiveBuckets aggregation.Buckets,
+	sourceZeroCount uint64,
+	sourceScale int32,
+	dest pmetric.HistogramDataPoint,
+) {
+	// add the zero bucket in: (-Inf, 0]
+	dest.ExplicitBounds().Append(0)
+	dest.BucketCounts().Append(sourceZeroCount)
+
+	if sourcePositiveBuckets.Len() > 0 {
+		positiveOffset := sourcePositiveBuckets.Offset()
+		positiveNumElements := int32(sourcePositiveBuckets.Len())
+		mapping, _ := logarithm.NewMapping(sourceScale)
+		leftBound, _ := mapping.LowerBoundary(positiveOffset)
+
+		for element := int32(0); element < positiveNumElements; element++ {
+			index := element + positiveOffset
+
+			rightBound, _ := mapping.LowerBoundary(index + 1)
+
+			// We have to add a bucket to get from zero to the start of the first user-defined bucket.
+			// This has no count.
+			if element == 0 {
+				dest.ExplicitBounds().Append(leftBound)
+				dest.BucketCounts().Append(0)
+			}
+
+			dest.ExplicitBounds().Append(rightBound)
+			dest.BucketCounts().Append(sourcePositiveBuckets.At(uint32(element)))
+
+			leftBound = rightBound
+		}
+	}
+
+	// There are no elements in the (..., +Inf] bucket.
+	dest.BucketCounts().Append(0)
+}
+
+func copyExponentialHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 	s := m.SetEmptyExponentialHistogram()
 	s.SetAggregationTemporality(toTemporality(inM.Points[0].Temporality))
 
@@ -117,10 +198,10 @@ func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 				dp.SetMin(t.Min().CoerceToFloat64(number.Int64Kind))
 			}
 			if t.Positive().Len() != 0 {
-				copyHistogramBuckets(dp.Positive(), t.Positive())
+				copyExponentialHistogramBuckets(dp.Positive(), t.Positive())
 			}
 			if t.Negative().Len() != 0 {
-				copyHistogramBuckets(dp.Negative(), t.Negative())
+				copyExponentialHistogramBuckets(dp.Negative(), t.Negative())
 			}
 		case *histogram.Float64:
 			dp.SetSum(number.ToFloat64(t.Sum()))
@@ -132,10 +213,10 @@ func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 				dp.SetMin(number.ToFloat64(t.Min()))
 			}
 			if t.Positive().Len() != 0 {
-				copyHistogramBuckets(dp.Positive(), t.Positive())
+				copyExponentialHistogramBuckets(dp.Positive(), t.Positive())
 			}
 			if t.Negative().Len() != 0 {
-				copyHistogramBuckets(dp.Negative(), t.Negative())
+				copyExponentialHistogramBuckets(dp.Negative(), t.Negative())
 			}
 		default:
 			panic("unhandled case")
@@ -143,7 +224,7 @@ func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 	}
 }
 
-func copyHistogramBuckets(dest pmetric.ExponentialHistogramDataPointBuckets, src aggregation.Buckets) {
+func copyExponentialHistogramBuckets(dest pmetric.ExponentialHistogramDataPointBuckets, src aggregation.Buckets) {
 	if src.Len() == 0 {
 		return
 	}
@@ -187,7 +268,11 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 	}
 }
 
-func d2pd(resourceMap *internal.ResourceMap, in data.Metrics) pmetric.Metrics {
+func d2pd(
+	resourceMap *internal.ResourceMap,
+	in data.Metrics,
+	useExponentialHistogram bool,
+) pmetric.Metrics {
 	out := pmetric.NewMetrics()
 	rm := out.ResourceMetrics().AppendEmpty()
 
@@ -217,7 +302,11 @@ func d2pd(resourceMap *internal.ResourceMap, in data.Metrics) pmetric.Metrics {
 			case *gauge.Int64, *gauge.Float64:
 				copyGaugePoints(m, inM)
 			case *histogram.Int64, *histogram.Float64:
-				copyHistogramPoints(m, inM)
+				if useExponentialHistogram {
+					copyExponentialHistogramPoints(m, inM)
+				} else {
+					copyExplicitHistogramPoints(m, inM)
+				}
 			case *minmaxsumcount.Int64, *minmaxsumcount.Float64:
 				copyMMSCPoints(m, inM)
 			}
@@ -234,6 +323,7 @@ func ExportMetrics(
 	telemetryItemsCounter metricapi.Int64Counter,
 	resourceMap *internal.ResourceMap,
 	exporter exporter.Metrics,
+	useExponentialHistogram bool,
 ) error {
 	ctx, span := tracer.Start(
 		ctx,
@@ -241,7 +331,7 @@ func ExportMetrics(
 	)
 	defer span.End()
 
-	converted := d2pd(resourceMap, data)
+	converted := d2pd(resourceMap, data, useExponentialHistogram)
 	points := int64(converted.DataPointCount())
 
 	err := exporter.ConsumeMetrics(ctx, converted)
