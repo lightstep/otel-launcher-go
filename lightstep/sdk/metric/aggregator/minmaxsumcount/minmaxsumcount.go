@@ -64,7 +64,7 @@ var (
 func NewInt64(vals ...int64) *Int64 {
 	a := &Int64{}
 	for _, val := range vals {
-		Int64Methods{}.Update(a, val)
+		Int64Methods{}.Update(a, val, aggregator.ExemplarBits{})
 	}
 	return a
 }
@@ -72,7 +72,7 @@ func NewInt64(vals ...int64) *Int64 {
 func NewFloat64(vals ...float64) *Float64 {
 	a := &Float64{}
 	for _, val := range vals {
-		Float64Methods{}.Update(a, val)
+		Float64Methods{}.Update(a, val, aggregator.ExemplarBits{})
 	}
 	return a
 }
@@ -125,7 +125,7 @@ func (Methods[N, Traits]) Copy(from, to *State[N, Traits]) {
 	to.fields = from.fields
 }
 
-func (Methods[N, Traits]) Update(state *State[N, Traits], number N) {
+func (Methods[N, Traits]) Update(state *State[N, Traits], number N, _ aggregator.ExemplarBits) {
 	state.lock.Lock()
 	defer state.lock.Unlock()
 
@@ -180,4 +180,12 @@ func (Methods[N, Traits]) SubtractSwap(operand, argument *State[N, Traits]) {
 	// This can't be called b/c histogram's are only used with synchronous instruments,
 	// which start as delta temporality and thus never subtract.
 	panic("impossible call")
+}
+
+func (Methods[N, Traits]) Exemplars(ptr *State[N, Traits], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
+	return in
+}
+
+func (Methods[N, Traits]) Weight(n N) float64 {
+	return 1
 }

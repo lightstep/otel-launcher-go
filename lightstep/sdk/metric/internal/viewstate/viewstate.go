@@ -28,6 +28,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/minmaxsumcount"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exemplar"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
@@ -93,13 +94,24 @@ type Instrument interface {
 	NewAccumulator(kvs attribute.Set) Accumulator
 }
 
+// SampleFilter's indicates when exemplars may be sampled.
+type SampleFilter interface {
+	// MaySample indicates the possibility of sampling
+	// exemplars. the isTraced is calculated by the caller since
+	// it already has evaluated the context for additional
+	// attributes.
+	MaySample(isTraced bool) bool
+}
+
 // Updater captures single measurements, for N an int64 or float64.
 type Updater[N number.Any] interface {
 	// Update captures a single measurement.  For synchronous
 	// instruments, this passes directly through to the
 	// aggregator.  For asynchronous instruments, the last value
 	// is captured by the accumulator snapshot.
-	Update(value N)
+	Update(value N, ex aggregator.ExemplarBits)
+
+	SampleFilter
 }
 
 // Accumulator is an intermediate interface used for short-term
@@ -253,7 +265,21 @@ func (v *Compiler) tryToApplyHint(instrument sdkinstrument.Descriptor) (_ sdkins
 	if hint.Config.CardinalityLimit != 0 {
 		acfg.CardinalityLimit = hint.Config.CardinalityLimit
 	}
-
+	if hint.Config.Exemplar.Filter != "" {
+		switch strings.ToLower(hint.Config.Exemplar.Filter) {
+		case "always_on":
+			acfg.Exemplar.Filter = aggregator.AlwaysOnKind
+		case "always_off":
+			acfg.Exemplar.Filter = aggregator.AlwaysOffKind
+		case "trace_based", "when_traced":
+			acfg.Exemplar.Filter = aggregator.WhenTracedKind
+		default:
+			otel.Handle(fmt.Errorf("unrecognized exemplar filter: %s", hint.Config.Exemplar.Filter))
+		}
+	}
+	if hint.Config.Exemplar.Size != 0 {
+		acfg.Exemplar.Size = hint.Config.Exemplar.Size
+	}
 	return instrument, akind, tempo, acfg, defCfg, hinted
 }
 
@@ -327,7 +353,7 @@ func (v *Compiler) Compile(instrument sdkinstrument.Descriptor) (Instrument, Vie
 	for _, behavior := range behaviors {
 		// the following checks semantic compatibility
 		// and if necessary fixes the aggregation kind
-		// to the default, via in place update.
+		// to the default, via in-place update.
 		semanticErr := checkSemanticCompatibility(instrument.Kind, &behavior)
 
 		existingInsts := v.names[behavior.desc.Name]
@@ -409,6 +435,40 @@ func buildView[N number.Any, Traits number.Traits[N]](behavior singleBehavior) l
 	return compileAsync[N, Traits](behavior)
 }
 
+func newSyncViewWithF[
+	N number.Any,
+	Storage any,
+	Methods aggregator.Methods[N, Storage],
+](behavior singleBehavior) leafInstrument {
+	switch behavior.acfg.Exemplar.Filter {
+	case aggregator.AlwaysOnKind:
+		return newSyncView[N, Storage, Methods, alwaysOnSampleFilter](behavior)
+	default:
+		return newSyncView[N, Storage, Methods, whenTracedSampleFilter](behavior)
+	}
+}
+
+func newSyncViewWithEx[
+	N number.Any,
+	Traits number.Traits[N],
+	Storage any,
+	Methods aggregator.Methods[N, Storage],
+](behavior singleBehavior) leafInstrument {
+	if behavior.acfg.Exemplar.Filter == aggregator.AlwaysOffKind {
+		return newSyncView[N, Storage, Methods, alwaysOffSampleFilter](behavior)
+	}
+	if behavior.acfg.Exemplar.Size == 1 {
+		return newSyncViewWithF[N,
+			exemplar.LastStorage[N, Storage, Methods],
+			exemplar.LastMethods[N, Storage, Methods],
+		](behavior)
+	}
+	return newSyncViewWithF[N,
+		exemplar.WeightedStorage[N, Storage, Methods],
+		exemplar.WeightedMethods[N, Storage, Methods],
+	](behavior)
+}
+
 // newSyncView returns a compiled synchronous instrument.  If the view
 // calls for delta temporality, a lowmemory instrument is returned,
 // otherwise for cumulative temporality a stateful instrument will be
@@ -417,6 +477,7 @@ func newSyncView[
 	N number.Any,
 	Storage any,
 	Methods aggregator.Methods[N, Storage],
+	Samp SampleFilter,
 ](behavior singleBehavior) leafInstrument {
 	// Note: nolint:govet below is to avoid copylocks.  The lock
 	// is being copied before the new object is returned to the
@@ -431,53 +492,58 @@ func newSyncView[
 		keysSet:    behavior.keysSet,
 		keysFilter: behavior.keysFilter,
 	}
-	instrument := compiledSyncBase[N, Storage, Methods]{
+	instrument := compiledSyncBase[N, Storage, Methods, Samp]{
 		instrumentBase: metric, //nolint:govet
 	}
 	if behavior.tempo == aggregation.DeltaTemporality {
-		return &lowmemorySyncInstrument[N, Storage, Methods]{
+		return &lowmemorySyncInstrument[N, Storage, Methods, Samp]{
 			compiledSyncBase: instrument, //nolint:govet
 		}
 	}
 
-	return &statefulSyncInstrument[N, Storage, Methods]{
+	return &statefulSyncInstrument[N, Storage, Methods, Samp]{
 		compiledSyncBase: instrument, //nolint:govet
 	}
 }
 
-// compileSync calls newSyncView to compile a synchronous
+// compileSync calls newSyncViewWithEx to compile a synchronous
 // instrument with specific aggregator storage and methods.
 func compileSync[N number.Any, Traits number.Traits[N]](behavior singleBehavior) leafInstrument {
 	switch behavior.kind {
 	case aggregation.HistogramKind:
-		return newSyncView[
+		return newSyncViewWithEx[
 			N,
+			Traits,
 			histogram.Histogram[N, Traits],
 			histogram.Methods[N, Traits],
 		](behavior)
 	case aggregation.MinMaxSumCountKind:
-		return newSyncView[
+		return newSyncViewWithEx[
 			N,
+			Traits,
 			minmaxsumcount.State[N, Traits],
 			minmaxsumcount.Methods[N, Traits],
 		](behavior)
 	case aggregation.NonMonotonicSumKind:
-		return newSyncView[
+		return newSyncViewWithEx[
 			N,
+			Traits,
 			sum.State[N, Traits, sum.NonMonotonic],
 			sum.Methods[N, Traits, sum.NonMonotonic],
 		](behavior)
 	case aggregation.GaugeKind:
-		return newSyncView[
+		return newSyncViewWithEx[
 			N,
+			Traits,
 			gauge.State[N, Traits],
 			gauge.Methods[N, Traits],
 		](behavior)
 	default:
 		fallthrough
 	case aggregation.MonotonicSumKind:
-		return newSyncView[
+		return newSyncViewWithEx[
 			N,
+			Traits,
 			sum.State[N, Traits, sum.Monotonic],
 			sum.Methods[N, Traits, sum.Monotonic],
 		](behavior)
@@ -706,4 +772,20 @@ func viewDescriptor(instrument sdkinstrument.Descriptor, v view.ClauseConfig) sd
 		description = v.Description()
 	}
 	return sdkinstrument.NewDescriptor(name, ikind, nkind, description, unit)
+}
+
+type alwaysOffSampleFilter struct{}
+type alwaysOnSampleFilter struct{}
+type whenTracedSampleFilter struct{}
+
+func (alwaysOffSampleFilter) MaySample(isTraced bool) bool {
+	return false
+}
+
+func (alwaysOnSampleFilter) MaySample(isTraced bool) bool {
+	return true
+}
+
+func (whenTracedSampleFilter) MaySample(isTraced bool) bool {
+	return isTraced
 }

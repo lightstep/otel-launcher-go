@@ -17,13 +17,18 @@ package otelcol
 import (
 	"context"
 	"math"
+	"math/rand"
 	"net"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
 	sdkmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/export"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otelarrowreceiver"
 	"github.com/stretchr/testify/suite"
@@ -57,9 +62,16 @@ var (
 	}
 
 	testStmtAttrs = []attribute.KeyValue{
-		attribute.String("A", "1"),
-		attribute.Int("B", 2),
+		filteredAttr,
+		unfilteredAttr,
 	}
+
+	filteredAttr   = attribute.String("A", "1")
+	unfilteredAttr = attribute.Int("B", 2)
+)
+
+const (
+	exemplarTimestamp pcommon.Timestamp = 12345
 )
 
 func attrs2otlp(kvs ...attribute.KeyValue) []*commonpb.KeyValue {
@@ -149,7 +161,11 @@ func (t *clientTestSuite) SetupTest() {
 	t.NoError(err)
 
 	t.sdk = sdkmetric.NewMeterProvider(
-		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exp, math.MaxInt64), view.WithDefaultAggregationTemporalitySelector(aggregation.LowMemoryTemporality)),
+		sdkmetric.WithReader(
+			sdkmetric.NewPeriodicReader(exp, math.MaxInt64),
+			view.WithDefaultAggregationTemporalitySelector(aggregation.LowMemoryTemporality),
+			view.WithClause(view.WithKeys([]attribute.Key{"B"})),
+		),
 		sdkmetric.WithResource(
 			resource.NewSchemaless(testResourceAttrs...),
 		),
@@ -289,7 +305,7 @@ func (t *clientTestSuite) TestCounterAndGauge() {
 										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_DELTA,
 										DataPoints: []*metricspb.NumberDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Value: &metricspb.NumberDataPoint_AsInt{
 													AsInt: 1,
 												},
@@ -304,7 +320,7 @@ func (t *clientTestSuite) TestCounterAndGauge() {
 									Gauge: &metricspb.Gauge{
 										DataPoints: []*metricspb.NumberDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Value: &metricspb.NumberDataPoint_AsInt{
 													AsInt: 2,
 												},
@@ -370,7 +386,7 @@ func (t *clientTestSuite) TestUpDownCounters() {
 										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_DELTA,
 										DataPoints: []*metricspb.NumberDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Value: &metricspb.NumberDataPoint_AsDouble{
 													AsDouble: 1,
 												},
@@ -386,7 +402,7 @@ func (t *clientTestSuite) TestUpDownCounters() {
 										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_CUMULATIVE,
 										DataPoints: []*metricspb.NumberDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Value: &metricspb.NumberDataPoint_AsDouble{
 													AsDouble: 2,
 												},
@@ -456,7 +472,7 @@ func (t *clientTestSuite) TestHistograms() {
 										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_DELTA,
 										DataPoints: []*metricspb.ExponentialHistogramDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Count:      3,
 												Min:        newFloat64(1),
 												Max:        newFloat64(4),
@@ -480,7 +496,7 @@ func (t *clientTestSuite) TestHistograms() {
 										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_CUMULATIVE,
 										DataPoints: []*metricspb.HistogramDataPoint{
 											{
-												Attributes: attrs2otlp(testStmtAttrs...),
+												Attributes: attrs2otlp(unfilteredAttr),
 												Count:      3,
 												Min:        newFloat64(1),
 												Max:        newFloat64(4),
@@ -507,4 +523,166 @@ func (t *clientTestSuite) TestHistograms() {
 	t.NoError(proto.Unmarshal(data, &export))
 
 	t.Empty(cmp.Diff(prototext.Format(&expect), prototext.Format(&export)))
+}
+
+func (t *clientTestSuite) TestSumExemplars() {
+	// Note: only sum exemplars are tested.  TODO: the other data
+	// points' code is nearly identical, but could be more tested.
+	ctx := context.Background()
+
+	meter := t.sdk.Meter("test-meter")
+
+	counter, err := meter.Int64Counter("how-many",
+		metric.WithDescription(`{
+	  "config": {
+	    "exemplar": {
+	      "filter": "always_on",
+	      "size": 1
+	    }
+	  },
+	  "description": "incredible"
+	}`),
+	)
+	t.NoError(err)
+
+	before := time.Now()
+	counter.Add(ctx, 17, metric.WithAttributes(testStmtAttrs...))
+	after := time.Now()
+
+	_ = t.sdk.Shutdown(ctx)
+
+	t.Equal(1, len(t.sink.AllMetrics()))
+
+	t.assertTimestamps()
+
+	data, err := pmetricotlp.NewExportRequestFromMetrics(t.sink.AllMetrics()[0]).MarshalProto()
+	t.NoError(err)
+
+	exemplars := []*metricspb.Exemplar{
+		{
+			TimeUnixNano:       uint64(exemplarTimestamp),
+			Value:              &metricspb.Exemplar_AsInt{AsInt: 17},
+			FilteredAttributes: attrs2otlp(filteredAttr),
+		},
+	}
+
+	expect := colmetricspb.ExportMetricsServiceRequest{
+		ResourceMetrics: []*metricspb.ResourceMetrics{
+			{
+				Resource: &resourcepb.Resource{
+					Attributes: attrs2otlp(testResourceAttrs...),
+				},
+				ScopeMetrics: []*metricspb.ScopeMetrics{
+					{
+						Scope: &commonpb.InstrumentationScope{
+							Name: "test-meter",
+						},
+						Metrics: []*metricspb.Metric{
+							{
+								Name:        "how-many",
+								Description: "incredible",
+								Data: &metricspb.Metric_Sum{
+									Sum: &metricspb.Sum{
+										IsMonotonic:            true,
+										AggregationTemporality: metricspb.AggregationTemporality_AGGREGATION_TEMPORALITY_DELTA,
+										DataPoints: []*metricspb.NumberDataPoint{
+											{
+												Attributes: attrs2otlp(unfilteredAttr),
+												Value: &metricspb.NumberDataPoint_AsInt{
+													AsInt: 17,
+												},
+												Exemplars: exemplars,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	var export colmetricspb.ExportMetricsServiceRequest
+	t.NoError(proto.Unmarshal(data, &export))
+
+	// The following is similar to assertTimestamps, but for the
+	// exemplar timestamp.  The timestamp should be in-range.
+	// Reset it to exemplarTimestamp for the cmp.Diff to succeed.
+	ts := pcommon.Timestamp(export.ResourceMetrics[0].ScopeMetrics[0].Metrics[0].Data.(*metricspb.Metric_Sum).Sum.DataPoints[0].Exemplars[0].TimeUnixNano)
+	t.True(!before.After(ts.AsTime()))
+	t.True(!after.Before(ts.AsTime()))
+	export.ResourceMetrics[0].ScopeMetrics[0].Metrics[0].Data.(*metricspb.Metric_Sum).Sum.DataPoints[0].Exemplars[0].TimeUnixNano = uint64(exemplarTimestamp)
+
+	t.Empty(cmp.Diff(prototext.Format(&expect), prototext.Format(&export)))
+}
+
+func (t *clientTestSuite) TestFilteredAttributes() {
+	allAttrs := []attribute.KeyValue{attribute.String("A", "1"),
+		attribute.String("B", "2"),
+		attribute.String("C", "3"),
+	}
+
+	// exhaustively
+	for nk := number.Int64Kind; nk <= number.Float64Kind; nk++ {
+		for perm := 0; perm < 1<<len(allAttrs); perm++ {
+			for shuf := 0; shuf < 8; shuf++ {
+				rand.Shuffle(len(allAttrs), func(i, j int) {
+					allAttrs[i], allAttrs[j] = allAttrs[j], allAttrs[i]
+				})
+
+				var useAttrs []attribute.KeyValue
+				var filtAttrs []attribute.KeyValue
+
+				for bit := 0; bit < len(allAttrs); bit++ {
+					if (1<<bit)&perm != 0 {
+						useAttrs = append(useAttrs, allAttrs[bit])
+					} else {
+						filtAttrs = append(filtAttrs, allAttrs[bit])
+					}
+				}
+				var num number.Number
+				if nk == number.Int64Kind {
+					num = number.FromInt64(1000)
+				} else {
+					num = number.FromFloat64(1000)
+				}
+
+				attrs := attribute.NewSet(useAttrs...)
+
+				dest := pmetric.NewExemplarSlice()
+				export.CopyExemplars(
+					dest, attrs, nk,
+					[]aggregator.WeightedExemplarBits{
+						{
+							ExemplarBits: aggregator.ExemplarBits{
+								Time:       exemplarTimestamp.AsTime(),
+								Attributes: allAttrs,
+								Number:     num,
+							},
+							Weight: 0, // w/ reservoir size == 1, weight == 0
+						},
+					})
+
+				expect := pmetric.NewExemplarSlice()
+				exex := expect.AppendEmpty()
+				exex.SetTimestamp(exemplarTimestamp)
+				if nk == number.Int64Kind {
+					exex.SetIntValue(1000)
+				} else {
+					exex.SetDoubleValue(1000)
+				}
+				// Sort the expected filtered attributes so they match
+				sort.Slice(filtAttrs, func(i, j int) bool {
+					return filtAttrs[i].Key < filtAttrs[j].Key
+				})
+
+				for _, oattr := range attrs2otlp(filtAttrs...) {
+					exex.FilteredAttributes().PutStr(oattr.Key, oattr.Value.Value.(*commonpb.AnyValue_StringValue).StringValue)
+				}
+				t.Equal(expect, dest)
+			}
+		}
+	}
 }

@@ -197,3 +197,90 @@ dynamically configure allowed cardinality values.
 This limit is used to truncate attribute key and string values to a
 reasonable size.  The default limit is 8kB.  Zero is not a valid
 limit.
+
+#### Exemplars
+
+**Status**: Experimental
+
+Exemplars are sample measurements associated with synchronous metric
+instruments.  When OpenTelemetry tracing is used in conjunction with
+this Metrics SDK, exemplars will be annotated with the TraceID and
+SpanID of the traced context.
+
+Collection of metric exemplars are off by default.  The
+`sdkinstrument.Performance.ExemplarsEnabled` field can be used to
+enable exemplars by default.  This field may be set to a number of
+exemplars to collect by default for all Counter and Histogram
+instruments.
+
+Exemplars can also be configured using the `aggregator.Config.Exemplar`
+structure, or with a hint like:
+
+```
+{
+  "description": "measurement of ...",
+  "config": {
+    "exemplar": {
+      "size": 10,
+	  "filter": "trace_based",
+    }
+  }
+}
+```
+
+Like the OpenTelemetry specification, the supported filters are
+"always_off", "always_on", and "trace_based".  Unlike the
+OpenTelemetry specification, this SDK has two reservoir
+implementations:
+
+- "Last": always chooses the last metric event as the exemplar.  This
+  method is automatically selected when the size is 1.
+- "Weighted": uses a weighted sampling technique.
+
+With weighted sampling, an unbiased sampler is used such that the
+distribution of values can be estimated from the exemplars.  Each
+exemplar includes a `sample.weight` attribute indicating its
+contribution to the aggregate value.
+
+Note that this weighted sampling property does not apply to
+UpDownCounter instruments, because they allow negative measurements.
+however these instruments can still generate exemplars.
+
+As a simple example, consider a counter instrument with two input
+attribute values counting blue and yellow items, i.e.,
+
+```
+counter := meter.Int64Counter("...")
+
+for _ := range BLUE {
+  ctx, span := tracer.Start(...)
+  counter.Add(ctx, 1, attribute.String("color", "yellow")
+  span.End()
+}
+
+for _ := range YELLOW {
+  ctx, span := tracer.Start(...)
+  counter.Add(ctx, 1, attribute.String("color", "blue")
+  span.End()
+}
+```
+
+Suppose the attribute is filtered, so that a single timeseries is
+generated.  The aggregate sum equals `len(YELLOW) + len(BLUE)`.
+
+Each exemplar will have one of the filtered attributes, `color=yellow`
+or `color=blue`, Each exemplar will have a value of 1, in this case
+(i.e., the original measurement).  The ratio of exemplars with
+`color=yellow` or `color=blue` will match the ratio of counts
+associated with each.
+
+If the number of BLUE items is 3000, and the number of YELLOW items is
+7000, and the number of exemplars is 1000, then:
+
+- We expect 300 BLUE examplars
+- We expect 700 YELLOW examplars
+- Each exemplar has a `sample.weight` of 10, the ratio of total count to exemplar count.
+
+Note that we expect the sum of `sample.weight` for the exemplars to
+equal the total number of input events (i.e., 3000 BLUE, 7000 YELLOW).
+

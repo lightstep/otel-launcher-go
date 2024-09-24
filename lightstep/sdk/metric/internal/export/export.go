@@ -17,17 +17,23 @@ package export
 import (
 	"context"
 	"errors"
+	"fmt"
+
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/histogram"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/minmaxsumcount"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/sum"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/exemplar"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
+
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/collector/pdata/pmetric"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
 	metricapi "go.opentelemetry.io/otel/metric"
@@ -57,7 +63,7 @@ func copySumPoints(m pmetric.Metric, inM data.Instrument, mono bool) {
 
 		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
-		switch t := inP.Aggregation.(type) {
+		switch t := unwrapExemplars(inP.Aggregation).(type) {
 		case *sum.MonotonicInt64:
 			dp.SetIntValue(number.ToInt64(t.Sum()))
 		case *sum.NonMonotonicInt64:
@@ -69,6 +75,8 @@ func copySumPoints(m pmetric.Metric, inM data.Instrument, mono bool) {
 		default:
 			panic("unhandled case")
 		}
+
+		CopyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
 }
 
@@ -83,7 +91,7 @@ func copyGaugePoints(m pmetric.Metric, inM data.Instrument) {
 
 		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
-		switch t := inP.Aggregation.(type) {
+		switch t := unwrapExemplars(inP.Aggregation).(type) {
 		case *gauge.Int64:
 			dp.SetIntValue(number.ToInt64(t.Gauge()))
 		case *gauge.Float64:
@@ -91,6 +99,8 @@ func copyGaugePoints(m pmetric.Metric, inM data.Instrument) {
 		default:
 			panic("unhandled case")
 		}
+
+		CopyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
 }
 
@@ -106,7 +116,7 @@ func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 
 		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
-		switch t := inP.Aggregation.(type) {
+		switch t := unwrapExemplars(inP.Aggregation).(type) {
 		case *histogram.Int64:
 			dp.SetSum(t.Sum().CoerceToFloat64(number.Int64Kind))
 			dp.SetCount(t.Count())
@@ -140,6 +150,8 @@ func copyHistogramPoints(m pmetric.Metric, inM data.Instrument) {
 		default:
 			panic("unhandled case")
 		}
+
+		CopyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
 }
 
@@ -166,7 +178,7 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 
 		internal.CopyAttributes(dp.Attributes(), inP.Attributes)
 
-		switch t := inP.Aggregation.(type) {
+		switch t := unwrapExemplars(inP.Aggregation).(type) {
 		case *minmaxsumcount.Int64:
 			dp.SetSum(t.Sum().CoerceToFloat64(number.Int64Kind))
 			dp.SetCount(t.Count())
@@ -184,7 +196,16 @@ func copyMMSCPoints(m pmetric.Metric, inM data.Instrument) {
 		default:
 			panic("unhandled case")
 		}
+
+		CopyExemplars(dp.Exemplars(), inP.Attributes, inM.Descriptor.NumberKind, inP.Exemplars)
 	}
+}
+
+func unwrapExemplars(agg aggregation.Aggregation) aggregation.Aggregation {
+	if unwr, ok := agg.(exemplar.Unwrapper); ok {
+		agg = unwr.Unwrap()
+	}
+	return agg
 }
 
 func d2pd(resourceMap *internal.ResourceMap, in data.Metrics) pmetric.Metrics {
@@ -209,7 +230,9 @@ func d2pd(resourceMap *internal.ResourceMap, in data.Metrics) pmetric.Metrics {
 			m.SetUnit(string(inM.Descriptor.Unit))
 			m.SetDescription(inM.Descriptor.Description)
 
-			switch inM.Points[0].Aggregation.(type) {
+			agg := unwrapExemplars(inM.Points[0].Aggregation)
+
+			switch agg.(type) {
 			case *sum.MonotonicInt64, *sum.MonotonicFloat64:
 				copySumPoints(m, inM, true)
 			case *sum.NonMonotonicInt64, *sum.NonMonotonicFloat64:
@@ -220,11 +243,76 @@ func d2pd(resourceMap *internal.ResourceMap, in data.Metrics) pmetric.Metrics {
 				copyHistogramPoints(m, inM)
 			case *minmaxsumcount.Int64, *minmaxsumcount.Float64:
 				copyMMSCPoints(m, inM)
+			default:
+				otel.Handle(fmt.Errorf("unknown concrete aggregator type: %T", agg))
 			}
 		}
 	}
 
 	return out
+}
+
+func CopyExemplars(dest pmetric.ExemplarSlice, attrs attribute.Set, nk number.Kind, src []aggregator.WeightedExemplarBits) {
+	for _, wex := range src {
+		ex := dest.AppendEmpty()
+		ex.SetTimestamp(pcommon.NewTimestampFromTime(wex.Time))
+		if nk == number.Int64Kind {
+			ex.SetIntValue(number.ToInt64(wex.Number))
+		} else {
+			ex.SetDoubleValue(number.ToFloat64(wex.Number))
+		}
+		if wex.Span != nil {
+			ex.SetTraceID(pcommon.TraceID(wex.Span.SpanContext().TraceID()))
+			ex.SetSpanID(pcommon.SpanID(wex.Span.SpanContext().SpanID()))
+		}
+		// The following calculation appears to be optimizable
+		// -- except it's not clear how.  We've computed an
+		// attribute set by a filter somewhere, and at that
+		// moment we know the filtered attributes.  However
+		// connecting these code points feels difficult, so
+		// for now we re-sort the original attributes, then
+		// iterate.
+		aset := attribute.NewSet(wex.Attributes...)
+
+		// attrs is a subset of aset
+		oiter := attrs.Iter()
+		fiter := aset.Iter()
+
+		o := oiter.Len()
+		f := fiter.Len()
+
+		oiter.Next()
+		fiter.Next()
+
+		// TL;DR wishing we could start from scratch with a
+		// redesigned attribute.Set.
+		for o > 0 && f > 0 {
+			okv := oiter.Attribute()
+			fkv := fiter.Attribute()
+
+			if fkv.Key == okv.Key {
+				o--
+				f--
+				oiter.Next()
+				fiter.Next()
+			} else {
+				internal.CopyAttribute(ex.FilteredAttributes(), fkv)
+				f--
+				fiter.Next()
+			}
+		}
+
+		for f > 0 {
+			fkv := fiter.Attribute()
+			internal.CopyAttribute(ex.FilteredAttributes(), fkv)
+			f--
+			fiter.Next()
+		}
+
+		if wex.Weight != 0 {
+			ex.FilteredAttributes().PutDouble("sample.weight", wex.Weight)
+		}
+	}
 }
 
 func ExportMetrics(

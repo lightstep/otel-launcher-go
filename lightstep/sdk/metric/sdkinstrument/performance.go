@@ -66,6 +66,10 @@ type Performance struct {
 	// AttributeSizeLimit is a byte-size limit on attribute keys,
 	// string values, and each element of string-slice values.
 	AttributeSizeLimit uint32
+
+	// ExemplarsEnabled is the number of exemplars that will be
+	// collected per timeseries, in the standard configuration.
+	ExemplarsEnabled uint32
 }
 
 // MeasurementProcessor allows applications to extend metric events

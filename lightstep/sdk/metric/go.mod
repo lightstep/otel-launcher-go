@@ -12,6 +12,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/lightstep/go-expohisto v1.0.0
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.31.0
+	github.com/lightstep/varopt v1.4.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter v0.108.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.108.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry v0.108.0
