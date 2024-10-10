@@ -36,7 +36,6 @@ import (
 	"go.opentelemetry.io/otel/sdk/trace"
 	traceapi "go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
-	"go.uber.org/zap"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 )
@@ -135,11 +134,11 @@ func NewDefaultConfig() Config {
 			SendBatchMaxSize: 1500,
 		},
 		Exporter: otelarrowexporter.Config{
-			TimeoutSettings: exporterhelper.TimeoutSettings{
+			TimeoutSettings: exporterhelper.TimeoutConfig{
 				Timeout: 15 * time.Second,
 			},
 			RetryConfig:   configretry.NewDefaultBackOffConfig(),
-			QueueSettings: exporterhelper.NewDefaultQueueSettings(),
+			QueueSettings: exporterhelper.NewDefaultQueueConfig(),
 			ClientConfig: configgrpc.ClientConfig{
 				Headers:         map[string]configopaque.String{},
 				Compression:     configcompression.TypeZstd,
@@ -259,22 +258,7 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 	return c, nil
 }
 
-// ReportFatalError implements component.Host.
-func (c *client) ReportFatalError(err error) {
-	c.settings.Logger.Fatal("exporter fatal", zap.Error(err))
-}
-
-// GetFactory implements component.Host.
-func (c *client) GetFactory(component.Kind, component.Type) component.Factory {
-	return nil
-}
-
 // GetExtensions implements component.Host.
 func (c *client) GetExtensions() map[component.ID]component.Component {
-	return nil
-}
-
-// GetExporters implements component.Host.
-func (c *client) GetExporters() map[component.DataType]map[component.ID]component.Component {
 	return nil
 }

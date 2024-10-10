@@ -16,8 +16,9 @@ package otelcol
 
 import (
 	"context"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/export"
 	"time"
+
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/export"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
@@ -36,7 +37,6 @@ import (
 	metricapi "go.opentelemetry.io/otel/metric"
 	traceapi "go.opentelemetry.io/otel/trace"
 	"go.uber.org/multierr"
-	"go.uber.org/zap"
 )
 
 type Option func(*Config)
@@ -72,11 +72,11 @@ func NewDefaultConfig() Config {
 			SendBatchMaxSize: 1500,
 		},
 		Exporter: otelarrowexporter.Config{
-			TimeoutSettings: exporterhelper.TimeoutSettings{
+			TimeoutSettings: exporterhelper.TimeoutConfig{
 				Timeout: 15 * time.Second,
 			},
 			RetryConfig:   configretry.NewDefaultBackOffConfig(),
-			QueueSettings: exporterhelper.NewDefaultQueueSettings(),
+			QueueSettings: exporterhelper.NewDefaultQueueConfig(),
 			ClientConfig: configgrpc.ClientConfig{
 				Headers:         map[string]configopaque.String{},
 				Compression:     configcompression.TypeZstd,
@@ -228,22 +228,7 @@ func (c *client) ForceFlushMetrics(ctx context.Context, data data.Metrics) error
 	return c.ExportMetrics(ctx, data)
 }
 
-// ReportFatalError implements component.Host.
-func (c *client) ReportFatalError(err error) {
-	c.settings.Logger.Fatal("exporter fatal", zap.Error(err))
-}
-
-// GetFactory implements component.Host.
-func (c *client) GetFactory(component.Kind, component.Type) component.Factory {
-	return nil
-}
-
 // GetExtensions implements component.Host.
 func (c *client) GetExtensions() map[component.ID]component.Component {
-	return nil
-}
-
-// GetExporters implements component.Host.
-func (c *client) GetExporters() map[component.DataType]map[component.ID]component.Component {
 	return nil
 }
