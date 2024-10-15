@@ -156,6 +156,11 @@ func Observe[N number.Any, Traits number.Traits[N]](inst metric.Observable, cs *
 		otel.Handle(fmt.Errorf("async instrument used after callback return"))
 		return
 	}
+	if unwrapped, ok := inst.(interface {
+		Unwrap() metric.Observable
+	}); ok {
+		inst = unwrapped.Unwrap()
+	}
 	obsImpl, ok := inst.(implementation)
 	if !ok {
 		otel.Handle(fmt.Errorf("asynchronous instrument does not belong to this SDK: %T", inst))
