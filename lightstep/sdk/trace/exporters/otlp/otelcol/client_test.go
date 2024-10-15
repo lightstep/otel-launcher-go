@@ -121,7 +121,7 @@ func (t *clientTestSuite) SetupSuite() {
 	set := receivertest.NewNopSettings()
 	tc := &consumertest.TracesSink{}
 
-	mr, err := factory.CreateTracesReceiver(ctx, set, cfg, tc)
+	mr, err := factory.CreateTraces(ctx, set, cfg, tc)
 	t.NoError(err)
 
 	err = mr.Start(ctx, componenttest.NewNopHost())
