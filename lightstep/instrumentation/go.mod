@@ -2,7 +2,7 @@ module github.com/lightstep/otel-launcher-go/lightstep/instrumentation
 
 go 1.22
 
-toolchain go1.23.2
+toolchain go1.22.7
 
 require (
 	github.com/shirou/gopsutil/v3 v3.23.12
