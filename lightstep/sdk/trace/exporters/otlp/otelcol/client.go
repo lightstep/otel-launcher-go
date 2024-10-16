@@ -238,7 +238,10 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 	}
 
 	if settings, tracer, counter, err :=
-		internal.ConfigureSelfTelemetry("lightstep-go/sdk/metric", tp, mp); err != nil {
+		internal.ConfigureSelfTelemetry(
+			"lightstep-go/sdk/trace",
+			options.TracerProvider,
+			options.MeterProvider); err != nil {
 		return nil, err
 	} else {
 		c.settings.TelemetrySettings = settings
