@@ -34,8 +34,11 @@ import (
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/otel"
 	metricapi "go.opentelemetry.io/otel/metric"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	traceapi "go.opentelemetry.io/otel/trace"
+	tracenoop "go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/multierr"
 )
 
@@ -147,16 +150,23 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_metric_otlp"))
 	}
 
-	err := internal.ConfigureSelfTelemetry(
-		"lightstep-go/sdk/metric",
-		cfg.SelfSpans,
-		cfg.SelfMetrics,
-		&c.settings,
-		&c.tracer,
-		&c.counter,
-	)
-	if err != nil {
+	var mp metricapi.MeterProvider = metricnoop.NewMeterProvider()
+	var tp traceapi.TracerProvider = tracenoop.NewTracerProvider()
+
+	if cfg.SelfSpans {
+		tp = otel.GetTracerProvider()
+	}
+	if cfg.SelfMetrics {
+		mp = otel.GetMeterProvider()
+	}
+
+	if settings, tracer, counter, err :=
+		internal.ConfigureSelfTelemetry("lightstep-go/sdk/metric", tp, mp); err != nil {
 		return nil, err
+	} else {
+		c.settings.TelemetrySettings = settings
+		c.tracer = tracer
+		c.counter = counter
 	}
 
 	exp, err := otelarrowexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
