@@ -206,7 +206,10 @@ func WithTLSSetting(tlss configtls.ClientConfig) Option {
 }
 
 func NewExporter(ctx context.Context, cfg Config, opts ...func(options *ExporterOptions)) (trace.SpanExporter, error) {
-	options := ExporterOptions{}
+	options := ExporterOptions{
+		MeterProvider:  nil,
+		TracerProvider: nil,
+	}
 	for _, opt := range opts {
 		opt(&options)
 	}
@@ -219,14 +222,19 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_trace_otlp"))
 	}
 
-	var mp metricapi.MeterProvider = metricnoop.NewMeterProvider()
-	var tp traceapi.TracerProvider = tracenoop.NewTracerProvider()
-
-	if cfg.SelfSpans {
-		tp = otel.GetTracerProvider()
+	if options.MeterProvider == nil {
+		if cfg.SelfMetrics {
+			options.MeterProvider = otel.GetMeterProvider()
+		} else {
+			options.MeterProvider = metricnoop.NewMeterProvider()
+		}
 	}
-	if cfg.SelfMetrics {
-		mp = otel.GetMeterProvider()
+	if options.TracerProvider == nil {
+		if cfg.SelfSpans {
+			options.TracerProvider = otel.GetTracerProvider()
+		} else {
+			options.TracerProvider = tracenoop.NewTracerProvider()
+		}
 	}
 
 	if settings, tracer, counter, err :=
