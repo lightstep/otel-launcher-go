@@ -113,7 +113,7 @@ func (c *client) ExportSpans(ctx context.Context, spans []trace.ReadOnlySpan) er
 	if err == nil {
 		span.SetStatus(otelcodes.Ok, state)
 	} else {
-		span.SetStatus(otelcodes.Error, state)
+		span.SetStatus(otelcodes.Error, err.Error())
 	}
 	return err
 }
