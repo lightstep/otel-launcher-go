@@ -356,7 +356,7 @@ func ExportMetrics(
 	if err == nil {
 		span.SetStatus(otelcodes.Ok, state)
 	} else {
-		span.SetStatus(otelcodes.Error, state)
+		span.SetStatus(otelcodes.Error, err.Error())
 	}
 	return err
 }

@@ -30,11 +30,14 @@ import (
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	otelcodes "go.opentelemetry.io/otel/codes"
-	"go.opentelemetry.io/otel/metric"
+	metricapi "go.opentelemetry.io/otel/metric"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	"go.opentelemetry.io/otel/sdk/trace"
 	traceapi "go.opentelemetry.io/otel/trace"
+	tracenoop "go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/multierr"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
@@ -53,7 +56,7 @@ type Config struct {
 
 type ExporterOptions struct {
 	TracerProvider traceapi.TracerProvider
-	MeterProvider  metric.MeterProvider
+	MeterProvider  metricapi.MeterProvider
 }
 
 func WithTracerProvider(tp traceapi.TracerProvider) func(*ExporterOptions) {
@@ -62,7 +65,7 @@ func WithTracerProvider(tp traceapi.TracerProvider) func(*ExporterOptions) {
 	}
 }
 
-func WithMeterProvider(mp metric.MeterProvider) func(*ExporterOptions) {
+func WithMeterProvider(mp metricapi.MeterProvider) func(*ExporterOptions) {
 	return func(opts *ExporterOptions) {
 		opts.MeterProvider = mp
 	}
@@ -75,6 +78,7 @@ type client struct {
 	batcher  processor.Traces
 	settings exporter.Settings
 	tracer   traceapi.Tracer
+	counter  metricapi.Int64Counter
 }
 
 func (c *client) ExportSpans(ctx context.Context, spans []trace.ReadOnlySpan) error {
@@ -104,11 +108,12 @@ func (c *client) ExportSpans(ctx context.Context, spans []trace.ReadOnlySpan) er
 		attribute.Bool("success", success),
 		attribute.String("state", state),
 	}
+	c.counter.Add(ctx, int64(count), metricapi.WithAttributes(attrs...))
 	span.SetAttributes(append(attrs, attribute.Int("num_spans", count))...)
 	if err == nil {
 		span.SetStatus(otelcodes.Ok, state)
 	} else {
-		span.SetStatus(otelcodes.Error, state)
+		span.SetStatus(otelcodes.Error, err.Error())
 	}
 	return err
 }
@@ -201,7 +206,10 @@ func WithTLSSetting(tlss configtls.ClientConfig) Option {
 }
 
 func NewExporter(ctx context.Context, cfg Config, opts ...func(options *ExporterOptions)) (trace.SpanExporter, error) {
-	options := ExporterOptions{}
+	options := ExporterOptions{
+		MeterProvider:  nil,
+		TracerProvider: nil,
+	}
 	for _, opt := range opts {
 		opt(&options)
 	}
@@ -214,16 +222,31 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_trace_otlp"))
 	}
 
-	err := internal.ConfigureSelfTelemetry(
-		"lightstep-go/sdk/trace",
-		cfg.SelfSpans,
-		cfg.SelfMetrics,
-		&c.settings,
-		&c.tracer,
-		nil,
-	)
-	if err != nil {
+	if options.MeterProvider == nil {
+		if cfg.SelfMetrics {
+			options.MeterProvider = otel.GetMeterProvider()
+		} else {
+			options.MeterProvider = metricnoop.NewMeterProvider()
+		}
+	}
+	if options.TracerProvider == nil {
+		if cfg.SelfSpans {
+			options.TracerProvider = otel.GetTracerProvider()
+		} else {
+			options.TracerProvider = tracenoop.NewTracerProvider()
+		}
+	}
+
+	if settings, tracer, counter, err :=
+		internal.ConfigureSelfTelemetry(
+			"lightstep-go/sdk/trace",
+			options.TracerProvider,
+			options.MeterProvider); err != nil {
 		return nil, err
+	} else {
+		c.settings.TelemetrySettings = settings
+		c.tracer = tracer
+		c.counter = counter
 	}
 
 	exp, err := otelarrowexporter.NewFactory().CreateTracesExporter(ctx, c.settings, &cfg.Exporter)
