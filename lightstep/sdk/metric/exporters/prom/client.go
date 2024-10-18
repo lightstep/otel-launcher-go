@@ -17,6 +17,8 @@ package prom
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/data"
@@ -26,10 +28,12 @@ import (
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/confighttp"
 	"go.opentelemetry.io/collector/exporter"
+	"go.opentelemetry.io/otel"
 	metricapi "go.opentelemetry.io/otel/metric"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	traceapi "go.opentelemetry.io/otel/trace"
+	tracenoop "go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/multierr"
-	"time"
 )
 
 // TODO: Config, Option, and the option impls are duplicated between
@@ -97,16 +101,23 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 
 	c.settings.ID = component.NewID(component.MustNewType("otel_sdk_metric_prom"))
 
-	err := internal.ConfigureSelfTelemetry(
-		"lightstep-go/sdk/metric",
-		cfg.SelfSpans,
-		cfg.SelfMetrics,
-		&c.settings,
-		&c.tracer,
-		&c.counter,
-	)
-	if err != nil {
+	var mp metricapi.MeterProvider = metricnoop.NewMeterProvider()
+	var tp traceapi.TracerProvider = tracenoop.NewTracerProvider()
+
+	if cfg.SelfSpans {
+		tp = otel.GetTracerProvider()
+	}
+	if cfg.SelfMetrics {
+		mp = otel.GetMeterProvider()
+	}
+
+	if settings, tracer, counter, err :=
+		internal.ConfigureSelfTelemetry("lightstep-go/sdk/metric", tp, mp); err != nil {
 		return nil, err
+	} else {
+		c.settings.TelemetrySettings = settings
+		c.tracer = tracer
+		c.counter = counter
 	}
 
 	exp, err := prometheusexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
@@ -130,7 +141,16 @@ func (c *client) String() string {
 
 // ExportMetrics implements PushExporter.
 func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
-	return export.ExportMetrics(ctx, data, c.tracer, c.counter, &c.ResourceMap, c.exporter)
+	return export.ExportMetrics(
+		ctx,
+		data,
+		c.tracer,
+		c.counter,
+		&c.ResourceMap,
+		c.exporter,
+		// don't use exponential histograms, since the prometheus exporter doesn't support them
+		false,
+	)
 }
 
 // ShutdownMetrics implements PushExporter.

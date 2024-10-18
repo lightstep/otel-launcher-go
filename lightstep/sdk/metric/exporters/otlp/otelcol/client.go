@@ -16,8 +16,9 @@ package otelcol
 
 import (
 	"context"
-	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/export"
 	"time"
+
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/internal/export"
 
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/internal"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
@@ -33,10 +34,12 @@ import (
 	"go.opentelemetry.io/collector/exporter"
 	"go.opentelemetry.io/collector/exporter/exporterhelper"
 	"go.opentelemetry.io/collector/processor"
+	"go.opentelemetry.io/otel"
 	metricapi "go.opentelemetry.io/otel/metric"
+	metricnoop "go.opentelemetry.io/otel/metric/noop"
 	traceapi "go.opentelemetry.io/otel/trace"
+	tracenoop "go.opentelemetry.io/otel/trace/noop"
 	"go.uber.org/multierr"
-	"go.uber.org/zap"
 )
 
 type Option func(*Config)
@@ -72,11 +75,11 @@ func NewDefaultConfig() Config {
 			SendBatchMaxSize: 1500,
 		},
 		Exporter: otelarrowexporter.Config{
-			TimeoutSettings: exporterhelper.TimeoutSettings{
+			TimeoutSettings: exporterhelper.TimeoutConfig{
 				Timeout: 15 * time.Second,
 			},
 			RetryConfig:   configretry.NewDefaultBackOffConfig(),
-			QueueSettings: exporterhelper.NewDefaultQueueSettings(),
+			QueueSettings: exporterhelper.NewDefaultQueueConfig(),
 			ClientConfig: configgrpc.ClientConfig{
 				Headers:         map[string]configopaque.String{},
 				Compression:     configcompression.TypeZstd,
@@ -147,16 +150,23 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_metric_otlp"))
 	}
 
-	err := internal.ConfigureSelfTelemetry(
-		"lightstep-go/sdk/metric",
-		cfg.SelfSpans,
-		cfg.SelfMetrics,
-		&c.settings,
-		&c.tracer,
-		&c.counter,
-	)
-	if err != nil {
+	var mp metricapi.MeterProvider = metricnoop.NewMeterProvider()
+	var tp traceapi.TracerProvider = tracenoop.NewTracerProvider()
+
+	if cfg.SelfSpans {
+		tp = otel.GetTracerProvider()
+	}
+	if cfg.SelfMetrics {
+		mp = otel.GetMeterProvider()
+	}
+
+	if settings, tracer, counter, err :=
+		internal.ConfigureSelfTelemetry("lightstep-go/sdk/metric", tp, mp); err != nil {
 		return nil, err
+	} else {
+		c.settings.TelemetrySettings = settings
+		c.tracer = tracer
+		c.counter = counter
 	}
 
 	exp, err := otelarrowexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
@@ -204,6 +214,7 @@ func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
 		c.counter,
 		&c.ResourceMap,
 		c.exporter,
+		true, // use exponential histograms
 	)
 }
 
@@ -227,22 +238,7 @@ func (c *client) ForceFlushMetrics(ctx context.Context, data data.Metrics) error
 	return c.ExportMetrics(ctx, data)
 }
 
-// ReportFatalError implements component.Host.
-func (c *client) ReportFatalError(err error) {
-	c.settings.Logger.Fatal("exporter fatal", zap.Error(err))
-}
-
-// GetFactory implements component.Host.
-func (c *client) GetFactory(component.Kind, component.Type) component.Factory {
-	return nil
-}
-
 // GetExtensions implements component.Host.
 func (c *client) GetExtensions() map[component.ID]component.Component {
-	return nil
-}
-
-// GetExporters implements component.Host.
-func (c *client) GetExporters() map[component.DataType]map[component.ID]component.Component {
 	return nil
 }

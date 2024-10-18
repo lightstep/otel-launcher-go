@@ -50,6 +50,11 @@ func NewCallback(instruments []metric.Observable, opaque interface{}, function m
 	}
 
 	for _, inst := range instruments {
+		if unwrapped, ok := inst.(interface {
+			Unwrap() metric.Observable
+		}); ok {
+			inst = unwrapped.Unwrap()
+		}
 		thisInstImpl, ok := inst.(implementation)
 		if !ok {
 			return nil, fmt.Errorf("asynchronous instrument does not belong to this SDK: %T", inst)

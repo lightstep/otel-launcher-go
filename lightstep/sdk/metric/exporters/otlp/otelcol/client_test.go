@@ -189,7 +189,7 @@ func (t *clientTestSuite) SetupSuite() {
 	set := receivertest.NewNopSettings()
 	tc := &consumertest.MetricsSink{}
 
-	mr, err := factory.CreateMetricsReceiver(ctx, set, cfg, tc)
+	mr, err := factory.CreateMetrics(ctx, set, cfg, tc)
 	t.NoError(err)
 
 	err = mr.Start(ctx, componenttest.NewNopHost())

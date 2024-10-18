@@ -15,24 +15,21 @@
 package internal
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
-	"go.opentelemetry.io/collector/exporter"
-	"go.opentelemetry.io/otel"
-	noopmetric "go.opentelemetry.io/otel/metric/noop"
-	"go.opentelemetry.io/otel/trace"
-	nooptrace "go.opentelemetry.io/otel/trace/noop"
-	"go.uber.org/zap"
-
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	metricapi "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 )
 
 type ResourceMap struct {
@@ -211,46 +208,26 @@ const (
 
 func ConfigureSelfTelemetry(
 	name string,
-	selfSpans bool,
-	selfMetrics bool,
-	exporterSettings *exporter.Settings,
-	tracer *trace.Tracer,
-	telemetryItemsCounter *metricapi.Int64Counter,
-) error {
+	tp trace.TracerProvider,
+	mp metric.MeterProvider,
+) (component.TelemetrySettings, trace.Tracer, metricapi.Int64Counter, error) {
+	var settings component.TelemetrySettings
 	// setup logs
-	logger, err := zap.NewProduction()
-	if err != nil {
-		return err
+	logger, logErr := zap.NewProduction()
+
+	// this replaces otelcol_ w/ otelsdk_
+	mp = NOTelColMeterProvider(mp)
+
+	settings.Logger = logger
+	settings.TracerProvider = tp
+	settings.MeterProvider = mp
+	settings.MetricsLevel = configtelemetry.LevelNormal
+	settings.LeveledMeterProvider = func(level configtelemetry.Level) metricapi.MeterProvider {
+		return mp
 	}
 
-	exporterSettings.TelemetrySettings.Logger = logger
-
-	// setup traces
-	tracerProvider := trace.TracerProvider(nooptrace.NewTracerProvider())
-	if selfSpans {
-		tracerProvider = otel.GetTracerProvider()
-	}
-
-	exporterSettings.TelemetrySettings.TracerProvider = tracerProvider
-	*tracer = exporterSettings.TelemetrySettings.TracerProvider.Tracer(name)
-
-	// setup metrics
-	meterProvider := metricapi.MeterProvider(noopmetric.NewMeterProvider())
-	if selfMetrics {
-		meterProvider = NOTelColMeterProvider(otel.GetMeterProvider())
-	}
-
-	exporterSettings.TelemetrySettings.MetricsLevel = configtelemetry.LevelNormal
-	exporterSettings.TelemetrySettings.MeterProvider = meterProvider
-	exporterSettings.TelemetrySettings.LeveledMeterProvider = func(level configtelemetry.Level) metricapi.MeterProvider {
-		return meterProvider
-	}
-
-	// setup the telemetry item counter metric
-	if telemetryItemsCounter != nil {
-		meter := exporterSettings.TelemetrySettings.LeveledMeterProvider(configtelemetry.LevelNormal).Meter(name)
-		*telemetryItemsCounter, err = meter.Int64Counter(selfTelemetryItemsCounterName)
-	}
-
-	return err
+	tracer := tp.Tracer(name)
+	meter := mp.Meter(name)
+	counter, metErr := meter.Int64Counter(selfTelemetryItemsCounterName)
+	return settings, tracer, counter, errors.Join(logErr, metErr)
 }
