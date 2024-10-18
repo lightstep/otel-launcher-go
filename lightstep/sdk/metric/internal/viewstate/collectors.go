@@ -26,12 +26,12 @@ import (
 )
 
 // statefulSyncInstrument is a synchronous instrument that maintains cumulative state.
-type statefulSyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
-	compiledSyncBase[N, Storage, Methods]
+type statefulSyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage], Samp SampleFilter] struct {
+	compiledSyncBase[N, Storage, Methods, Samp]
 }
 
 // Collect for synchronous cumulative temporality.
-func (p *statefulSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
+func (p *statefulSyncInstrument[N, Storage, Methods, Samp]) Collect(seq data.Sequence, output *[]data.Instrument) {
 	p.instLock.Lock()
 	defer p.instLock.Unlock()
 
@@ -43,12 +43,12 @@ func (p *statefulSyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence,
 }
 
 // lowmemorySyncInstrument is a synchronous instrument that maintains no state.
-type lowmemorySyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage]] struct {
-	compiledSyncBase[N, Storage, Methods]
+type lowmemorySyncInstrument[N number.Any, Storage any, Methods aggregator.Methods[N, Storage], Samp SampleFilter] struct {
+	compiledSyncBase[N, Storage, Methods, Samp]
 }
 
 // Collect for synchronous delta temporality.
-func (p *lowmemorySyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence, output *[]data.Instrument) {
+func (p *lowmemorySyncInstrument[N, Storage, Methods, Samp]) Collect(seq data.Sequence, output *[]data.Instrument) {
 	var methods Methods
 
 	p.instLock.Lock()
@@ -77,10 +77,10 @@ func (p *lowmemorySyncInstrument[N, Storage, Methods]) Collect(seq data.Sequence
 			continue
 		}
 
-		// We allowed the array to grow before this
+		// We allowed the array to grow before the above
 		// test speculatively, since when it succeeds
 		// we are able to re-use the underlying
-		// aggregator.
+		// aggregator.  Here, undo the new element.
 		ioutput.Points = ptsArr[0 : len(ptsArr)-1 : cap(ptsArr)]
 
 		// If there are no more accumulator references to the

@@ -24,6 +24,8 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/number"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 )
 
 // Sentinel errors for Aggregator interface.
@@ -32,6 +34,28 @@ var (
 	ErrNaNInput      = fmt.Errorf("NaN value is an invalid input")
 	ErrInfInput      = fmt.Errorf("±Inf value is an invalid input")
 )
+
+// ExemplarFilterKind determines which events are eligible for
+// becoming exemplars.
+type ExemplarFilterKind int
+
+const (
+	// AlwaysOffKind is the default when aggregator.Config{} is
+	// used with a zero value.  This is a good default because
+	// exemplars require additional synchronization.
+	AlwaysOffKind ExemplarFilterKind = iota
+
+	// AlwaysOnKind considers all events for exemplar sampling.
+	AlwaysOnKind
+
+	// WhenTracedKind considers events only in sampled trace
+	// contexts for exemplar sampling.
+	WhenTracedKind
+)
+
+// DefaultExemplarReservoirSize determines how many exemplars will be
+// selected per instrument.
+const DefaultExemplarReservoirSize = 10
 
 // RangeTest is a common routine for testing for valid input values.
 // This rejects NaN and Inf values.  This rejects negative values when the
@@ -68,6 +92,20 @@ func RangeTest[N number.Any, Traits number.Traits[N]](num N, desc sdkinstrument.
 	return true
 }
 
+// ExemplarConfig configures exemplar selection.
+type ExemplarConfig struct {
+	// Filter determines which contexts are selected.
+	Filter ExemplarFilterKind
+	// Size determines limits how many exemplars per timeseries.
+	Size uint32
+}
+
+// JSONExemplarConfig configures exemplar selection.
+type JSONExemplarConfig struct {
+	Filter string `json:"filter"`
+	Size   uint32 `json:"size"`
+}
+
 // JSONHistogramConfig configures the exponential histogram.
 type JSONHistogramConfig struct {
 	MaxSize int32 `json:"max_size"`
@@ -77,6 +115,7 @@ type JSONHistogramConfig struct {
 type JSONConfig struct {
 	Histogram        JSONHistogramConfig `json:"histogram"`
 	CardinalityLimit uint32              `json:"cardinality_limit"`
+	Exemplar         JSONExemplarConfig  `json:"exemplar"`
 }
 
 // Config supports the configuration for all aggregators in a single struct.
@@ -87,6 +126,9 @@ type Config struct {
 	// CardinalityLimit limits the number of instances of this
 	// aggregator in a given view.
 	CardinalityLimit uint32
+
+	// ExemplarFilter enables or disables exemplars
+	Exemplar ExemplarConfig
 }
 
 // Valid returns true for valid configurations.
@@ -140,7 +182,7 @@ type Methods[N number.Any, Storage any] interface {
 
 	// Update modifies Storage concurrently with respect to
 	// concurrent Move(), Copy(), and Update() operations.
-	Update(ptr *Storage, number N)
+	Update(ptr *Storage, number N, ex ExemplarBits)
 
 	// Move atomically copies `input` to `output` and resets
 	// `input` to the zero state.  The change to `input` is
@@ -181,7 +223,44 @@ type Methods[N number.Any, Storage any] interface {
 	// aggregation.  If the instrument is asynchronous, this will
 	// be called after subtraction.  Not synchronized.
 	HasChange(ptr *Storage) bool
+
+	// Exemplars returns sample points included in this aggregation.
+	Exemplars(ptr *Storage, in []WeightedExemplarBits) []WeightedExemplarBits
+
+	// Weight is the sample weight.  It is 1 for histogram and
+	// gauge aggregations, and it is the value for sum data
+	// aggregations.
+	Weight(number N) float64
 }
 
 // ConfigSelector is a per-instrument-kind, per-number-kind Config choice.
 type ConfigSelector func(sdkinstrument.Kind) (int64Config, float64Config Config)
+
+// ExemplarBits conducts extra information into the aggregation pipeline.
+//
+// Note: we could opt for an allocation instead of copying this struct
+// by value through the pipeline.
+type ExemplarBits struct {
+	// Time of the event.
+	Time time.Time
+
+	// Attributes are the complete original set of attributes.
+	Attributes []attribute.KeyValue
+
+	// Span has a reference to the span context, which has the 24
+	// bytes of ID.  We keep a span reference here because it is
+	// slightly smaller.
+	Span trace.Span
+
+	// Number is the input value.
+	Number number.Number
+}
+
+// WeightedExemplarBits are the exemplar and its calculated sample weight.
+type WeightedExemplarBits struct {
+	// ExemplarBits calculated at the event.
+	ExemplarBits
+
+	// Weight calculated by aggregation pipeline.
+	Weight float64
+}

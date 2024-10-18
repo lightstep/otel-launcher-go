@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	histostruct "github.com/lightstep/go-expohisto/structure"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/gauge"
@@ -41,6 +42,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
+	"go.opentelemetry.io/otel/trace"
 )
 
 var (
@@ -1500,6 +1502,111 @@ func TestAttributeSizeLimit(t *testing.T) {
 				sum.NewMonotonicFloat64(6),
 				aggregation.DeltaTemporality,
 				attribute.String(strings.Repeat("X", limit), strings.Repeat("Y", limit)),
+			),
+		),
+	)
+}
+
+func TestSyncExemplars(t *testing.T) {
+	lib := instrumentation.Scope{
+		Name: "testlib",
+	}
+	perf := sdkinstrument.Performance{
+		ExemplarsEnabled: 5,
+	}
+	vcs := viewstate.New(lib, view.New(
+		"test",
+		perf,
+		deltaSelector,
+		view.WithClause(
+			view.WithKeys([]attribute.Key{"a"}),
+		),
+	))
+	desc := test.Descriptor(
+		"histo",
+		sdkinstrument.SyncHistogram,
+		number.Int64Kind)
+
+	pipes := make(pipeline.Register[viewstate.Instrument], 1)
+	pipes[0], _ = vcs.Compile(desc)
+
+	require.NotNil(t, pipes[0])
+	inst := New(desc, perf, nil, pipes)
+	require.NotNil(t, inst)
+
+	untracedCtx := context.Background()
+	attrs1 := []attribute.KeyValue{attribute.String("a", "1"), attribute.String("b", "1")}
+	attrs2 := []attribute.KeyValue{attribute.String("a", "1"), attribute.String("b", "2")}
+	attrs3 := []attribute.KeyValue{attribute.String("a", "1"), attribute.String("b", "3")}
+
+	for i := int64(0); i < 5; i++ {
+		inst.ObserveInt64(
+			trace.ContextWithSpan(context.Background(), test.FakeSpan(1, byte(i+1))),
+			1+i,
+			attrsConfig(attrs1...),
+		)
+		inst.ObserveInt64(untracedCtx, 1+i, attrsConfig(attrs2...))
+		inst.ObserveInt64(untracedCtx, 1+i, attrsConfig(attrs3...))
+	}
+
+	inst.SnapshotAndProcess()
+	test.RequireEqualMetrics(
+		t,
+		test.CollectScope(
+			t,
+			vcs.Collectors(),
+			testSequence,
+		),
+		test.Instrument(
+			desc,
+			test.PointEx(
+				middleTime, endTime,
+				histogram.NewInt64(histostruct.NewConfig(),
+					1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5,
+				),
+				aggregation.DeltaTemporality,
+				[]attribute.KeyValue{attribute.String("a", "1")},
+				// Note: do not set timestamp below
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: aggregator.ExemplarBits{
+						Number:     number.FromInt64(1),
+						Attributes: attrs1,
+						Span:       test.FakeSpan(1, 1),
+					},
+					Weight: 1,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: aggregator.ExemplarBits{
+						Number:     number.FromInt64(2),
+						Attributes: attrs1,
+						Span:       test.FakeSpan(1, 2),
+					},
+					Weight: 1,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: aggregator.ExemplarBits{
+						Number:     number.FromInt64(3),
+						Attributes: attrs1,
+						Span:       test.FakeSpan(1, 3),
+					},
+					Weight: 1,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: aggregator.ExemplarBits{
+						Number:     number.FromInt64(4),
+						Attributes: attrs1,
+						Span:       test.FakeSpan(1, 4),
+					},
+					Weight: 1,
+				},
+				aggregator.WeightedExemplarBits{
+					ExemplarBits: aggregator.ExemplarBits{
+						Number:     number.FromInt64(5),
+						Attributes: attrs1,
+						Span:       test.FakeSpan(1, 5),
+					},
+					Weight: 1,
+				},
 			),
 		),
 	)

@@ -129,7 +129,7 @@ func (Methods[N, Traits]) HasChange(ptr *Histogram[N, Traits]) bool {
 	return ptr.Count() != 0
 }
 
-func (Methods[N, Traits]) Update(agg *Histogram[N, Traits], number N) {
+func (Methods[N, Traits]) Update(agg *Histogram[N, Traits], number N, _ aggregator.ExemplarBits) {
 	agg.lock.Lock()
 	defer agg.lock.Unlock()
 	agg.Histogram.Update(number)
@@ -168,4 +168,12 @@ func (Methods[N, Traits]) SubtractSwap(operand, argument *Histogram[N, Traits]) 
 	// This can't be called b/c histogram's are only used with synchronous instruments,
 	// which start as delta temporality and thus never subtract.
 	panic("impossible call")
+}
+
+func (Methods[N, Traits]) Exemplars(ptr *Histogram[N, Traits], in []aggregator.WeightedExemplarBits) []aggregator.WeightedExemplarBits {
+	return in
+}
+
+func (Methods[N, Traits]) Weight(_ N) float64 {
+	return 1
 }

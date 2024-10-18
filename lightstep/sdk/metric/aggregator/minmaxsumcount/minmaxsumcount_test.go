@@ -24,6 +24,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var nobits aggregator.ExemplarBits
+
 func TestInt64Minmaxsumcount(t *testing.T) {
 	test.GenericAggregatorTest[int64, Int64, Int64Methods](t, number.ToInt64)
 }
@@ -43,7 +45,7 @@ func genericMinMaxSumCountTest[N number.Any, Storage any, Methods aggregator.Met
 		var s Storage
 		methods.Init(&s, aggregator.Config{})
 		for _, val := range vals {
-			methods.Update(&s, val)
+			methods.Update(&s, val, nobits)
 		}
 		return &s
 	}
@@ -61,7 +63,7 @@ func genericMinMaxSumCountTest[N number.Any, Storage any, Methods aggregator.Met
 	t.Run("copy", func(t *testing.T) {
 		in := init(1, 2, 3)
 		out := init()
-		methods.Update(in, 4)
+		methods.Update(in, 4, nobits)
 		methods.Copy(in, out)
 
 		require.Equal(t, in, out)
@@ -71,8 +73,8 @@ func genericMinMaxSumCountTest[N number.Any, Storage any, Methods aggregator.Met
 		first := init(1, 2, 3)
 		second := init(4, 5, 6)
 
-		methods.Update(first, 7)
-		methods.Update(second, 8)
+		methods.Update(first, 7, nobits)
+		methods.Update(second, 8, nobits)
 
 		expect := init(1, 2, 3, 4, 5, 6, 7, 8)
 

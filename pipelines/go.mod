@@ -99,6 +99,7 @@ require (
 	github.com/apache/arrow/go/v16 v16.1.0 // indirect
 	github.com/apache/arrow/go/v17 v17.0.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/lightstep/varopt v1.4.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter v0.111.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/grpcutil v0.111.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/otelarrow v0.111.0 // indirect

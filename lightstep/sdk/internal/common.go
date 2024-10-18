@@ -16,20 +16,20 @@ package internal
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 
 	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/config/configtelemetry"
-	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
-
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 	metricapi "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/resource"
+	"go.opentelemetry.io/otel/trace"
+	"go.uber.org/zap"
 )
 
 type ResourceMap struct {
@@ -71,44 +71,47 @@ func (rm *ResourceMap) Get(in *resource.Resource) pcommon.Resource {
 
 func CopyAttributes(dest pcommon.Map, src attribute.Set) {
 	for iter := src.Iter(); iter.Next(); {
-		inA := iter.Attribute()
-		key := string(inA.Key)
-		switch inA.Value.Type() {
-		case attribute.BOOL:
-			dest.PutBool(key, inA.Value.AsBool())
-		case attribute.INT64:
-			dest.PutInt(key, inA.Value.AsInt64())
-		case attribute.FLOAT64:
-			dest.PutDouble(key, inA.Value.AsFloat64())
-		case attribute.STRING:
-			dest.PutStr(key, inA.Value.AsString())
-		case attribute.BOOLSLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsBoolSlice()))
-			for _, v := range inA.Value.AsBoolSlice() {
-				sl.AppendEmpty().SetBool(v)
-			}
-		case attribute.INT64SLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsInt64Slice()))
-			for _, v := range inA.Value.AsInt64Slice() {
-				sl.AppendEmpty().SetInt(v)
-			}
-		case attribute.FLOAT64SLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsFloat64Slice()))
-			for _, v := range inA.Value.AsFloat64Slice() {
-				sl.AppendEmpty().SetDouble(v)
-			}
-		case attribute.STRINGSLICE:
-			sl := dest.PutEmptySlice(key)
-			sl.EnsureCapacity(len(inA.Value.AsStringSlice()))
-			for _, v := range inA.Value.AsStringSlice() {
-				sl.AppendEmpty().SetStr(v)
-			}
-		default:
-			panic("unhandled case")
+		CopyAttribute(dest, iter.Attribute())
+	}
+}
+
+func CopyAttribute(dest pcommon.Map, inA attribute.KeyValue) {
+	key := string(inA.Key)
+	switch inA.Value.Type() {
+	case attribute.BOOL:
+		dest.PutBool(key, inA.Value.AsBool())
+	case attribute.INT64:
+		dest.PutInt(key, inA.Value.AsInt64())
+	case attribute.FLOAT64:
+		dest.PutDouble(key, inA.Value.AsFloat64())
+	case attribute.STRING:
+		dest.PutStr(key, inA.Value.AsString())
+	case attribute.BOOLSLICE:
+		sl := dest.PutEmptySlice(key)
+		sl.EnsureCapacity(len(inA.Value.AsBoolSlice()))
+		for _, v := range inA.Value.AsBoolSlice() {
+			sl.AppendEmpty().SetBool(v)
 		}
+	case attribute.INT64SLICE:
+		sl := dest.PutEmptySlice(key)
+		sl.EnsureCapacity(len(inA.Value.AsInt64Slice()))
+		for _, v := range inA.Value.AsInt64Slice() {
+			sl.AppendEmpty().SetInt(v)
+		}
+	case attribute.FLOAT64SLICE:
+		sl := dest.PutEmptySlice(key)
+		sl.EnsureCapacity(len(inA.Value.AsFloat64Slice()))
+		for _, v := range inA.Value.AsFloat64Slice() {
+			sl.AppendEmpty().SetDouble(v)
+		}
+	case attribute.STRINGSLICE:
+		sl := dest.PutEmptySlice(key)
+		sl.EnsureCapacity(len(inA.Value.AsStringSlice()))
+		for _, v := range inA.Value.AsStringSlice() {
+			sl.AppendEmpty().SetStr(v)
+		}
+	default:
+		panic(fmt.Errorf("unhandled case: %v", inA.Value.Type()))
 	}
 }
 

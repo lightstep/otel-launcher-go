@@ -17,6 +17,7 @@ package data // import "github.com/lightstep/otel-launcher-go/lightstep/sdk/metr
 import (
 	"time"
 
+	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/sdkinstrument"
 	"go.opentelemetry.io/otel/attribute"
@@ -87,6 +88,10 @@ type (
 		// End indicates the moment at which the collection
 		// was performed.
 		End time.Time
+
+		// Exemplars. See the comments on Metrics about re-use
+		// of slices in this struct.
+		Exemplars []aggregator.WeightedExemplarBits
 	}
 )
 
@@ -123,7 +128,20 @@ func (in *Instrument) Reset() {
 }
 
 func resetPoints(ps *[]Point) {
+	for i := range *ps {
+		(*ps)[i].Reset()
+	}
 	(*ps) = (*ps)[0:0:cap((*ps))]
+}
+
+// Reset sets the size of every slice to zero, while maintaining
+// capacity, to support re-use.
+func (p *Point) Reset() {
+	resetExemplars(&p.Exemplars)
+}
+
+func resetExemplars(exs *[]aggregator.WeightedExemplarBits) {
+	(*exs) = (*exs)[0:0:cap((*exs))]
 }
 
 // ReallocateFrom returns the pointer to the next available slice

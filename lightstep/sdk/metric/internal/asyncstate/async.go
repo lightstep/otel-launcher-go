@@ -177,6 +177,6 @@ func Observe[N number.Any, Traits number.Traits[N]](inst metric.Observable, cs *
 	}
 
 	if acc := obs.getOrCreate(cs, options); acc != nil {
-		acc.(viewstate.Updater[N]).Update(value)
+		acc.(viewstate.Updater[N]).Update(value, aggregator.ExemplarBits{})
 	}
 }

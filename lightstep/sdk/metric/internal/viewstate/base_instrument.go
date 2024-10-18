@@ -233,6 +233,7 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) appendPoint(inst *
 	point.Temporality = tempo
 	point.Start = start
 	point.End = end
+	point.Exemplars = methods.Exemplars(out, point.Exemplars)
 }
 
 // appendOrReusePoint is an alternate to appendPoint; this form is used when
