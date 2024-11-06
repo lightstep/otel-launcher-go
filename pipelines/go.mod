@@ -10,7 +10,7 @@ require (
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.31.0
 
 	// For otelcol-based exporter configuration.
-	go.opentelemetry.io/collector/config/configtls v1.17.0
+	go.opentelemetry.io/collector/config/configtls v1.19.0
 
 	// b3 and opentracing propagators
 	go.opentelemetry.io/contrib/propagators/b3 v1.28.0
@@ -30,7 +30,7 @@ require (
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
 	github.com/dgryski/go-farm v0.0.0-20200201041132-a6ae2369ad13 // indirect
 	github.com/dgryski/go-metro v0.0.0-20180109044635-280f6062b5bc // indirect
-	github.com/fsnotify/fsnotify v1.7.0 // indirect
+	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.4.0 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -67,7 +67,7 @@ require (
 	go.opentelemetry.io/collector/config/configcompression v1.17.0 // indirect
 	go.opentelemetry.io/collector/config/configgrpc v0.111.0 // indirect
 	go.opentelemetry.io/collector/config/confignet v1.17.0 // indirect
-	go.opentelemetry.io/collector/config/configopaque v1.17.0 // indirect
+	go.opentelemetry.io/collector/config/configopaque v1.19.0 // indirect
 	go.opentelemetry.io/collector/config/configtelemetry v0.111.0 // indirect
 	go.opentelemetry.io/collector/config/internal v0.111.0 // indirect
 	go.opentelemetry.io/collector/consumer v0.111.0 // indirect
