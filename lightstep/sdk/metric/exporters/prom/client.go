@@ -120,7 +120,7 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 		c.counter = counter
 	}
 
-	exp, err := prometheusexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
+	exp, err := prometheusexporter.NewFactory().CreateMetrics(ctx, c.settings, &cfg.Exporter)
 	if err != nil {
 		return nil, err
 	}
