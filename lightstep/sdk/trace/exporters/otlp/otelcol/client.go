@@ -249,7 +249,7 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 		c.counter = counter
 	}
 
-	exp, err := otelarrowexporter.NewFactory().CreateTracesExporter(ctx, c.settings, &cfg.Exporter)
+	exp, err := otelarrowexporter.NewFactory().CreateTraces(ctx, c.settings, &cfg.Exporter)
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +260,7 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 		BuildInfo:         c.settings.BuildInfo,
 	}
 
-	bat, err := concurrentbatchprocessor.NewFactory().CreateTracesProcessor(ctx, bset, &cfg.Batcher, exp)
+	bat, err := concurrentbatchprocessor.NewFactory().CreateTraces(ctx, bset, &cfg.Batcher, exp)
 	if err != nil {
 		return nil, err
 	}

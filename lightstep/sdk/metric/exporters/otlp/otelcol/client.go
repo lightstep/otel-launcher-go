@@ -169,7 +169,7 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 		c.counter = counter
 	}
 
-	exp, err := otelarrowexporter.NewFactory().CreateMetricsExporter(ctx, c.settings, &cfg.Exporter)
+	exp, err := otelarrowexporter.NewFactory().CreateMetrics(ctx, c.settings, &cfg.Exporter)
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 		BuildInfo:         c.settings.BuildInfo,
 	}
 
-	bat, err := concurrentbatchprocessor.NewFactory().CreateMetricsProcessor(ctx, bset, &cfg.Batcher, exp)
+	bat, err := concurrentbatchprocessor.NewFactory().CreateMetrics(ctx, bset, &cfg.Batcher, exp)
 	if err != nil {
 		return nil, err
 	}
