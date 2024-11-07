@@ -6,7 +6,7 @@ toolchain go1.22.6
 
 require (
 	github.com/google/go-cmp v0.6.0
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.32.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.33.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter v0.113.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otelarrowreceiver v0.113.0
 	github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor v0.30.0
