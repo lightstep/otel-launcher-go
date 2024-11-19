@@ -1,8 +1,7 @@
 module github.com/lightstep/otel-launcher-go/pipelines
 
 go 1.22.0
-
-toolchain go1.22.6
+toolchain go1.22.9
 
 require (
 	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.34.0
@@ -20,7 +19,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.32.0
 
 	// gRPC
-	google.golang.org/grpc v1.67.1
+	google.golang.org/grpc v1.68.0
 )
 
 require (
