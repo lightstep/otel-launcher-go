@@ -11,7 +11,7 @@ require (
 	github.com/golang/mock v1.6.0
 	github.com/google/go-cmp v0.6.0
 	github.com/lightstep/go-expohisto v1.0.0
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.33.0
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.34.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter v0.114.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/prometheusexporter v0.114.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry v0.114.0
