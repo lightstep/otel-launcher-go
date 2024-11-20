@@ -213,7 +213,7 @@ func (c *client) ExportMetrics(ctx context.Context, data data.Metrics) error {
 		c.tracer,
 		c.counter,
 		&c.ResourceMap,
-		c.exporter,
+		c.batcher,
 		true, // use exponential histograms
 	)
 }
