@@ -14,4 +14,4 @@
 
 package launcher
 
-const version = "1.33.0"
+const version = "1.33.1"
