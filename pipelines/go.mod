@@ -13,10 +13,10 @@ require (
 	go.opentelemetry.io/collector/config/configtls v1.20.0
 
 	// b3 and opentracing propagators
-	go.opentelemetry.io/contrib/propagators/b3 v1.28.0
+	go.opentelemetry.io/contrib/propagators/b3 v1.34.0
 	go.opentelemetry.io/contrib/propagators/ot v1.28.0
-	go.opentelemetry.io/otel v1.32.0
-	go.opentelemetry.io/otel/metric v1.32.0
+	go.opentelemetry.io/otel v1.34.0
+	go.opentelemetry.io/otel/metric v1.34.0
 	go.opentelemetry.io/otel/sdk v1.32.0
 
 	// gRPC
@@ -56,7 +56,7 @@ require (
 	github.com/power-devops/perfstat v0.0.0-20210106213030-5aafc221ea8c // indirect
 	github.com/shirou/gopsutil/v3 v3.24.4 // indirect
 	github.com/shoenig/go-m1cpu v0.1.6 // indirect
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.10.0
 	github.com/tklauser/go-sysconf v0.3.12 // indirect
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
@@ -78,7 +78,7 @@ require (
 	go.opentelemetry.io/collector/processor v0.114.0 // indirect
 	go.opentelemetry.io/collector/receiver v0.114.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.56.0 // indirect
-	go.opentelemetry.io/otel/trace v1.32.0 // indirect
+	go.opentelemetry.io/otel/trace v1.34.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
@@ -102,6 +102,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/otelarrowexporter v0.114.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/grpcutil v0.114.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/otelarrow v0.114.0 // indirect
+	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/collector/client v1.20.0 // indirect
 	go.opentelemetry.io/collector/config/configretry v1.20.0 // indirect
 	go.opentelemetry.io/collector/consumer/consumererror v0.114.0 // indirect
