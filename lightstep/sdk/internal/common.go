@@ -20,7 +20,6 @@ import (
 	"sync"
 
 	"go.opentelemetry.io/collector/component"
-	"go.opentelemetry.io/collector/config/configtelemetry"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
@@ -218,10 +217,6 @@ func ConfigureSelfTelemetry(
 	settings.Logger = logger
 	settings.TracerProvider = tp
 	settings.MeterProvider = mp
-	settings.MetricsLevel = configtelemetry.LevelNormal
-	settings.LeveledMeterProvider = func(level configtelemetry.Level) metricapi.MeterProvider {
-		return mp
-	}
 
 	tracer := tp.Tracer(name)
 	meter := mp.Meter(name)
