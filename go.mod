@@ -34,7 +34,7 @@ require (
 	go.opentelemetry.io/collector/consumer/consumertest v0.126.0
 	go.opentelemetry.io/collector/exporter v0.126.0
 	go.opentelemetry.io/collector/pdata v1.32.0
-	go.opentelemetry.io/collector/processor v1.31.0
+	go.opentelemetry.io/collector/processor v1.32.0
 	go.opentelemetry.io/collector/receiver v1.32.0
 	go.opentelemetry.io/collector/receiver/receivertest v0.126.0
 	go.opentelemetry.io/contrib/propagators/b3 v1.35.0
