@@ -27,6 +27,7 @@ import (
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/view"
 	"github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otelarrowreceiver"
 	"github.com/stretchr/testify/suite"
+	"go.opentelemetry.io/collector/component"
 	"go.opentelemetry.io/collector/component/componenttest"
 	"go.opentelemetry.io/collector/config/confignet"
 	"go.opentelemetry.io/collector/consumer/consumertest"
@@ -170,7 +171,8 @@ func (t *clientTestSuite) SetupSuite() {
 	cfg.Protocols.Arrow = otelarrowreceiver.ArrowConfig{}
 	cfg.GRPC.NetAddr = confignet.AddrConfig{Endpoint: t.addr, Transport: "tcp"}
 
-	set := receivertest.NewNopSettings()
+	set := receivertest.NewNopSettings(receivertest.NopType)
+	set.ID = component.NewID(component.MustNewType("otelarrow"))
 	tc := &consumertest.MetricsSink{}
 
 	mr, err := factory.CreateMetrics(ctx, set, cfg, tc)

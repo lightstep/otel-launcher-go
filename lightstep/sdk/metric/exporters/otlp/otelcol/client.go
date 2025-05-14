@@ -144,11 +144,7 @@ func WithTLSSetting(tlss configtls.ClientConfig) Option {
 func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	c := &client{}
 
-	if !cfg.Exporter.Arrow.Disabled {
-		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_metric_arrow"))
-	} else {
-		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_metric_otlp"))
-	}
+	c.settings.ID = component.NewID(component.MustNewType("otelarrow"))
 
 	var mp metricapi.MeterProvider = metricnoop.NewMeterProvider()
 	var tp traceapi.TracerProvider = tracenoop.NewTracerProvider()
@@ -175,7 +171,7 @@ func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	}
 
 	bset := processor.Settings{
-		ID:                component.NewID(component.MustNewType("otel_sdk_metric_batch")),
+		ID:                component.NewID(component.MustNewType("concurrentbatch")),
 		TelemetrySettings: c.settings.TelemetrySettings,
 		BuildInfo:         c.settings.BuildInfo,
 	}

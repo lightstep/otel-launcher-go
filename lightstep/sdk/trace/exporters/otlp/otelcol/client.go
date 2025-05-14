@@ -216,11 +216,7 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 
 	c := &client{}
 
-	if !cfg.Exporter.Arrow.Disabled {
-		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_trace_arrow"))
-	} else {
-		c.settings.ID = component.NewID(component.MustNewType("otel_sdk_trace_otlp"))
-	}
+	c.settings.ID = component.NewID(component.MustNewType("otelarrow"))
 
 	if options.MeterProvider == nil {
 		if cfg.SelfMetrics {
@@ -255,7 +251,7 @@ func NewExporter(ctx context.Context, cfg Config, opts ...func(options *Exporter
 	}
 
 	bset := processor.Settings{
-		ID:                component.NewID(component.MustNewType("otel_sdk_trace_batch")),
+		ID:                component.NewID(component.MustNewType("concurrentbatch")),
 		TelemetrySettings: c.settings.TelemetrySettings,
 		BuildInfo:         c.settings.BuildInfo,
 	}

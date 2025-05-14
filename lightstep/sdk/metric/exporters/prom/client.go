@@ -99,7 +99,7 @@ func WithPort(port int) Option {
 func NewExporter(ctx context.Context, cfg Config) (metric.PushExporter, error) {
 	c := &client{}
 
-	c.settings.ID = component.NewID(component.MustNewType("otel_sdk_metric_prom"))
+	c.settings.ID = component.NewID(component.MustNewType("prometheus"))
 
 	var mp metricapi.MeterProvider = metricnoop.NewMeterProvider()
 	var tp traceapi.TracerProvider = tracenoop.NewTracerProvider()
