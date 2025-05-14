@@ -10,7 +10,6 @@ linters:
     - errcheck
     - goimports
     - gofmt
-    - varcheck
 
 # Commented out in 1.18 b/c generics, to restore when functional
 # Note the two exclusions below still apply when this is restored.

@@ -44,19 +44,19 @@ GOTEST_WITH_COVERAGE = $(GOTEST) -coverprofile=coverage.txt -covermode=atomic -c
 TOOLS_DIR := $(abspath ./.tools)
 
 
-$(TOOLS_DIR)/golangci-lint: $(TOOLS_MOD_DIR)/go.mod $(TOOLS_MOD_DIR)/go.sum $(TOOLS_MOD_DIR)/tools.go
+$(TOOLS_DIR)/golangci-lint: $(TOOLS_MOD_DIR)/tools.go
 	cd $(TOOLS_MOD_DIR) && \
 	go build -o $(TOOLS_DIR)/golangci-lint github.com/golangci/golangci-lint/v2/cmd/golangci-lint
 
-$(TOOLS_DIR)/misspell: $(TOOLS_MOD_DIR)/go.mod $(TOOLS_MOD_DIR)/go.sum $(TOOLS_MOD_DIR)/tools.go
+$(TOOLS_DIR)/misspell: $(TOOLS_MOD_DIR)/tools.go
 	cd $(TOOLS_MOD_DIR) && \
 	go build -o $(TOOLS_DIR)/misspell github.com/client9/misspell/cmd/misspell
 
-$(TOOLS_DIR)/stringer: $(TOOLS_MOD_DIR)/go.mod $(TOOLS_MOD_DIR)/go.sum $(TOOLS_MOD_DIR)/tools.go
+$(TOOLS_DIR)/stringer: $(TOOLS_MOD_DIR)/tools.go
 	cd $(TOOLS_MOD_DIR) && \
 	go build -o $(TOOLS_DIR)/stringer golang.org/x/tools/cmd/stringer
 
-$(TOOLS_DIR)/gojq: $(TOOLS_MOD_DIR)/go.mod $(TOOLS_MOD_DIR)/go.sum $(TOOLS_MOD_DIR)/tools.go
+$(TOOLS_DIR)/gojq: $(TOOLS_MOD_DIR)/tools.go
 	cd $(TOOLS_MOD_DIR) && \
 	go build -o $(TOOLS_DIR)/gojq github.com/itchyny/gojq/cmd/gojq
 
