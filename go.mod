@@ -1,6 +1,6 @@
 module github.com/lightstep/otel-launcher-go
 
-go 1.23.0
+go 1.24
 
 toolchain go1.24.2
 
@@ -28,7 +28,7 @@ require (
 	go.opentelemetry.io/collector/config/configgrpc v0.127.0
 	go.opentelemetry.io/collector/config/confighttp v0.127.0
 	go.opentelemetry.io/collector/config/confignet v1.33.0
-	go.opentelemetry.io/collector/config/configopaque v1.33.0
+	go.opentelemetry.io/collector/config/configopaque v1.41.0
 	go.opentelemetry.io/collector/config/configretry v1.33.0
 	go.opentelemetry.io/collector/config/configtls v1.33.0
 	go.opentelemetry.io/collector/consumer/consumertest v0.127.0
