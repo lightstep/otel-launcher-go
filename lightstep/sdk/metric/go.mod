@@ -17,6 +17,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/resourcetotelemetry v0.135.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/receiver/otelarrowreceiver v0.135.0
 	github.com/open-telemetry/otel-arrow/collector/processor/concurrentbatchprocessor v0.35.0
+	github.com/prometheus/prometheus v0.306.0-rc.0 // indirect; force
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/collector/component v1.41.0
 	go.opentelemetry.io/collector/component/componenttest v0.135.0
@@ -55,7 +56,6 @@ require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.2 // indirect
 	github.com/alecthomas/units v0.0.0-20240927000941-0f3dac36c52b // indirect
 	github.com/apache/arrow-go/v18 v18.4.1 // indirect
-	github.com/apache/arrow/go/v16 v16.1.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.39.0 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.31.7 // indirect
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.11 // indirect
@@ -114,7 +114,6 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/otelarrow v0.135.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/internal/sharedcomponent v0.135.0 // indirect
 	github.com/open-telemetry/opentelemetry-collector-contrib/pkg/translator/prometheus v0.135.0 // indirect
-	github.com/open-telemetry/otel-arrow v0.35.0 // indirect
 	github.com/open-telemetry/otel-arrow/go v0.42.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c // indirect
@@ -122,9 +121,8 @@ require (
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.66.1 // indirect
-	github.com/prometheus/otlptranslator v0.0.2 // indirect
+	github.com/prometheus/otlptranslator v0.0.0-20250620074007-94f535e0c588 // indirect
 	github.com/prometheus/procfs v0.17.0 // indirect
-	github.com/prometheus/prometheus v0.305.0 // indirect
 	github.com/prometheus/sigv4 v0.2.1 // indirect
 	github.com/rs/cors v1.11.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
@@ -180,7 +178,6 @@ require (
 	k8s.io/client-go v0.34.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/utils v0.0.0-20250820121507-0af2bda4dd1d // indirect
-	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
 replace github.com/lightstep/otel-launcher-go/lightstep/sdk/internal => ../internal

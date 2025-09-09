@@ -195,13 +195,13 @@ func WithCompressor(comp string) Option {
 
 func WithInsecure() Option {
 	return func(cfg *Config) {
-		cfg.Exporter.ClientConfig.TLSSetting.Insecure = true
+		cfg.Exporter.ClientConfig.TLS.Insecure = true
 	}
 }
 
 func WithTLSSetting(tlss configtls.ClientConfig) Option {
 	return func(cfg *Config) {
-		cfg.Exporter.ClientConfig.TLSSetting = tlss
+		cfg.Exporter.ClientConfig.TLS = tlss
 	}
 }
 
