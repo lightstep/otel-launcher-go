@@ -111,33 +111,33 @@ func NewConfig(opts ...Option) Config {
 
 func WithEndpoint(addr string) Option {
 	return func(cfg *Config) {
-		cfg.Exporter.ClientConfig.Endpoint = addr
+		cfg.Exporter.Endpoint = addr
 	}
 }
 
 func WithHeaders(hdrs map[string]string) Option {
 	return func(cfg *Config) {
 		for key, val := range hdrs {
-			cfg.Exporter.ClientConfig.Headers[key] = configopaque.String(val)
+			cfg.Exporter.Headers[key] = configopaque.String(val)
 		}
 	}
 }
 
 func WithCompressor(comp string) Option {
 	return func(cfg *Config) {
-		cfg.Exporter.ClientConfig.Compression = configcompression.Type(comp)
+		cfg.Exporter.Compression = configcompression.Type(comp)
 	}
 }
 
 func WithInsecure() Option {
 	return func(cfg *Config) {
-		cfg.Exporter.ClientConfig.TLS.Insecure = true
+		cfg.Exporter.TLS.Insecure = true
 	}
 }
 
 func WithTLSSetting(tlss configtls.ClientConfig) Option {
 	return func(cfg *Config) {
-		cfg.Exporter.ClientConfig.TLS = tlss
+		cfg.Exporter.TLS = tlss
 	}
 }
 

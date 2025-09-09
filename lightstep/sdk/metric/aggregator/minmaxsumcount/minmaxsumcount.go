@@ -149,22 +149,22 @@ func (Methods[N, Traits]) Merge(from, to *State[N, Traits]) {
 	to.lock.Lock()
 	defer to.lock.Unlock()
 
-	if from.fields.count != 0 {
-		if to.fields.count == 0 {
-			to.fields.min = from.fields.min
-			to.fields.max = from.fields.max
+	if from.count != 0 {
+		if to.count == 0 {
+			to.min = from.min
+			to.max = from.max
 		} else {
-			if from.fields.min < to.fields.min {
-				to.fields.min = from.fields.min
+			if from.min < to.min {
+				to.min = from.min
 			}
-			if from.fields.max > to.fields.max {
-				to.fields.max = from.fields.max
+			if from.max > to.max {
+				to.max = from.max
 			}
 		}
 	}
 
-	to.fields.sum += from.fields.sum
-	to.fields.count += from.fields.count
+	to.sum += from.sum
+	to.count += from.count
 }
 
 func (Methods[N, Traits]) ToAggregation(state *State[N, Traits]) aggregation.Aggregation {

@@ -20,13 +20,12 @@ import (
 	"sync"
 
 	"go.opentelemetry.io/collector/component"
+	"go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 
 	"go.opentelemetry.io/collector/pdata/pcommon"
 	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/metric"
-	metricapi "go.opentelemetry.io/otel/metric"
 	"go.opentelemetry.io/otel/metric/embedded"
 	"go.opentelemetry.io/otel/sdk/resource"
 )
@@ -206,7 +205,7 @@ func ConfigureSelfTelemetry(
 	name string,
 	tp trace.TracerProvider,
 	mp metric.MeterProvider,
-) (component.TelemetrySettings, trace.Tracer, metricapi.Int64Counter, error) {
+) (component.TelemetrySettings, trace.Tracer, metric.Int64Counter, error) {
 	var settings component.TelemetrySettings
 	// setup logs
 	logger, logErr := zap.NewProduction()
