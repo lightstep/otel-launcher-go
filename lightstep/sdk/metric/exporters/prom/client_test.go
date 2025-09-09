@@ -99,7 +99,6 @@ func (t *clientTestSuite) TestInt64Histogram() {
 	require.Eventuallyf(t.T(), func() bool {
 		lines := readMetricsEndpoint(t.T())
 
-		fmt.Println(lines)
 		return slices.Contains(lines, `request_size_bucket{job="tester",otel_scope_name="test-meter",otel_scope_schema_url="",otel_scope_version="",property="value",service_name="tester",le="+Inf"} 1`)
 	}, 15*time.Second, time.Second, "verify request-size metric")
 }
