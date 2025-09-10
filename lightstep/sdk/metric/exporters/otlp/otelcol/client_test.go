@@ -171,8 +171,14 @@ func (t *clientTestSuite) SetupSuite() {
 	cfg.Arrow = otelarrowreceiver.ArrowConfig{}
 	cfg.GRPC.NetAddr = confignet.AddrConfig{Endpoint: t.addr, Transport: "tcp"}
 
+<<<<<<< HEAD
 	set := receivertest.NewNopSettings(receivertest.NopType)
 	set.ID = component.NewID(component.MustNewType("otelarrow"))
+||||||| parent of ab5b855 (Update all deps (take 2))
+	set := receivertest.NewNopSettings()
+=======
+	set := receivertest.NewNopSettings(component.MustNewType("tests"))
+>>>>>>> ab5b855 (Update all deps (take 2))
 	tc := &consumertest.MetricsSink{}
 
 	mr, err := factory.CreateMetrics(ctx, set, cfg, tc)
