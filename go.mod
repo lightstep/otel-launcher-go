@@ -5,7 +5,7 @@ go 1.24.0
 toolchain go1.24.7
 
 require (
-	github.com/lightstep/otel-launcher-go/pipelines v1.34.0
+	github.com/lightstep/otel-launcher-go/pipelines v1.37.0
 	github.com/sethvargo/go-envconfig v1.3.0
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel v1.38.0
@@ -49,7 +49,7 @@ require (
 	github.com/lightstep/otel-launcher-go/lightstep/instrumentation v1.34.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/internal v1.34.0 // indirect
 	github.com/lightstep/otel-launcher-go/lightstep/sdk/metric v1.34.0 // indirect
-	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.31.0 // indirect
+	github.com/lightstep/otel-launcher-go/lightstep/sdk/trace v1.34.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20250827001030-24949be3fa54 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/reflectwalk v1.0.2 // indirect
@@ -104,8 +104,8 @@ require (
 	go.opentelemetry.io/collector/receiver v1.41.0 // indirect
 	go.opentelemetry.io/contrib/bridges/otelzap v0.13.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 // indirect
-	go.opentelemetry.io/contrib/propagators/b3 v1.35.0 // indirect
-	go.opentelemetry.io/contrib/propagators/ot v1.35.0 // indirect
+	go.opentelemetry.io/contrib/propagators/b3 v1.38.0 // indirect
+	go.opentelemetry.io/contrib/propagators/ot v1.38.0 // indirect
 	go.opentelemetry.io/otel/log v0.14.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
