@@ -17,15 +17,16 @@ package prom
 import (
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/require"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/sdk/resource"
 	"io"
 	"net/http"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/sdk/resource"
 
 	sdkmetric "github.com/lightstep/otel-launcher-go/lightstep/sdk/metric"
 	"github.com/lightstep/otel-launcher-go/lightstep/sdk/metric/aggregator/aggregation"
@@ -82,7 +83,7 @@ func (t *clientTestSuite) TestInt64Counter() {
 	require.Eventuallyf(t.T(), func() bool {
 		lines := readMetricsEndpoint(t.T())
 
-		return slices.Contains(lines, `requests{job="tester",property="value",service_name="tester"} 12`)
+		return slices.Contains(lines, `requests{job="tester",otel_scope_name="test-meter",otel_scope_schema_url="",otel_scope_version="",property="value",service_name="tester"} 12`)
 	}, 15*time.Second, time.Second, "verify requests metric")
 }
 
@@ -98,7 +99,7 @@ func (t *clientTestSuite) TestInt64Histogram() {
 	require.Eventuallyf(t.T(), func() bool {
 		lines := readMetricsEndpoint(t.T())
 
-		return slices.Contains(lines, `request_size_bucket{job="tester",property="value",service_name="tester",le="0"} 1`)
+		return slices.Contains(lines, `request_size_bucket{job="tester",otel_scope_name="test-meter",otel_scope_schema_url="",otel_scope_version="",property="value",service_name="tester",le="+Inf"} 1`)
 	}, 15*time.Second, time.Second, "verify request-size metric")
 }
 

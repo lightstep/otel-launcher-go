@@ -52,13 +52,13 @@ func (suite *testSuite) SetupSuite() {
 }
 
 func (suite *testSuite) SetupTest() {
-	suite.testLogger.reset()
+	suite.reset()
 }
 
 func (suite *testSuite) bothInsecureEndpointOptions() []Option {
 	return []Option{
-		WithMetricExporterEndpoint(fmt.Sprintf(":%d", suite.Server.InsecureMetricsPort)),
-		WithSpanExporterEndpoint(fmt.Sprintf(":%d", suite.Server.InsecureTracePort)),
+		WithMetricExporterEndpoint(fmt.Sprintf(":%d", suite.InsecureMetricsPort)),
+		WithSpanExporterEndpoint(fmt.Sprintf(":%d", suite.InsecureTracePort)),
 		WithSpanExporterInsecure(true),
 		WithMetricExporterInsecure(true),
 	}
@@ -66,11 +66,11 @@ func (suite *testSuite) bothInsecureEndpointOptions() []Option {
 
 func (suite *testSuite) TearDownTest() {
 	unsetEnvironment()
-	suite.testLogger.reset()
+	suite.reset()
 }
 
 func (suite *testSuite) TearDownSuite() {
-	suite.Server.Stop()
+	suite.Stop()
 }
 
 func TestLauncherSuite(t *testing.T) {
@@ -97,7 +97,7 @@ func (logger *testLogger) Debugf(format string, v ...interface{}) {
 func (suite *testSuite) getOutput() []string {
 	suite.testLogger.lock.Lock()
 	defer suite.testLogger.lock.Unlock()
-	return suite.testLogger.output
+	return suite.output
 }
 
 func (suite *testSuite) requireLogContains(expected string) {

@@ -149,7 +149,8 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) getOrCreateEntry(k
 	sz := len(metric.data)
 	lim := int(metric.acfg.CardinalityLimit)
 
-	if sz == lim {
+	switch sz {
+	case lim:
 		// Second lookup is required and it *must* succeed or
 		// there is an internal error condition.
 		if entry, has = metric.data[overflowAttributeSet]; has {
@@ -161,7 +162,7 @@ func (metric *instrumentBase[N, Storage, Auxiliary, Methods]) getOrCreateEntry(k
 		doevery.TimePeriod(time.Minute, func() {
 			otel.Handle(fmt.Errorf("limit passed %d: %w", len(metric.data), errInternalOverflowError))
 		})
-	} else if sz == lim-1 {
+	case lim - 1:
 		// If this is not the overflow set, check whether the
 		// overflow aggregator already exists.  If it already
 		// exists, allow this attribute set to be created,
