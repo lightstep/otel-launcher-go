@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ## Unreleased
 
+## [1.37.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.37.0) - 2025-09-10
+
+- Dep updates and test fixes
+
 ## [1.35.0](https://github.com/lightstep/otel-launcher-go/releases/tag/v1.35.0) - 2025-05-14
 
 - Code and module cleanup
