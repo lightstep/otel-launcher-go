@@ -99,6 +99,10 @@ func (i int64Counter) Add(ctx context.Context, value int64, options ...metric.Ad
 	i.observer.ObserveInt64(ctx, value, addToOpConfig(options))
 }
 
+func (i int64Counter) Enabled(context.Context) bool {
+	return true
+}
+
 func (i int64UpDownCounter) AddWithKeyValues(ctx context.Context, value int64, attrs ...attribute.KeyValue) {
 	i.observer.ObserveInt64(ctx, value, syncstate.OpConfig{
 		KeyValues: attrs,
@@ -109,8 +113,16 @@ func (i int64UpDownCounter) Add(ctx context.Context, value int64, options ...met
 	i.observer.ObserveInt64(ctx, value, addToOpConfig(options))
 }
 
+func (i int64UpDownCounter) Enabled(context.Context) bool {
+	return true
+}
+
 func (i int64Gauge) Record(ctx context.Context, value int64, options ...metric.RecordOption) {
 	i.observer.ObserveInt64(ctx, value, recordToOpConfig(options))
+}
+
+func (i int64Gauge) Enabled(context.Context) bool {
+	return true
 }
 
 func (i int64Histogram) RecordWithKeyValues(ctx context.Context, value int64, attrs ...attribute.KeyValue) {
@@ -123,6 +135,10 @@ func (i int64Histogram) Record(ctx context.Context, value int64, options ...metr
 	i.observer.ObserveInt64(ctx, value, recordToOpConfig(options))
 }
 
+func (i int64Histogram) Enabled(context.Context) bool {
+	return true
+}
+
 func (i float64Counter) AddWithKeyValues(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
 	i.observer.ObserveFloat64(ctx, value, syncstate.OpConfig{
 		KeyValues: attrs,
@@ -131,6 +147,10 @@ func (i float64Counter) AddWithKeyValues(ctx context.Context, value float64, att
 
 func (i float64Counter) Add(ctx context.Context, value float64, options ...metric.AddOption) {
 	i.observer.ObserveFloat64(ctx, value, addToOpConfig(options))
+}
+
+func (i float64Counter) Enabled(context.Context) bool {
+	return true
 }
 
 func (i float64UpDownCounter) AddWithKeyValues(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
@@ -143,8 +163,16 @@ func (i float64UpDownCounter) Add(ctx context.Context, value float64, options ..
 	i.observer.ObserveFloat64(ctx, value, addToOpConfig(options))
 }
 
+func (i float64UpDownCounter) Enabled(context.Context) bool {
+	return true
+}
+
 func (i float64Gauge) Record(ctx context.Context, value float64, options ...metric.RecordOption) {
 	i.observer.ObserveFloat64(ctx, value, recordToOpConfig(options))
+}
+
+func (i float64Gauge) Enabled(context.Context) bool {
+	return true
 }
 
 func (i float64Histogram) RecordWithKeyValues(ctx context.Context, value float64, attrs ...attribute.KeyValue) {
@@ -155,6 +183,10 @@ func (i float64Histogram) RecordWithKeyValues(ctx context.Context, value float64
 
 func (i float64Histogram) Record(ctx context.Context, value float64, options ...metric.RecordOption) {
 	i.observer.ObserveFloat64(ctx, value, recordToOpConfig(options))
+}
+
+func (i float64Histogram) Enabled(context.Context) bool {
+	return true
 }
 
 func (m *meter) Int64Counter(name string, opts ...metric.Int64CounterOption) (metric.Int64Counter, error) {
