@@ -7,7 +7,7 @@ toolchain go1.25.8
 require (
 	github.com/client9/misspell v0.3.4
 	github.com/golangci/golangci-lint/v2 v2.1.6
-	github.com/itchyny/gojq v0.12.17
+	github.com/itchyny/gojq v0.12.18
 	golang.org/x/tools v0.36.0
 )
 
@@ -52,6 +52,8 @@ require (
 	github.com/charmbracelet/x/cellbuf v0.0.13 // indirect
 	github.com/charmbracelet/x/term v0.2.1 // indirect
 	github.com/ckaznocha/intrange v0.3.1 // indirect
+	github.com/clipperhouse/stringish v0.1.1 // indirect
+	github.com/clipperhouse/uax29/v2 v2.3.0 // indirect
 	github.com/curioswitch/go-reassign v0.3.0 // indirect
 	github.com/daixiang0/gci v0.13.6 // indirect
 	github.com/dave/dst v0.27.3 // indirect
@@ -96,7 +98,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/hexops/gotextdiff v1.0.3 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
-	github.com/itchyny/timefmt-go v0.1.6 // indirect
+	github.com/itchyny/timefmt-go v0.1.7 // indirect
 	github.com/jgautheron/goconst v1.8.1 // indirect
 	github.com/jingyugao/rowserrcheck v1.1.1 // indirect
 	github.com/jjti/go-spancheck v0.6.5 // indirect
@@ -121,7 +123,7 @@ require (
 	github.com/matoous/godox v1.1.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mattn/go-runewidth v0.0.16 // indirect
+	github.com/mattn/go-runewidth v0.0.19 // indirect
 	github.com/mgechev/revive v1.12.0 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/moricho/tparallel v0.3.2 // indirect
@@ -195,7 +197,7 @@ require (
 	golang.org/x/exp/typeparams v0.0.0-20250506013437-ce4c2cf36ca6 // indirect
 	golang.org/x/mod v0.28.0 // indirect
 	golang.org/x/sync v0.17.0 // indirect
-	golang.org/x/sys v0.36.0 // indirect
+	golang.org/x/sys v0.38.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	golang.org/x/tools/go/expect v0.1.1-deprecated // indirect
 	golang.org/x/tools/go/packages/packagestest v0.1.1-deprecated // indirect
